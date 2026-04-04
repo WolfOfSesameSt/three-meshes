@@ -1,0 +1,17 @@
+{
+  "name": "three-meshes",
+  "version": "1.0.0",
+  "description": "3D mesh library for Godot — built with Three.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "export": "node src/export.js"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
