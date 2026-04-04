@@ -9,6 +9,7 @@ import {
   PUNCH_RADIUS, STOMP_RADIUS, STOMP_DEPTH, TAIL_ARC, TAIL_RANGE,
   BREATH_RANGE, BREATH_RADIUS, BREATH_ENERGY_COST, BREATH_ENERGY_MAX, BREATH_RECHARGE,
 } from "../config.js";
+import { createAnimatedMaterial, updateAnimation } from "./anim-shader.js";
 
 export class KaijuController {
   constructor(scene) {
@@ -30,6 +31,12 @@ export class KaijuController {
     this.punchCooldown = 0;
     this.stompCooldown = 0;
     this.tailCooldown = 0;
+    this.tailSwipeIntensity = 0; // decays over time, drives tail animation
+
+    // Animation
+    this.animUniforms = null;
+    this.isMoving = false;
+    this.elapsedTime = 0;
 
     // Build placeholder first, then load glTF model over it
     this._buildPlaceholder();
@@ -71,6 +78,15 @@ export class KaijuController {
         model.position.y = -centeredBox.min.y;
         model.position.x = -(centeredBox.min.x + centeredBox.max.x) / 2;
         model.position.z = -(centeredBox.min.z + centeredBox.max.z) / 2;
+
+        // Apply procedural animation shader to the mesh
+        model.traverse((child) => {
+          if (child.isMesh && child.geometry) {
+            const { material, uniforms } = createAnimatedMaterial(child);
+            child.material = material;
+            this.animUniforms = uniforms;
+          }
+        });
 
         // Replace placeholder
         this.scene.remove(this.mesh);
@@ -143,7 +159,8 @@ export class KaijuController {
     if (this.keys["KeyA"]) move.sub(right);
     if (this.keys["KeyD"]) move.add(right);
 
-    if (move.lengthSq() > 0) {
+    this.isMoving = move.lengthSq() > 0;
+    if (this.isMoving) {
       move.normalize().multiplyScalar(speed * delta);
       this.position.add(move);
       // Face movement direction
@@ -192,6 +209,7 @@ export class KaijuController {
     // Tail swipe
     if (this.attackQueue.includes("tail") && this.tailCooldown <= 0) {
       this.tailCooldown = 0.8;
+      this.tailSwipeIntensity = 1.0;
       attacks.push({
         type: "tail",
         position: this.position.clone(),
@@ -233,6 +251,21 @@ export class KaijuController {
     // Roar (visual only for now)
     if (this.keys["KeyQ"]) {
       camera.shake(3);
+    }
+
+    // Decay tail swipe intensity
+    this.tailSwipeIntensity = Math.max(0, this.tailSwipeIntensity - delta * 2.5);
+
+    // Update procedural animation
+    this.elapsedTime += delta;
+    if (this.animUniforms) {
+      updateAnimation(
+        this.animUniforms,
+        this.elapsedTime,
+        this.isMoving,
+        this.breathing,
+        this.tailSwipeIntensity,
+      );
     }
 
     this.attackQueue = [];
