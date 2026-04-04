@@ -65,16 +65,12 @@ async function search(query, { maxFaces, sort, count } = {}) {
     downloadable: "true",
     count: String(count || 12),
   });
-  // Sketchfab requires separate license params for each type
-  for (const lic of ["by", "by-sa", "by-nd", "cc0"]) {
-    params.append("license", lic);
-  }
   if (maxFaces) params.set("max_face_count", String(maxFaces));
   if (sort === "popular") params.set("sort_by", "-viewCount");
   else if (sort === "recent") params.set("sort_by", "-createdAt");
   else if (sort === "likes") params.set("sort_by", "-likeCount");
 
-  const data = await apiFetch(`/models?${params}`, token);
+  const data = await apiFetch(`/search?${params}`, token);
   const results = data.results || [];
 
   if (results.length === 0) {

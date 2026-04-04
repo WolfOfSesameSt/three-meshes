@@ -1,8 +1,9 @@
 /**
- * Kaiju controller: capsule placeholder, WASD+mouse movement, abilities.
+ * Kaiju controller: glTF model, WASD+mouse movement, abilities.
  */
 
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import {
   KAIJU_HEIGHT, KAIJU_SPEED, KAIJU_SPRINT_MULT, VOXEL_SIZE,
   PUNCH_RADIUS, STOMP_RADIUS, STOMP_DEPTH, TAIL_ARC, TAIL_RANGE,
@@ -14,6 +15,7 @@ export class KaijuController {
     this.scene = scene;
     this.position = new THREE.Vector3(0, 0, 0);
     this.yaw = 0; // facing direction
+    this.modelLoaded = false;
 
     // Energy for atomic breath
     this.energy = BREATH_ENERGY_MAX;
@@ -29,8 +31,9 @@ export class KaijuController {
     this.stompCooldown = 0;
     this.tailCooldown = 0;
 
-    // Build placeholder mesh
-    this._buildMesh();
+    // Build placeholder first, then load glTF model over it
+    this._buildPlaceholder();
+    this._loadModel();
     this._initInput();
 
     // Breath beam visual
@@ -38,41 +41,55 @@ export class KaijuController {
     this._buildBeam();
   }
 
-  _buildMesh() {
+  _buildPlaceholder() {
+    // Simple capsule shown while glTF loads
     const group = new THREE.Group();
-
-    // Body — tall capsule-like shape
     const bodyGeo = new THREE.CapsuleGeometry(KAIJU_HEIGHT * 0.15, KAIJU_HEIGHT * 0.5, 8, 16);
     const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2a4a2a });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.position.y = KAIJU_HEIGHT * 0.5;
     group.add(body);
-
-    // Head — sphere
-    const headGeo = new THREE.SphereGeometry(KAIJU_HEIGHT * 0.12, 8, 8);
-    const headMat = new THREE.MeshLambertMaterial({ color: 0x3a5a3a });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = KAIJU_HEIGHT * 0.85;
-    group.add(head);
-
-    // Eyes — glowing
-    const eyeGeo = new THREE.SphereGeometry(KAIJU_HEIGHT * 0.025, 6, 6);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-    for (const side of [-1, 1]) {
-      const eye = new THREE.Mesh(eyeGeo, eyeMat);
-      eye.position.set(side * KAIJU_HEIGHT * 0.06, KAIJU_HEIGHT * 0.88, -KAIJU_HEIGHT * 0.09);
-      group.add(eye);
-    }
-
-    // Tail — tapered cylinder
-    const tailGeo = new THREE.ConeGeometry(KAIJU_HEIGHT * 0.06, KAIJU_HEIGHT * 0.5, 6);
-    const tail = new THREE.Mesh(tailGeo, bodyMat);
-    tail.position.set(0, KAIJU_HEIGHT * 0.25, KAIJU_HEIGHT * 0.3);
-    tail.rotation.x = Math.PI * 0.7;
-    group.add(tail);
-
     this.mesh = group;
     this.scene.add(group);
+  }
+
+  _loadModel() {
+    const loader = new GLTFLoader();
+    loader.load(
+      "/models/godzilla-2014/scene.gltf",
+      (gltf) => {
+        const model = gltf.scene;
+
+        // Measure the model's bounding box to scale it to KAIJU_HEIGHT
+        const box = new THREE.Box3().setFromObject(model);
+        const modelHeight = box.max.y - box.min.y;
+        const scale = KAIJU_HEIGHT / modelHeight;
+        model.scale.set(scale, scale, scale);
+
+        // Center the model horizontally and place feet on ground
+        const centeredBox = new THREE.Box3().setFromObject(model);
+        model.position.y = -centeredBox.min.y;
+        model.position.x = -(centeredBox.min.x + centeredBox.max.x) / 2;
+        model.position.z = -(centeredBox.min.z + centeredBox.max.z) / 2;
+
+        // Replace placeholder
+        this.scene.remove(this.mesh);
+        this.mesh.traverse((child) => {
+          if (child.isMesh) { child.geometry.dispose(); child.material.dispose(); }
+        });
+
+        const wrapper = new THREE.Group();
+        wrapper.add(model);
+        this.mesh = wrapper;
+        this.scene.add(wrapper);
+        this.modelLoaded = true;
+        console.log(`Godzilla model loaded (scale: ${scale.toFixed(2)}x, height: ${KAIJU_HEIGHT}m)`);
+      },
+      undefined,
+      (err) => {
+        console.warn("Failed to load Godzilla model, keeping placeholder:", err);
+      }
+    );
   }
 
   _buildBeam() {
