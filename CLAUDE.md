@@ -22,6 +22,9 @@ Prototyping sandbox for games, graphics, shaders, and programmatic animations fo
 | `npm run models:search -- "query"` | Search free models on Sketchfab |
 | `npm run models:download -- <uid>` | Download model to `public/models/` |
 
+### Kaiju City Game
+Access at `http://localhost:5173/src/games/kaiju-city/index.html` when dev server is running.
+
 ## Project Structure
 
 ```
@@ -35,6 +38,8 @@ src/
     chunks/            — Reusable GLSL snippets (noise, lighting, etc.)
     filters/           — Pixi.js custom filter shaders (fragment only)
   animations/          — Animation modules for video export
+  games/
+    kaiju-city/        — City destruction sandbox game (self-contained)
 public/
   textures/            — Static texture assets (shared by both engines)
   sprites/             — Pixi.js sprite sheets and sprite assets
