@@ -1,10 +1,11 @@
-# Three.js Sandbox
+# Three.js + Pixi.js Sandbox
 
-Prototyping sandbox for games, graphics, shaders, and programmatic animations for video. Built with Three.js + Vite.
+Prototyping sandbox for games, graphics, shaders, and programmatic animations for video. Three.js for 3D, Pixi.js for 2D. Built with Vite.
 
 ## Stack
 
 - **Three.js** r170 (target: keep updated, see `docs/threejs-changelog.md`)
+- **Pixi.js** v8.17.1 (target: keep updated, see `docs/pixijs-changelog.md`)
 - **Vite 6** — dev server and bundler
 - **Pure JavaScript** — ES6 modules, no TypeScript
 - **Export target** — Godot 4.x via glTF/GLB
@@ -26,13 +27,17 @@ src/
   export.js            — glTF/GLB export script for Godot
   lib/                 — Shared utilities (scene setup, camera rigs, post-processing)
   experiments/         — Numbered prototypes: 001-crystal.js, 002-particles.js, etc.
-  shaders/             — Custom GLSL shaders
+  pixi/                — Pixi.js 2D scenes and experiments
+  shaders/             — Custom GLSL shaders (Three.js vertex+fragment)
     chunks/            — Reusable GLSL snippets (noise, lighting, etc.)
+    filters/           — Pixi.js custom filter shaders (fragment only)
   animations/          — Animation modules for video export
 public/
-  textures/            — Static texture assets
+  textures/            — Static texture assets (shared by both engines)
+  sprites/             — Pixi.js sprite sheets and sprite assets
 docs/
   threejs-changelog.md — Auto-maintained Three.js release notes
+  pixijs-changelog.md  — Auto-maintained Pixi.js release notes
 ```
 
 ## Conventions
@@ -155,9 +160,62 @@ Use `@gltf-transform/core` for headless export (see `src/export.js`).
 - One mesh per GLB file for simple assets
 - Use `-col` suffix for collision shapes, `-nav` for navigation meshes
 
+## Pixi.js Patterns
+
+### App boilerplate
+```js
+import { Application, Sprite, Assets } from 'pixi.js';
+
+const app = new Application();
+await app.init({ width: 1920, height: 1080, background: '#1a1a2e' });
+document.body.appendChild(app.canvas);
+```
+Note: Pixi.js v8 requires `await app.init()` — the constructor no longer accepts options.
+
+### Key concepts
+- **Container** — Base display object (replaces DisplayObject from v7). Use for grouping.
+- **Sprite** — Renders a texture. Create via `Sprite.from('path')` or `new Sprite(texture)`.
+- **Graphics** — Vector drawing. Build shape first, then fill/stroke:
+  ```js
+  const g = new Graphics();
+  g.rect(0, 0, 100, 50);  // shape first
+  g.fill(0xff0000);         // then fill
+  ```
+- **Text** — `new Text({ text: 'Hello', style: { fontSize: 24 } })`
+- **Assets** — Async loader: `const texture = await Assets.load('sprite.png');`
+
+### Pixi.js filters (2D shaders)
+Filters are fragment-only shaders applied to display objects:
+```js
+import { Filter } from 'pixi.js';
+import fragmentShader from './shaders/filters/ripple.frag?raw';
+
+const filter = new Filter({
+  glProgram: GlProgram.from({ fragment: fragmentShader }),
+  resources: {
+    myUniforms: { uTime: { value: 0.0, type: 'f32' } },
+  },
+});
+sprite.filters = [filter];
+```
+Place custom filter shaders in `src/shaders/filters/`.
+
+### Resource cleanup
+```js
+sprite.destroy({ children: true, texture: true, textureSource: true });
+```
+
+### Pixi.js + Three.js together
+For hybrid scenes (3D with 2D HUD/UI overlay):
+- Render Three.js to its canvas
+- Render Pixi.js to a separate canvas layered on top (CSS `position: absolute`)
+- Sync timing via a shared `requestAnimationFrame` loop
+
 ## Version Tracking
 
-Three.js releases are tracked in `docs/threejs-changelog.md` (auto-updated weekly).
+Both engines are tracked via auto-updated changelogs (weekly on Mondays):
+- `docs/threejs-changelog.md` — Three.js releases
+- `docs/pixijs-changelog.md` — Pixi.js releases
 
 Before upgrading Three.js:
 1. Check the changelog for breaking changes
@@ -165,10 +223,19 @@ Before upgrading Three.js:
 3. Test `npm run dev` — verify viewer loads
 4. Test any custom shaders — API changes often affect ShaderMaterial
 
+Before upgrading Pixi.js:
+1. Check the changelog for breaking changes
+2. Run `npm update pixi.js`
+3. Test 2D scenes — v8 had major API changes from v7 (async init, Graphics API, no BaseTexture)
+
 ## References
 
 - Three.js docs: https://threejs.org/docs/
 - Three.js examples: https://threejs.org/examples/
 - Three.js releases: https://github.com/mrdoob/three.js/releases
+- Pixi.js docs: https://pixijs.com/docs
+- Pixi.js examples: https://pixijs.com/examples
+- Pixi.js releases: https://github.com/pixijs/pixijs/releases
+- Pixi.js v8 migration guide: https://pixijs.com/8.x/guides/migrations/v8
 - Vite asset handling: https://vite.dev/guide/assets
 - glTF spec: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html

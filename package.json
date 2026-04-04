@@ -9,6 +9,7 @@
     "export": "node src/export.js"
   },
   "dependencies": {
+    "pixi.js": "^8.17.1",
     "three": "^0.170.0"
   },
   "devDependencies": {
