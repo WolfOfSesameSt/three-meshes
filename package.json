@@ -6,11 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "export": "node src/export.js"
+    "export": "node src/export.js",
+    "models": "node src/sketchfab.js",
+    "models:search": "node src/sketchfab.js search",
+    "models:download": "node src/sketchfab.js download"
   },
   "dependencies": {
     "pixi.js": "^8.17.1",
-    "three": "^0.170.0"
+    "three": "^0.170.0",
+    "unzipper": "^0.12.3"
   },
   "devDependencies": {
     "vite": "^6.0.0"

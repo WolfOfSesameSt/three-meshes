@@ -4,3 +4,5 @@ dist/
 *.mp4
 *.webm
 frames/
+.env
+public/models/

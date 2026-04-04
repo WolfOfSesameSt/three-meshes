@@ -18,6 +18,9 @@ Prototyping sandbox for games, graphics, shaders, and programmatic animations fo
 | `npm run build` | Production build to `dist/` |
 | `npm run export` | Export meshes to `dist/` |
 | `npm run export -- --godot` | Export + copy to Godot project |
+| `npm run models` | Sketchfab CLI help |
+| `npm run models:search -- "query"` | Search free models on Sketchfab |
+| `npm run models:download -- <uid>` | Download model to `public/models/` |
 
 ## Project Structure
 
@@ -35,6 +38,7 @@ src/
 public/
   textures/            — Static texture assets (shared by both engines)
   sprites/             — Pixi.js sprite sheets and sprite assets
+  models/              — Downloaded 3D models from Sketchfab (gitignored)
 docs/
   threejs-changelog.md — Auto-maintained Three.js release notes
   pixijs-changelog.md  — Auto-maintained Pixi.js release notes
@@ -210,6 +214,27 @@ For hybrid scenes (3D with 2D HUD/UI overlay):
 - Render Three.js to its canvas
 - Render Pixi.js to a separate canvas layered on top (CSS `position: absolute`)
 - Sync timing via a shared `requestAnimationFrame` loop
+
+## Sketchfab Model Library
+
+Interactive CLI for browsing and downloading free CC-licensed 3D models from Sketchfab. Models download as glTF (scene.gltf + scene.bin + textures/) into `public/models/<name>/`.
+
+```bash
+# Search for models
+node src/sketchfab.js search "low poly tree" --max-faces 5000 --sort popular
+
+# Download by UID
+node src/sketchfab.js download <uid>
+
+# Get model details
+node src/sketchfab.js info <uid>
+```
+
+Each downloaded model includes `_meta.json` with attribution (author, license, source URL). Always credit authors per their CC license.
+
+Results from the last search are cached in `public/models/.last-search.json` for programmatic use.
+
+API token is stored in `.env` (gitignored). Requires `SKETCHFAB_API_TOKEN`.
 
 ## Version Tracking
 
