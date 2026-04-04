@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaiju City</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      overflow: hidden;
+      background: #1a1a2e;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #eee;
+    }
+    canvas { display: block; }
+
+    /* ─── City Select Screen ─────────────────────────── */
+    #city-select {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%);
+      z-index: 100;
+    }
+    .city-select-panel {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+      backdrop-filter: blur(10px);
+    }
+    .city-select-panel h1 {
+      font-size: 48px;
+      font-weight: 900;
+      letter-spacing: 8px;
+      color: #ff4444;
+      text-shadow: 0 0 30px rgba(255,68,68,0.5);
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+    }
+    .search-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    #city-search {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+    }
+    #city-search:focus { border-color: #ff4444; }
+    #city-search-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #ff4444;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    #city-search-btn:hover { background: #ff6666; }
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .preset-btn {
+      padding: 8px 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.05);
+      color: #ccc;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .preset-btn:hover {
+      background: rgba(255,68,68,0.2);
+      border-color: #ff4444;
+      color: #fff;
+    }
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 20px 0;
+    }
+    .action-btn {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #ff4444;
+      border-radius: 8px;
+      background: transparent;
+      color: #ff4444;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .action-btn:hover {
+      background: #ff4444;
+      color: #fff;
+    }
+    .status {
+      margin-top: 16px;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      min-height: 20px;
+    }
+
+    /* ─── HUD ────────────────────────────────────────── */
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+    }
+    #energy-bar-container {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+    }
+    #energy-bar-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    #energy-bar-bg {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #energy-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: #44aaff;
+      border-radius: 4px;
+      transition: width 0.1s, background-color 0.3s;
+    }
+    #controls-hint {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+    #fps-counter {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
