@@ -14,15 +14,15 @@ void main() {
 
   if (dist > 1.0) discard;
 
-  // Glow falloff — exponential for soft halo
-  float glow = exp(-dist * dist * 3.0);
+  // Sharp falloff — sparks not blobs
+  float glow = exp(-dist * dist * 6.0);
 
-  // Color ramp based on intensity + glow
+  // Color ramp: violet edges, blue mids, bright-blue cores
   vec3 color = mix(uColorEdge, uColorMid, glow);
-  color = mix(color, uColorCore, glow * vIntensity);
+  color = mix(color, uColorCore, glow * glow * vIntensity);
 
-  // Brightness boost for high-energy particles
-  float brightness = glow * (0.4 + 0.6 * vIntensity);
+  // Low base brightness, only bright at the very center
+  float brightness = glow * glow * (0.15 + 0.4 * vIntensity);
 
-  gl_FragColor = vec4(color * brightness * 1.5, brightness);
+  gl_FragColor = vec4(color * brightness, brightness * 0.7);
 }

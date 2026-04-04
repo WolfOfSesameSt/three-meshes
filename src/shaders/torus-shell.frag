@@ -41,8 +41,8 @@ void main() {
   veins = smoothstep(0.35, 0.65, veins);
 
   // Combine fresnel shell with energy veins
-  float alpha = fresnel * uOpacity + veins * 0.08;
-  vec3 color = uColor * (1.0 + veins * 0.5);
+  float alpha = fresnel * uOpacity + veins * 0.04;
+  vec3 color = uColor * (0.7 + veins * 0.3);
 
   gl_FragColor = vec4(color, alpha);
 }
