@@ -37,6 +37,7 @@ import { getAttack } from "./combat/attack-defs.js";
 import { RoutinePanel } from "./ui/mission/routine-panel.js";
 import { PowerAllocator } from "./ship/power.js";
 import { DroneShieldRenderer } from "./combat/drone-shields.js";
+import { setAudioManager as setStationAudio } from "./ui/station/station-feedback.js";
 import { DamageVisuals } from "./combat/damage-visuals.js";
 import { HUD } from "./ui/mission/hud.js";
 import { Station } from "./ui/station/station.js";
@@ -108,6 +109,27 @@ window.addEventListener("resize", () => {
 
 // ─── Audio (persistent across missions) ────────────────────────
 const audio = new AudioManager();
+setStationAudio(audio);
+
+// UI sounds preloaded immediately (station needs them before mission starts)
+// Music tracks
+const MUSIC = {
+  station: "/audio/music/station-theme.mp3",
+  mission: "/audio/music/mission-ambient.mp3",
+  combat: "/audio/music/combat-escalation.mp3",
+  extraction: "/audio/music/extraction-urgency.mp3",
+};
+let currentMusicTrack = null;
+
+const UI_SFX = {
+  "ui-click": "/audio/sfx/ui-click.mp3",
+  "ui-alert": "/audio/sfx/ui-alert.mp3",
+  "ui-upgrade": "/audio/sfx/ui-upgrade.mp3",
+  "ui-purchase": "/audio/sfx/ui-purchase.mp3",
+  "ui-denied": "/audio/sfx/ui-denied.mp3",
+  "ui-research": "/audio/sfx/ui-research.mp3",
+  "ui-build-drone": "/audio/sfx/ui-build-drone.mp3",
+};
 
 const SFX_MANIFEST = {
   "weapon-pulse": "/audio/sfx/weapon-pulse.mp3",
@@ -125,6 +147,11 @@ const SFX_MANIFEST = {
   "drone-deploy": "/audio/sfx/drone-deploy.mp3",
   "ui-click": "/audio/sfx/ui-click.mp3",
   "ui-alert": "/audio/sfx/ui-alert.mp3",
+  "ui-upgrade": "/audio/sfx/ui-upgrade.mp3",
+  "ui-purchase": "/audio/sfx/ui-purchase.mp3",
+  "ui-denied": "/audio/sfx/ui-denied.mp3",
+  "ui-research": "/audio/sfx/ui-research.mp3",
+  "ui-build-drone": "/audio/sfx/ui-build-drone.mp3",
 };
 
 // Throttle state for repeating sounds (mining, etc.)
@@ -167,7 +194,12 @@ window.__gameState = () => ({
 
 // ─── Station ───────────────────────────────────────────────────
 const station = new Station({
-  onLaunch: () => startMission(),
+  onLaunch: () => {
+    // Initialize audio context synchronously in the click handler
+    // (browsers require AudioContext creation inside a user gesture)
+    audio.initFromUserGesture();
+    startMission();
+  },
 });
 
 station.show();
@@ -182,8 +214,10 @@ async function startMission() {
   missionRunning = true;
   missionSeed = Date.now();
 
-  // ── Audio preload ──
+  // ── Audio preload + mission music ──
   await audio.preload(SFX_MANIFEST);
+  audio.playMusic(MUSIC.mission, { fadeDuration: 2 });
+  currentMusicTrack = "mission";
 
   // ── Mothership ──
   mothership = new Mothership();
@@ -367,6 +401,8 @@ function endMission() {
   setTimeout(() => {
     cleanupMission();
     station.show();
+    audio.playMusic(MUSIC.station, { fadeDuration: 2 });
+    currentMusicTrack = "station";
   }, 3000);
 }
 
@@ -434,6 +470,8 @@ function failMission(startSalvage = false) {
     setTimeout(() => {
       cleanupMission();
       station.show();
+      audio.playMusic(MUSIC.station, { fadeDuration: 2 });
+      currentMusicTrack = "station";
     }, 500);
   }
 }
@@ -442,6 +480,8 @@ async function startSalvageMission() {
   const wreck = gameState.wreckData;
   if (!wreck) {
     station.show();
+    audio.playMusic(MUSIC.station, { fadeDuration: 2 });
+    currentMusicTrack = "station";
     return;
   }
 
@@ -773,6 +813,21 @@ function gameLoop() {
     hud.updateDrones(fleetManager.getAliveCount(), fleetManager.drones.length);
     hud.updateCombat(aliveEnemies.length, enemySpawner.getThreatLevel());
     hud.updateExtraction(extraction.state, extraction.getProgress(), extraction.getTimeRemaining());
+
+    // ── Dynamic music ──
+    const threatLevel = enemySpawner.getThreatLevel();
+    const extracting = extraction.isActive();
+
+    if (extracting && currentMusicTrack !== "extraction") {
+      audio.playMusic(MUSIC.extraction, { fadeDuration: 1.5 });
+      currentMusicTrack = "extraction";
+    } else if (!extracting && threatLevel > 0.4 && currentMusicTrack !== "combat") {
+      audio.playMusic(MUSIC.combat, { fadeDuration: 2 });
+      currentMusicTrack = "combat";
+    } else if (!extracting && threatLevel <= 0.4 && currentMusicTrack === "combat") {
+      audio.playMusic(MUSIC.mission, { fadeDuration: 3 });
+      currentMusicTrack = "mission";
+    }
   }
 
   // ── Performance stats ──

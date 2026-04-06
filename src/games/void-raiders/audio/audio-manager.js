@@ -160,6 +160,19 @@ export class AudioManager {
   }
 
   /**
+   * Call this synchronously inside a user gesture (click/keydown) handler
+   * to ensure the AudioContext is created and resumed.
+   * Must NOT be behind an await.
+   */
+  initFromUserGesture() {
+    this._ensureContext();
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+    this._resumed = true;
+  }
+
+  /**
    * Ensure the AudioContext exists and is resumed.
    */
   _ensureContext() {
@@ -227,7 +240,7 @@ export class AudioManager {
       })
     );
 
-    // Log any failures
+    // Log results
     for (let i = 0; i < results.length; i++) {
       if (results[i].status === "rejected") {
         console.warn(`AudioManager: preload failed for "${entries[i][0]}":`, results[i].reason);
@@ -242,11 +255,16 @@ export class AudioManager {
    * @param {object} [options] — { volume: 1.0 }
    */
   playSFX(name, position, options = {}) {
-    if (!this.ctx) return null;
+    if (!this.ctx) {
+      return null;
+    }
     // Auto-resume if browser suspended the context
     if (this.ctx.state === "suspended") {
       this.ctx.resume();
-      return null; // skip this frame, will play next time
+      return null;
+    }
+    if (this.ctx.state !== "running") {
+      return null;
     }
 
     const pool = this._pools.get(name);

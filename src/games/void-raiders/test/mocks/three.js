@@ -68,6 +68,7 @@ export class Color {
     this.b = (hex & 255) / 255;
     return this;
   }
+  setRGB(r, g, b) { this.r = r; this.g = g; this.b = b; return this; }
   multiplyScalar(s) { this.r *= s; this.g *= s; this.b *= s; return this; }
   clone() { return new Color(this.r, this.g, this.b); }
 }
@@ -204,4 +205,5 @@ export const DynamicDrawUsage = 35048;
 export const DoubleSide = 2;
 export const FrontSide = 0;
 export const BackSide = 1;
+export const NormalBlending = 1;
 export const AdditiveBlending = 2;

@@ -8,6 +8,7 @@
  */
 
 import { gameState, spendResources, canAfford } from "../../economy/game-state.js";
+import { feedbackBuildDrone, feedbackUpgrade, feedbackDenied } from "./station-feedback.js";
 import {
   DRONE_UPGRADES,
   canEquip as canEquipUpgrade,
@@ -205,10 +206,14 @@ export class StationDrones {
         if (entry.upgrades.length >= 2) return; // base 2 slots
 
         // Spend resources
-        if (!spendResources(upgrade.cost)) return;
+        if (!spendResources(upgrade.cost)) {
+          feedbackDenied(equipBtn);
+          return;
+        }
 
         // Equip
         entry.upgrades.push(upgradeId);
+        feedbackUpgrade(equipBtn, upgrade.label);
         this._render();
       });
     });
@@ -237,14 +242,16 @@ export class StationDrones {
         const bp = DRONE_BLUEPRINTS.find((b) => b.type === btn.dataset.build);
         if (!bp) return;
         if (spendResources(bp.costs)) {
-          // Add to fleet
           const existing = gameState.drones.find((d) => d.type === bp.type);
           if (existing) {
             existing.count++;
           } else {
             gameState.drones.push({ type: bp.type, count: 1, upgrades: [] });
           }
+          feedbackBuildDrone(btn, bp.name);
           this._render();
+        } else {
+          feedbackDenied(btn);
         }
       });
     });

@@ -11,6 +11,7 @@
 
 import { gameState, spendResources, canAfford } from "../../economy/game-state.js";
 import { ANCHOR_TYPES, ACTION_TYPES, RETREAT_TYPES } from "../../drones/routine.js";
+import { feedbackResearch, feedbackDenied } from "./station-feedback.js";
 
 const RESEARCH_ITEMS = [
   {
@@ -121,12 +122,14 @@ export class StationResearch {
         if (!item) return;
         if (spendResources(item.costs)) {
           gameState.research[item.id] = true;
-          // Unlock the rule value in the routine engine
           const ruleMap = RULE_MAPS[item.ruleType];
           if (ruleMap && ruleMap[item.ruleKey]) {
             ruleMap[item.ruleKey].unlocked = true;
           }
+          feedbackResearch(btn, item.name);
           this._render();
+        } else {
+          feedbackDenied(btn);
         }
       });
     });

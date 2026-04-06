@@ -144,6 +144,46 @@
   box-shadow: 0 0 20px rgba(68, 221, 136, 0.3);
 }
 
+/* ─── Purchase/Upgrade Feedback ──────────────────────────────── */
+.station-btn-success {
+  background: rgba(68, 221, 136, 0.3) !important;
+  border-color: var(--ui-success) !important;
+  color: var(--ui-success) !important;
+  box-shadow: 0 0 20px rgba(68, 221, 136, 0.4) !important;
+  transition: all 0.1s ease-out;
+}
+
+.station-btn-denied {
+  background: rgba(255, 68, 68, 0.3) !important;
+  border-color: var(--ui-danger) !important;
+  color: var(--ui-danger) !important;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.4) !important;
+  animation: shake-denied 0.3s ease-out;
+  transition: all 0.1s ease-out;
+}
+
+@keyframes shake-denied {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+.station-float-text {
+  position: fixed;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  pointer-events: none;
+  z-index: 200;
+  transform: translateX(-50%) translateY(0);
+  transition: transform 0.7s ease-out, opacity 0.7s ease-out;
+  opacity: 1;
+  text-shadow: 0 0 8px currentColor;
+}
+
 .station-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;

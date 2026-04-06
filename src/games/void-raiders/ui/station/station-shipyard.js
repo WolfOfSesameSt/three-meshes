@@ -10,6 +10,7 @@
  */
 
 import { gameState, spendResources, canAfford } from "../../economy/game-state.js";
+import { feedbackUpgrade, feedbackDenied } from "./station-feedback.js";
 
 const UPGRADES = [
   {
@@ -127,7 +128,10 @@ export class StationShipyard {
         if (!upgrade) return;
         if (spendResources(upgrade.costs)) {
           upgrade.apply(gameState.mothership);
+          feedbackUpgrade(btn, upgrade.name);
           this._render();
+        } else {
+          feedbackDenied(btn);
         }
       });
     });

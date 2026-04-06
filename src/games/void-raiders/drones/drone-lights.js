@@ -1,51 +1,43 @@
 /**
- * Drone light pools — instanced glow discs projected onto terrain below drones.
+ * Drone shadow projections — dark circles on the terrain below each drone.
  *
- * Gives visual depth cues for where drones are relative to the ground,
- * without the expense of InstancedMesh shadow casting.
- * One draw call for all light pools (instanced).
+ * Gives visual depth cues for where drones are relative to the ground.
+ * Uses dark semi-transparent discs (like real shadows), NOT colored glow.
+ * One draw call for all shadows (instanced).
  */
 
 import * as THREE from "three";
 import { getTerrainHeight } from "../realm/terrain.js";
 import { MAX_DRONES, VOXEL_SCALE } from "../config.js";
 
-// Drone type → glow color (darker/warmer version of fleet-renderer colors)
-const GLOW_COLORS = {
-  "worker-mining": 0x228844,
-  "worker-looting": 0x886622,
-  "worker-repair": 0x226688,
-  offensive: 0x334488,
-};
-
-const DEFAULT_GLOW_COLOR = 0x334455;
-
-// Height range over which glow fades and scales
-const MIN_HEIGHT = 2;    // below this, disc is at full alpha
-const MAX_HEIGHT = 120;  // above this, disc is invisible
-const BASE_RADIUS = 3;   // base disc radius in meters
-const MAX_RADIUS_MULT = 4; // at MAX_HEIGHT the disc is this many times larger
-const TERRAIN_OFFSET = 0.5; // meters above terrain to avoid z-fighting
+// Height range over which shadow fades and scales
+const MIN_HEIGHT = 2;       // below this, shadow is at full intensity
+const MAX_HEIGHT = 120;     // above this, shadow is invisible
+const BASE_RADIUS = 2.5;    // base shadow radius in meters
+const MAX_RADIUS_MULT = 3;  // at MAX_HEIGHT the shadow is this many times larger (softer)
+const TERRAIN_OFFSET = 0.3; // meters above terrain to avoid z-fighting
+const SHADOW_COLOR = 0x000000; // black — real shadow color
+const MAX_OPACITY = 0.35;   // shadow opacity when drone is close to ground
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
 
 /**
- * Instanced drone light pool renderer.
+ * Instanced drone shadow renderer.
  */
 export class DroneLightRenderer {
   constructor(scene) {
     this.scene = scene;
 
     const geo = new THREE.CircleGeometry(BASE_RADIUS, 12);
-    // CircleGeometry faces +Z by default; rotate to face +Y (upward)
-    geo.rotateX(-Math.PI / 2);
+    geo.rotateX(-Math.PI / 2); // face upward
 
     const mat = new THREE.MeshBasicMaterial({
+      color: SHADOW_COLOR,
       transparent: true,
-      opacity: 0.45,
+      opacity: MAX_OPACITY,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending, // normal blending for dark shadows, NOT additive
       side: THREE.DoubleSide,
     });
 
@@ -53,13 +45,14 @@ export class DroneLightRenderer {
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.count = 0;
     this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = -1; // render before other transparent objects
     this.scene.add(this.mesh);
   }
 
   /**
-   * Update light pool positions for all alive drones.
+   * Update shadow positions for all alive drones.
    * @param {Array} drones — all drone entities
-   * @returns {number} — count of active light discs (for testing)
+   * @returns {number} — count of active shadows
    */
   update(drones) {
     let idx = 0;
@@ -70,15 +63,14 @@ export class DroneLightRenderer {
       const terrainY = getTerrainHeight(drone.position.x, drone.position.z) * VOXEL_SCALE;
       const altitude = drone.position.y - terrainY;
 
-      // Skip if drone is below terrain or too high
       if (altitude < 0 || altitude > MAX_HEIGHT) continue;
 
-      // Scale: larger disc when higher
+      // Higher = larger, softer shadow (like real light)
       const heightT = Math.min(1, Math.max(0, (altitude - MIN_HEIGHT) / (MAX_HEIGHT - MIN_HEIGHT)));
       const scale = 1 + heightT * (MAX_RADIUS_MULT - 1);
 
-      // Alpha: inversely proportional to height (close = bright, far = faint)
-      const alpha = 1 - heightT;
+      // Higher = fainter shadow
+      const alpha = (1 - heightT) * MAX_OPACITY;
 
       _dummy.position.set(
         drone.position.x,
@@ -90,10 +82,11 @@ export class DroneLightRenderer {
       _dummy.updateMatrix();
       this.mesh.setMatrixAt(idx, _dummy.matrix);
 
-      // Color from drone type, dimmed by alpha
-      const hex = GLOW_COLORS[drone.type] ?? DEFAULT_GLOW_COLOR;
-      _color.setHex(hex);
-      _color.multiplyScalar(alpha);
+      // All shadows are dark — same neutral color, varying opacity via scale trick
+      // Since instanced color multiplies with material color (black * anything = black),
+      // we use a dark gray that gets darker when alpha should be stronger
+      const brightness = 0.02 + heightT * 0.08; // very dark near ground, slightly lighter far
+      _color.setRGB(brightness, brightness, brightness);
       this.mesh.setColorAt(idx, _color);
 
       idx++;

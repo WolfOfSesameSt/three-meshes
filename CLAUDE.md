@@ -32,6 +32,30 @@ Access at `http://localhost:5173/src/games/kaiju-city/index.html` when dev serve
 Access at `http://localhost:5173/src/games/void-raiders/index.html` when dev server is running.
 GDD at `src/games/void-raiders/GDD.md`. Agentic dev system in `.claude/agents/`.
 
+**Key commands:**
+| Command | Description |
+|---------|-------------|
+| `npm run sfx -- "prompt" --duration N --name file` | Generate SFX via ElevenLabs |
+| `npm run music -- "prompt" --duration N --name file` | Generate music via ElevenLabs |
+| `npm run music:plan -- "prompt"` | Preview composition (free) |
+| `npm run audio:budget` | Check ElevenLabs credit usage |
+
+**In-game controls:**
+| Key | Action |
+|-----|--------|
+| `TAB` | Toggle command panel (swarm routines + power allocation) |
+| `E` | Summon extraction stargate |
+| `` ` `` | Toggle performance overlay |
+| Mouse wheel | Zoom camera |
+| Right-click drag | Orbit camera |
+
+**Architecture:**
+- 13 specialized agents in `.claude/agents/` (game-director, realm-engineer, ship-architect, drone-commander, combat-designer, economy-designer, ux-engineer, shader-expert, sound-designer, balance-coordinator, qa-engineer, perf-optimizer)
+- 11 skills in `.claude/skills/` (shader, data-schema, voxel-system, game-ui, instancing, procgen-realm, balance-audit, test-game, perf-check, generate-sfx, generate-music)
+- 230 tests across 22 suites
+- ElevenLabs audio: 20 SFX + 4 music tracks generated, budget tracked in `public/audio/.budget.json`
+- Save system: localStorage with Supabase schema at `database/schema.sql`
+
 ## Project Structure
 
 ```
@@ -276,3 +300,4 @@ Before upgrading Pixi.js:
 - Pixi.js v8 migration guide: https://pixijs.com/8.x/guides/migrations/v8
 - Vite asset handling: https://vite.dev/guide/assets
 - glTF spec: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
+- Mesh2Motion: https://mesh2motion.org/ — mesh animation generation

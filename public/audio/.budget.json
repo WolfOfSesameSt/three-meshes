@@ -1,5 +1,5 @@
 {
-  "totalCreditsUsed": 2960,
+  "totalCreditsUsed": 3280,
   "limit": 50000,
   "generations": [
     {
@@ -153,6 +153,46 @@
       "filename": "extraction-urgency.mp3",
       "credits": 500,
       "totalAfter": 2960
+    },
+    {
+      "date": "2026-04-06T13:56:55.548Z",
+      "type": "sfx",
+      "prompt": "satisfying upgrade complete chime, bright ascending tone, futuristic tech unlock, rewarding",
+      "filename": "ui-upgrade.mp3",
+      "credits": 80,
+      "totalAfter": 3040
+    },
+    {
+      "date": "2026-04-06T13:56:57.207Z",
+      "type": "sfx",
+      "prompt": "purchase confirmation sound, coins or credits spent, clean digital transaction beep",
+      "filename": "ui-purchase.mp3",
+      "credits": 40,
+      "totalAfter": 3080
+    },
+    {
+      "date": "2026-04-06T13:56:58.730Z",
+      "type": "sfx",
+      "prompt": "error denied buzzer, low negative tone, access denied, short",
+      "filename": "ui-denied.mp3",
+      "credits": 40,
+      "totalAfter": 3120
+    },
+    {
+      "date": "2026-04-06T13:57:01.093Z",
+      "type": "sfx",
+      "prompt": "research unlock discovery chime, mysterious knowledge gained, ascending harmonic tones, sci-fi",
+      "filename": "ui-research.mp3",
+      "credits": 80,
+      "totalAfter": 3200
+    },
+    {
+      "date": "2026-04-06T13:57:03.059Z",
+      "type": "sfx",
+      "prompt": "drone constructed mechanical assembly complete, robotic build finished, satisfying clunk",
+      "filename": "ui-build-drone.mp3",
+      "credits": 80,
+      "totalAfter": 3280
     }
   ]
 }

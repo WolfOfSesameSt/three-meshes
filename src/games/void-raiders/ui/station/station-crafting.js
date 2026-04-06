@@ -8,6 +8,7 @@
  */
 
 import { gameState } from "../../economy/game-state.js";
+import { feedbackCraft, feedbackDenied } from "./station-feedback.js";
 import {
   ALL_RESOURCES,
   RESOURCE_CATEGORY,
@@ -131,7 +132,11 @@ export class StationCrafting {
       btn.addEventListener("click", () => {
         const recipeId = btn.dataset.craft;
         if (craft(recipeId)) {
+          const recipe = ALL_RECIPES.find(r => r.id === recipeId);
+          feedbackCraft(btn, recipe?.name ?? recipeId);
           this._render();
+        } else {
+          feedbackDenied(btn);
         }
       });
     });

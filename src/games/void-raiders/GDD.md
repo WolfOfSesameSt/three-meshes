@@ -472,13 +472,24 @@ Each agent has:
 
 ### Build Order
 
-1. **Scene scaffolding** — realm with voxel terrain, mothership, camera
-2. **Mothership movement** — follows pre-planned route, basic systems
-3. **Drone spawning** — instanced rendering, basic swarm movement
-4. **AI routine system** — 5 core rules, basic rule evaluation loop
-5. **Mining loop** — resource deposits, worker drones extract, tesseract stores
-6. **Combat loop** — alien defenses, offensive drones engage, mothership weapons
-7. **Extraction** — stargate summon, survive, warp out
-8. **Station hub** — basic UI for loadout, route planning, spending resources
-9. **Progression** — simple research tree, drone upgrades, mothership upgrades
-10. **Polish** — destruction feel, shader effects, UI polish, balance pass
+1. ~~**Scene scaffolding**~~ — DONE: voxel terrain (3 biomes), mothership, 3rd-person camera, atmosphere torus
+2. ~~**Mothership movement**~~ — DONE: route following, terrain height tracking
+3. ~~**Drone spawning**~~ — DONE: instanced rendering (200 drones, 2 draw calls), deploy animation
+4. ~~**AI routine system**~~ — DONE: 5 core rules (anchor/range/priority/action/retreat), presets, in-game TAB editor
+5. ~~**Mining loop**~~ — DONE: 12 deposit types, harvest → cargo → offload → tesseract, track-resource anchor
+6. ~~**Combat loop**~~ — DONE: 7 enemy types, real spatial hit detection, data-driven attacks, escalation timeline
+7. ~~**Extraction**~~ — DONE: stargate summon (E key), 60s channel, survive-and-warp, greed tension
+8. ~~**Station hub**~~ — DONE: galaxy map, shipyard, drone bay, research tree, crafting (replication hub)
+9. ~~**Progression**~~ — DONE: research unlocks, mothership upgrades, drone upgrade slots (2-8), 22 resources, 9 crafting recipes
+10. ~~**Polish**~~ — DONE: damage visuals (smoke/sparks/charring/scars), shield bubbles, screen shake, procedural skybox, shadows, spatial 3D audio, dynamic music, UI purchase feedback
+
+### Additional Systems Built (Post-V1 Scope)
+- **Mothership death + salvage missions** — ship destroyed → wreck data → optional salvage run
+- **Power allocation** — shields/weapons/replication energy distribution with TAB panel
+- **Portable attack system** — 12 weapon types, real projectile collision, accuracy/spread stats
+- **Drone shields** — instanced shield bubbles, energy-based regen from power allocation
+- **Visual damage** — progressive charring, smoke trails, hull scars, spark bursts
+- **Save system** — localStorage (3 slots, auto-save) + Supabase schema ready
+- **Sound design** — 20 SFX + 4 music tracks via ElevenLabs, spatial 3D Web Audio
+- **Realm landmarks** — monoliths, craters, ridges, mesas, canyons + alien structures
+- **230 automated tests** across 22 suites
