@@ -228,11 +228,11 @@ export class FleetManager {
     // All drone visuals are visual-only (damage/healing handled by routine execute)
     if (actionType === "mine" || actionType === "repair") {
       // Mining and repair beams — damage=0, just visual
-      this.attackSystem.fire(drone, target, attackDef);
+      this.attackSystem.fire(drone, target, attackDef, "player");
     } else if (actionType === "attack") {
       // Combat attack — damage already applied by routine, fire visual only
       const visualDef = { ...attackDef, damage: 0 };
-      this.attackSystem.fire(drone, target, visualDef);
+      this.attackSystem.fire(drone, target, visualDef, "player");
     }
 
     drone._fireCooldown = 1.0 / attackDef.fireRate;

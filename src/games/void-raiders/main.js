@@ -392,6 +392,11 @@ function gameLoop() {
   // ── Enemies ──
   enemySpawner.update(dt, mothership.position);
   const aliveEnemies = enemySpawner.getAlive();
+  const aliveDrones = fleetManager.drones.filter(d => d.state !== "destroyed");
+
+  // Set target pools for real collision detection
+  attackSystem.setTargets(aliveDrones, aliveEnemies, mothership);
+
   const combatTargets = { mothership, drones: fleetManager.drones };
   for (const enemy of aliveEnemies) {
     updateEnemyAI(enemy, combatTargets, dt, elapsed, attackSystem);
@@ -403,7 +408,7 @@ function gameLoop() {
   for (const hit of hits) {
     // Fire through attack system for consistent visuals + audio
     const pulseLaser = getAttack("pulse-laser");
-    attackSystem.fire(mothership, hit.enemy, { ...pulseLaser, damage: 0 });
+    attackSystem.fire(mothership, hit.enemy, { ...pulseLaser, damage: 0 }, "player");
 
     if (hit.enemy.state === "dead") {
       combatEffects.addDeathEffect(hit.enemy.position, hit.enemy.type, hit.enemy.color);

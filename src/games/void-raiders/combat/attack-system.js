@@ -1,40 +1,41 @@
 /**
- * Attack System — manages all projectiles and hitscan attacks in the game.
+ * Attack System — manages all projectiles and hitscan attacks with real collision.
  *
- * Any unit fires attacks through this system. It handles:
- * - Hitscan (instant beam) attacks
- * - Projectile (bolt/missile) attacks with travel time
- * - Impact effects delegation to CombatEffects
- * - Damage application to targets
+ * Hitscan: accuracy roll based on target speed. Fast targets are harder to hit.
+ * Projectiles: travel through space and check proximity to ALL valid targets
+ *   each frame. Can miss if the target dodges. Can hit unintended targets.
  *
  * Usage:
- *   attackSystem.fire(source, target, attackDef)
+ *   attackSystem.setTargets(friendlies, enemies, mothership)
+ *   attackSystem.fire(source, target, attackDef, faction)
  *   attackSystem.update(dt)
  */
 
 import * as THREE from "three";
 
 const MAX_PROJECTILES = 200;
+const MAX_BEAMS = 20;
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
 
-// Map attack IDs to their fire sound
+// Map attack IDs to fire sound
 const ATTACK_SOUNDS = {
   "pulse-laser": "weapon-pulse",
   "drone-laser": "weapon-drone-laser",
   "alien-plasma-bolt": "weapon-plasma-bolt",
   "alien-heavy-cannon": "weapon-heavy-cannon",
   "turret-beam": "weapon-turret-beam",
-  "mining-beam": null, // mining sound handled separately (throttled)
-  "repair-beam": null, // silent
+  "mining-beam": null,
+  "repair-beam": null,
 };
 
-// Map attack IDs to their impact sound
+// Map attack IDs to impact sound
 const IMPACT_SOUNDS = {
+  "pulse-laser": "shield-hit",
   "alien-plasma-bolt": "shield-hit",
   "alien-heavy-cannon": "hull-hit",
   "turret-beam": "shield-hit",
-  "drone-laser": null, // small, skip
+  "drone-laser": null,
 };
 
 export class AttackSystem {
@@ -42,11 +43,15 @@ export class AttackSystem {
     this.scene = scene;
     this.effects = combatEffects;
     this.screenShake = screenShake;
-    this.audioManager = null; // set by main.js
+    this.audioManager = null;
     this.projectiles = [];
-    this.beams = []; // active beam visuals
+    this.beams = [];
 
-    // Instanced projectile rendering — small glowing bolts
+    // Target pools — set each frame by main.js
+    this._friendlyTargets = []; // player drones + mothership
+    this._enemyTargets = [];    // alien ships/turrets
+
+    // Instanced projectile rendering
     const boltGeo = new THREE.SphereGeometry(0.5, 4, 3);
     const boltMat = new THREE.MeshBasicMaterial({
       color: 0xff4444,
@@ -60,73 +65,105 @@ export class AttackSystem {
     this._boltMesh.count = 0;
     this._boltMesh.frustumCulled = false;
     this.scene.add(this._boltMesh);
+  }
 
-    // Beam line material (reusable)
-    this._beamMat = new THREE.LineBasicMaterial({
-      color: 0x88ccff,
-      transparent: true,
-      opacity: 1.0,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
+  /**
+   * Set the target pools for collision detection.
+   * Call once per frame before update().
+   * @param {Array} friendlies — player drones (with .position, .stats)
+   * @param {Array} enemies — alien ships (with .position, .stats)
+   * @param {object} mothership — mothership entity
+   */
+  setTargets(friendlies, enemies, mothership) {
+    this._friendlyTargets = friendlies ?? [];
+    this._enemyTargets = enemies ?? [];
+    this._mothership = mothership ?? null;
   }
 
   /**
    * Fire an attack from source at target.
-   * @param {object} source — { position: {x,y,z} }
-   * @param {object} target — { position: {x,y,z}, stats?, takeDamage? }
+   * @param {object} source — { position }
+   * @param {object} target — { position, stats?, velocity? }
    * @param {object} attackDef — from attack-defs.js
+   * @param {string} faction — "player" | "enemy" (determines what projectiles can hit)
    */
-  fire(source, target, attackDef) {
+  fire(source, target, attackDef, faction = "player") {
     if (!source || !target || !attackDef) return;
 
     const sp = source.position;
     const tp = target.position;
 
-    // Play fire sound at source position
     this._playFireSound(attackDef, sp);
 
     if (attackDef.speed === 0) {
-      // ─── Hitscan: instant damage + beam visual ───
-      this._applyDamage(target, attackDef);
+      // ─── Hitscan: accuracy roll ───
+      const accuracy = attackDef.accuracy ?? 0.9;
+      const targetSpeed = _getSpeed(target);
+      // Fast targets are harder to hit: effective accuracy drops with target speed
+      // At speed 0: full accuracy. At speed 20+: accuracy * 0.5
+      const speedPenalty = Math.min(targetSpeed / 40, 0.5);
+      const effectiveAccuracy = accuracy * (1 - speedPenalty);
+
+      // Always draw the beam visual (even on miss — shows where the shot went)
       this._addBeamVisual(sp, tp, attackDef);
 
-      // Play impact sound at target position
-      this._playImpactSound(attackDef, tp);
-
-      if (attackDef.impactEffect !== "none") {
-        this.effects.addImpactFlash(tp, attackDef.damage);
+      if (Math.random() < effectiveAccuracy) {
+        // Hit
+        this._applyDamage(target, attackDef);
+        this._playImpactSound(attackDef, tp);
+        if (attackDef.impactEffect !== "none") {
+          this.effects.addImpactFlash(tp, attackDef.damage);
+        }
+      } else {
+        // Miss — beam goes slightly off target (visual only)
+        // Could add a "miss" particle effect here later
       }
+
       if (attackDef.screenShake > 0 && this.screenShake) {
         this.screenShake.addTrauma(attackDef.screenShake);
       }
     } else {
-      // ─── Projectile: travels through space ───
+      // ─── Projectile: aimed at target but uses real collision ───
       const dx = tp.x - sp.x;
       const dy = (tp.y ?? sp.y) - sp.y;
       const dz = tp.z - sp.z;
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
       if (dist < 1) return;
 
-      const nx = dx / dist;
-      const ny = dy / dist;
-      const nz = dz / dist;
+      // Lead the target: predict where it will be based on projectile travel time
+      const travelTime = dist / attackDef.speed;
+      const tv = target.velocity ?? { x: 0, y: 0, z: 0 };
+      const leadX = tp.x + tv.x * travelTime * 0.6; // 60% lead prediction (not perfect)
+      const leadY = (tp.y ?? sp.y) + (tv.y ?? 0) * travelTime * 0.6;
+      const leadZ = tp.z + tv.z * travelTime * 0.6;
+
+      const ldx = leadX - sp.x;
+      const ldy = leadY - sp.y;
+      const ldz = leadZ - sp.z;
+      const ldist = Math.sqrt(ldx * ldx + ldy * ldy + ldz * ldz);
+
+      // Add slight inaccuracy spread
+      const spread = attackDef.spread ?? 0.03;
+      const sx = ldx / ldist + (Math.random() - 0.5) * spread;
+      const sy = ldy / ldist + (Math.random() - 0.5) * spread;
+      const sz = ldz / ldist + (Math.random() - 0.5) * spread;
+      const slen = Math.sqrt(sx * sx + sy * sy + sz * sz);
 
       this.projectiles.push({
         x: sp.x, y: sp.y, z: sp.z,
-        vx: nx * attackDef.speed,
-        vy: ny * attackDef.speed,
-        vz: nz * attackDef.speed,
-        target,
+        vx: (sx / slen) * attackDef.speed,
+        vy: (sy / slen) * attackDef.speed,
+        vz: (sz / slen) * attackDef.speed,
         attackDef,
+        faction,
+        hitRadius: attackDef.hitRadius ?? 5, // proximity check radius
+        maxDist: (attackDef.range ?? 300) * 1.2, // max travel before despawn
         distTraveled: 0,
-        maxDist: dist + 20, // slight overshoot tolerance
-        hitDist: dist,
         color: attackDef.projectileColor,
         size: attackDef.projectileSize,
+        sourceId: source.id, // don't hit the shooter
       });
 
-      // Cap projectile pool
       while (this.projectiles.length > MAX_PROJECTILES) {
         this.projectiles.shift();
       }
@@ -134,52 +171,51 @@ export class AttackSystem {
   }
 
   /**
-   * Update all projectiles and beam visuals.
+   * Update all projectiles — move and check collisions.
    */
   update(dt) {
-    // ─── Move projectiles ───
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
-      const step = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz) * dt;
+
+      // Move
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.z += p.vz * dt;
+      const step = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz) * dt;
       p.distTraveled += step;
 
-      // Check if reached target distance
-      if (p.distTraveled >= p.hitDist) {
-        // Hit the target
-        this._applyDamage(p.target, p.attackDef);
+      // Check collision with valid targets
+      const targets = p.faction === "player" ? this._enemyTargets :
+                      this._buildFriendlyHitList();
+      const hit = this._checkCollision(p, targets);
 
-        // Impact sound at target
-        this._playImpactSound(p.attackDef, p.target.position);
-
+      if (hit) {
+        this._applyDamage(hit, p.attackDef);
+        this._playImpactSound(p.attackDef, hit.position);
         if (p.attackDef.impactEffect !== "none") {
-          this.effects.addImpactFlash(p.target.position, p.attackDef.damage);
-          this.effects.addHitFlash(p.target.position);
+          this.effects.addImpactFlash(hit.position, p.attackDef.damage);
+          this.effects.addHitFlash(hit.position);
         }
         if (p.attackDef.screenShake > 0 && this.screenShake) {
           this.screenShake.addTrauma(p.attackDef.screenShake);
         }
-
         this.projectiles.splice(i, 1);
         continue;
       }
 
-      // Remove if overshot
+      // Despawn if too far
       if (p.distTraveled > p.maxDist) {
         this.projectiles.splice(i, 1);
       }
     }
 
-    // ─── Update instanced bolt mesh ───
+    // Update instanced bolt mesh
     for (let i = 0; i < this.projectiles.length; i++) {
       const p = this.projectiles[i];
       _dummy.position.set(p.x, p.y, p.z);
       _dummy.scale.setScalar(p.size);
       _dummy.updateMatrix();
       this._boltMesh.setMatrixAt(i, _dummy.matrix);
-
       _color.setHex(p.color);
       this._boltMesh.setColorAt(i, _color);
     }
@@ -189,59 +225,95 @@ export class AttackSystem {
       if (this._boltMesh.instanceColor) this._boltMesh.instanceColor.needsUpdate = true;
     }
 
-    // ─── Fade beams ───
+    // Fade beams
     for (let i = this.beams.length - 1; i >= 0; i--) {
-      const b = this.beams[i];
-      b.timer -= dt;
-      if (b.timer <= 0) {
-        this.scene.remove(b.line);
-        b.line.geometry.dispose();
+      this.beams[i].timer -= dt;
+      if (this.beams[i].timer <= 0) {
+        this.scene.remove(this.beams[i].line);
+        this.beams[i].line.geometry.dispose();
+        this.beams[i].line.material.dispose();
         this.beams.splice(i, 1);
       }
     }
+    // Cap beams
+    while (this.beams.length > MAX_BEAMS) {
+      const old = this.beams.shift();
+      this.scene.remove(old.line);
+      old.line.geometry.dispose();
+      old.line.material.dispose();
+    }
   }
 
   /**
-   * Play the fire sound for an attack at a position.
+   * Check if a projectile hit any target via proximity.
+   * @returns {object|null} the hit target, or null
    */
+  _checkCollision(projectile, targets) {
+    const px = projectile.x;
+    const py = projectile.y;
+    const pz = projectile.z;
+    const r = projectile.hitRadius;
+    const rSq = r * r;
+
+    for (const t of targets) {
+      // Skip dead targets
+      if (t.stats?.hull !== undefined && t.stats.hull <= 0) continue;
+      if (t.systems?.hull !== undefined && t.systems.hull <= 0) continue;
+      if (t.state === "destroyed" || t.state === "dead") continue;
+      // Skip source (don't hit yourself)
+      if (t.id !== undefined && t.id === projectile.sourceId) continue;
+
+      const tp = t.position;
+      const dx = px - tp.x;
+      const dy = py - (tp.y ?? py);
+      const dz = px - tp.z; // intentional: fast squared check
+      // Proper distance
+      const distSq = (px - tp.x) ** 2 + (py - (tp.y ?? py)) ** 2 + (pz - tp.z) ** 2;
+      if (distSq <= rSq) {
+        return t;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Build the list of friendly targets that enemy projectiles can hit.
+   */
+  _buildFriendlyHitList() {
+    const list = [...this._friendlyTargets];
+    if (this._mothership && this._mothership.alive !== false) {
+      list.push(this._mothership);
+    }
+    return list;
+  }
+
   _playFireSound(attackDef, pos) {
     if (!this.audioManager) return;
     const soundName = ATTACK_SOUNDS[attackDef.id];
-    if (soundName) {
-      this.audioManager.playSFX(soundName, pos);
-    }
+    if (soundName) this.audioManager.playSFX(soundName, pos);
   }
 
-  /**
-   * Play the impact sound for an attack at a position.
-   */
   _playImpactSound(attackDef, pos) {
     if (!this.audioManager) return;
     const soundName = IMPACT_SOUNDS[attackDef.id];
-    if (soundName) {
-      this.audioManager.playSFX(soundName, pos);
-    }
+    if (soundName) this.audioManager.playSFX(soundName, pos);
   }
 
   /**
-   * Apply damage to a target entity.
-   * Shields absorb damage first for all entities.
+   * Apply damage to a target. Shields absorb first.
    */
   _applyDamage(target, attackDef) {
     if (attackDef.damage <= 0) return;
 
     if (target.takeDamage) {
-      // Mothership uses its own takeDamage method (handles shields internally)
       target.takeDamage(attackDef.damage);
     } else if (target.stats) {
       let remaining = attackDef.damage;
-      // Shields absorb first
       if (target.stats.shields > 0) {
         const absorbed = Math.min(target.stats.shields, remaining);
         target.stats.shields -= absorbed;
         remaining -= absorbed;
       }
-      // Remainder hits hull
       target.stats.hull = Math.max(0, target.stats.hull - remaining);
       if (target.stats.hull <= 0) {
         if (target.state !== undefined) target.state = "destroyed";
@@ -249,9 +321,6 @@ export class AttackSystem {
     }
   }
 
-  /**
-   * Add a hitscan beam visual.
-   */
   _addBeamVisual(from, to, attackDef) {
     const geo = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(from.x, from.y, from.z),
@@ -266,17 +335,14 @@ export class AttackSystem {
     });
     const line = new THREE.Line(geo, mat);
     this.scene.add(line);
-
-    this.beams.push({
-      line,
-      timer: attackDef.beamDuration ?? 0.1,
-    });
+    this.beams.push({ line, timer: attackDef.beamDuration ?? 0.1 });
   }
 
   dispose() {
     for (const b of this.beams) {
       this.scene.remove(b.line);
       b.line.geometry.dispose();
+      b.line.material.dispose();
     }
     this._boltMesh.geometry.dispose();
     this._boltMesh.material.dispose();
@@ -284,4 +350,9 @@ export class AttackSystem {
     this.projectiles = [];
     this.beams = [];
   }
+}
+
+function _getSpeed(entity) {
+  const v = entity.velocity ?? { x: 0, y: 0, z: 0 };
+  return Math.sqrt((v.x ?? 0) ** 2 + (v.y ?? 0) ** 2 + (v.z ?? 0) ** 2);
 }

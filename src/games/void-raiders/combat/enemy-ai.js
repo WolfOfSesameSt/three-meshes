@@ -58,7 +58,7 @@ export function updateEnemyAI(enemy, targets, dt, elapsed, attackSystem) {
     if (enemy.fireCooldown <= 0 && attackDef) {
       // Fire through the attack system for proper visuals
       if (attackSystem) {
-        attackSystem.fire(enemy, nearest, attackDef);
+        attackSystem.fire(enemy, nearest, attackDef, "enemy");
       } else {
         // Fallback for tests without attack system
         if (nearest.takeDamage) {

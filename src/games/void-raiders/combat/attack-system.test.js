@@ -14,13 +14,34 @@ describe("attack definitions", () => {
     }
   });
 
+  it("hitscan attacks have accuracy", () => {
+    for (const atk of Object.values(ATTACKS)) {
+      if (atk.speed === 0) {
+        expect(atk.accuracy).toBeDefined();
+        expect(atk.accuracy).toBeGreaterThan(0);
+        expect(atk.accuracy).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("projectile attacks have hitRadius and spread", () => {
+    for (const atk of Object.values(ATTACKS)) {
+      if (atk.speed > 0) {
+        expect(atk.hitRadius).toBeDefined();
+        expect(atk.hitRadius).toBeGreaterThan(0);
+        expect(atk.spread).toBeDefined();
+        expect(atk.spread).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
   it("getAttack returns correct def", () => {
     expect(getAttack("pulse-laser").damage).toBe(15);
     expect(getAttack("nonexistent")).toBeNull();
   });
 
   it("every enemy type has an attack mapping", () => {
-    for (const [type, attackId] of Object.entries(ENEMY_ATTACK_MAP)) {
+    for (const [, attackId] of Object.entries(ENEMY_ATTACK_MAP)) {
       const atk = getAttack(attackId);
       expect(atk).not.toBeNull();
       expect(atk.damage).toBeGreaterThan(0);
@@ -32,12 +53,12 @@ describe("attack definitions", () => {
     expect(atkId).toBe("drone-laser");
     const atk = getAttack(atkId);
     expect(atk.damage).toBeGreaterThan(0);
+    expect(atk.accuracy).toBeDefined();
   });
 
-  it("mining beam does zero damage (handled by routine)", () => {
-    const atk = getAttack("mining-beam");
-    expect(atk.damage).toBe(0);
-    expect(atk.projectileColor).toBe(0x44ff88);
+  it("mining/repair beams have accuracy 1.0 (always connect)", () => {
+    expect(getAttack("mining-beam").accuracy).toBe(1.0);
+    expect(getAttack("repair-beam").accuracy).toBe(1.0);
   });
 
   it("bolt attacks have positive speed, beam attacks have zero", () => {

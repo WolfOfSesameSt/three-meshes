@@ -1,9 +1,14 @@
 /**
  * Attack definitions — portable weapon data used by ANY unit in the game.
  *
- * Each attack defines its damage, projectile, visual, and timing properties.
+ * Each attack defines its damage, projectile, visual, collision, and timing.
  * Units (drones, enemies, mothership) reference an attack def by ID.
  * New attacks are added here — no code changes needed elsewhere.
+ *
+ * Collision properties:
+ *   accuracy  — 0-1, hitscan hit chance (reduced by target speed)
+ *   hitRadius — meters, projectile proximity check distance
+ *   spread    — 0-1, projectile aim spread (0 = perfect, 0.1 = sloppy)
  */
 
 export const ATTACKS = {
@@ -12,19 +17,18 @@ export const ATTACKS = {
     id: "drone-laser",
     label: "Drone Laser",
     damage: 10,
-    speed: 0,             // 0 = hitscan (instant beam)
-    fireRate: 1.5,        // shots per second
+    speed: 0,
+    fireRate: 1.5,
     range: 150,
     energyCost: 0,
+    accuracy: 0.85,         // hitscan: 85% base, reduced by target speed
 
-    // Visual
     projectileType: "beam",
     projectileColor: 0x44aaff,
     projectileSize: 0.3,
     trailLength: 0,
     beamDuration: 0.1,
 
-    // Impact
     impactEffect: "small",
     impactColor: 0x66bbff,
     screenShake: 0,
@@ -39,6 +43,7 @@ export const ATTACKS = {
     fireRate: 1.5,
     range: 300,
     energyCost: 2,
+    accuracy: 0.95,         // mothership has good targeting
 
     projectileType: "beam",
     projectileColor: 0x88ccff,
@@ -56,10 +61,12 @@ export const ATTACKS = {
     id: "alien-plasma-bolt",
     label: "Plasma Bolt",
     damage: 5,
-    speed: 120,           // m/s projectile travel speed
+    speed: 120,
     fireRate: 1.0,
     range: 150,
     energyCost: 0,
+    hitRadius: 6,           // proximity check radius in meters
+    spread: 0.04,           // slight aim spread
 
     projectileType: "bolt",
     projectileColor: 0xff4444,
@@ -79,6 +86,8 @@ export const ATTACKS = {
     fireRate: 0.5,
     range: 200,
     energyCost: 0,
+    hitRadius: 8,           // bigger projectile = easier to hit
+    spread: 0.02,           // more accurate
 
     projectileType: "bolt",
     projectileColor: 0xff2222,
@@ -98,6 +107,7 @@ export const ATTACKS = {
     fireRate: 0.8,
     range: 250,
     energyCost: 0,
+    accuracy: 0.80,         // turrets are decent but not perfect
 
     projectileType: "beam",
     projectileColor: 0xffaa22,
@@ -110,7 +120,7 @@ export const ATTACKS = {
     screenShake: 0.04,
   },
 
-  // ─── Repair Beam (visual only, healing handled by routine) ──
+  // ─── Repair Beam (visual only, always hits) ────────────────
   "repair-beam": {
     id: "repair-beam",
     label: "Repair Beam",
@@ -119,6 +129,7 @@ export const ATTACKS = {
     fireRate: 3.0,
     range: 30,
     energyCost: 0,
+    accuracy: 1.0,          // repair always connects
 
     projectileType: "beam",
     projectileColor: 0x44ddff,
@@ -131,15 +142,16 @@ export const ATTACKS = {
     screenShake: 0,
   },
 
-  // ─── Mining "Attack" (visual only, damage handled by routine) ─
+  // ─── Mining Beam (visual only, always hits) ────────────────
   "mining-beam": {
     id: "mining-beam",
     label: "Mining Beam",
-    damage: 0,            // damage handled by the mine action, not this
+    damage: 0,
     speed: 0,
-    fireRate: 4.0,        // visual pulse rate
+    fireRate: 4.0,
     range: 30,
     energyCost: 0,
+    accuracy: 1.0,          // mining always connects
 
     projectileType: "beam",
     projectileColor: 0x44ff88,
