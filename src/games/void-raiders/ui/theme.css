@@ -1,0 +1,437 @@
+/* Void Raiders — UI Theme
+   Holographic sci-fi aesthetic: deep space, luminous borders, amber warnings */
+
+:root {
+  /* Backgrounds */
+  --ui-bg-primary: rgba(8, 12, 30, 0.85);
+  --ui-bg-secondary: rgba(15, 22, 50, 0.75);
+  --ui-bg-hover: rgba(25, 35, 70, 0.8);
+
+  /* Borders */
+  --ui-border: rgba(80, 140, 220, 0.3);
+  --ui-border-active: rgba(80, 180, 255, 0.6);
+  --ui-glow: 0 0 8px rgba(80, 160, 255, 0.2);
+
+  /* Text */
+  --ui-text: #c8d8f0;
+  --ui-text-bright: #e8f0ff;
+  --ui-text-dim: #6880a0;
+
+  /* Accents */
+  --ui-accent: #4a9eff;
+  --ui-warning: #ffaa30;
+  --ui-danger: #ff4444;
+  --ui-success: #44dd88;
+
+  /* Typography */
+  --ui-font: 'Courier New', monospace;
+  --ui-font-size: 13px;
+
+  /* Spacing */
+  --ui-padding: 12px;
+  --ui-gap: 8px;
+  --ui-radius: 2px;
+
+  /* Animation */
+  --ui-transition: 150ms ease-out;
+}
+
+/* ─── HUD Container ─────────────────────────────────────────── */
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  font-family: var(--ui-font);
+  font-size: var(--ui-font-size);
+  color: var(--ui-text);
+}
+
+#hud > * {
+  pointer-events: auto;
+}
+
+/* ─── Mission Timer ─────────────────────────────────────────── */
+#mission-timer {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  background: var(--ui-bg-primary);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-glow);
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  color: var(--ui-text-bright);
+  text-align: center;
+  min-width: 80px;
+}
+
+/* ─── Status Bars ────────────────────────────────────────────── */
+.vr-bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ui-border);
+  margin-bottom: 4px;
+}
+
+.vr-bar-fill {
+  height: 100%;
+  transition: width 0.2s ease-out;
+}
+
+.vr-bar-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--ui-text-dim);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+/* ─── Ship Status Panel ──────────────────────────────────────── */
+#ship-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 200px;
+  padding: var(--ui-padding);
+  background: var(--ui-bg-primary);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-glow);
+}
+
+#ship-status .vr-bar-fill.hull { background: var(--ui-success); }
+#ship-status .vr-bar-fill.shields { background: var(--ui-accent); }
+#ship-status .vr-bar-fill.energy { background: var(--ui-warning); }
+
+/* ─── Debug / Performance Overlay ────────────────────────────── */
+#perf-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 8px 12px;
+  background: var(--ui-bg-primary);
+  border: 1px solid var(--ui-border);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ui-text-dim);
+  display: none;
+}
+
+#perf-overlay.visible { display: block; }
+
+/* ─── Extraction Button ──────────────────────────────────────── */
+#extract-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 24px;
+  background: transparent;
+  border: 2px solid var(--ui-danger);
+  color: var(--ui-danger);
+  font-family: var(--ui-font);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--ui-transition);
+}
+
+#extract-btn:hover {
+  background: var(--ui-danger);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+}
+
+/* ─── Extraction Panel ───────────────────────────────────────── */
+#extraction-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 16px 24px;
+  background: var(--ui-bg-primary);
+  border: 1px solid var(--ui-accent);
+  box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+}
+
+#extraction-status {
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: var(--ui-accent);
+  margin-bottom: 8px;
+}
+
+#extraction-timer {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--ui-text-bright);
+  margin-bottom: 8px;
+}
+
+#extraction-panel .vr-bar {
+  margin: 0 auto;
+}
+
+/* ─── Mission Complete Overlay ───────────────────────────────── */
+#mission-complete {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 16, 0.9);
+  z-index: 100;
+  font-family: var(--ui-font);
+}
+
+#mission-complete.visible {
+  display: flex;
+}
+
+#mission-complete-inner {
+  text-align: center;
+  padding: 40px;
+  border: 1px solid var(--ui-accent);
+  background: var(--ui-bg-primary);
+  box-shadow: 0 0 40px rgba(74, 158, 255, 0.2);
+}
+
+#mission-complete-inner h1 {
+  font-size: 24px;
+  letter-spacing: 6px;
+  color: var(--ui-accent);
+  margin-bottom: 20px;
+}
+
+#mission-loot {
+  color: var(--ui-text);
+  line-height: 2;
+  font-size: 14px;
+}
+
+/* ─── Routine Panel ──────────────────────────────────────────── */
+#routine-panel {
+  position: fixed;
+  top: 60px;
+  right: 12px;
+  width: 340px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  background: var(--ui-bg-primary);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-glow), 0 0 30px rgba(8, 12, 30, 0.6);
+  z-index: 60;
+  font-family: var(--ui-font);
+  font-size: 12px;
+  color: var(--ui-text);
+}
+
+.rp-header {
+  padding: 14px 16px;
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: var(--ui-accent);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.rp-hint {
+  color: var(--ui-text-dim);
+  font-size: 11px;
+  float: right;
+}
+
+.rp-section-title {
+  padding: 10px 16px 6px;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--ui-text-dim);
+  border-bottom: 1px solid rgba(80, 140, 220, 0.1);
+}
+
+/* ─── Power Allocation ─── */
+#rp-power-section {
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.rp-power-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.rp-power-label {
+  width: 85px;
+  color: var(--ui-text-dim);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.rp-power-slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(80, 140, 220, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.rp-power-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  border: 2px solid var(--ui-bg-primary);
+  cursor: pointer;
+}
+
+.rp-power-slider[data-system="shields"]::-webkit-slider-thumb { background: var(--ui-accent); }
+.rp-power-slider[data-system="weapons"]::-webkit-slider-thumb { background: var(--ui-danger); }
+.rp-power-slider[data-system="replication"]::-webkit-slider-thumb { background: var(--ui-warning); }
+
+.rp-power-value {
+  width: 36px;
+  text-align: right;
+  color: var(--ui-text-bright);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.rp-power-info {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--ui-text-dim);
+  letter-spacing: 1px;
+}
+
+/* ─── Swarm Cards ─── */
+.rp-swarm-card {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(80, 140, 220, 0.15);
+}
+
+.rp-swarm-header {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--ui-text-bright);
+  margin-bottom: 10px;
+}
+
+.rp-count { color: var(--ui-text-dim); font-weight: normal; }
+
+.rp-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.rp-rule-label {
+  width: 65px;
+  color: var(--ui-text-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.rp-select {
+  flex: 1;
+  background: rgba(15, 22, 50, 0.8);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  padding: 5px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.rp-select:focus { border-color: var(--ui-accent); outline: none; }
+.rp-select:hover { border-color: var(--ui-border-active); }
+
+.rp-slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(80, 140, 220, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.rp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  border: 2px solid var(--ui-bg-primary);
+  cursor: pointer;
+}
+
+.rp-range-value {
+  width: 45px;
+  text-align: right;
+  color: var(--ui-text-dim);
+  font-size: 11px;
+}
+
+.rp-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.rp-preset-btn {
+  padding: 4px 10px;
+  background: rgba(15, 22, 50, 0.6);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text-dim);
+  font-family: var(--ui-font);
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all var(--ui-transition);
+}
+
+.rp-preset-btn:hover {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+  background: rgba(74, 158, 255, 0.1);
+}
+
+/* ─── Resource Counter ───────────────────────────────────────── */
+#resource-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 12px;
+  padding: 8px 12px;
+  background: var(--ui-bg-primary);
+  border: 1px solid var(--ui-border);
+  font-size: 12px;
+}
+
+.resource-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  line-height: 1.8;
+}
+
+.resource-name { color: var(--ui-text-dim); }
+.resource-value { color: var(--ui-text-bright); }

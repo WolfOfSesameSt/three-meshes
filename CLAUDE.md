@@ -21,9 +21,16 @@ Prototyping sandbox for games, graphics, shaders, and programmatic animations fo
 | `npm run models` | Sketchfab CLI help |
 | `npm run models:search -- "query"` | Search free models on Sketchfab |
 | `npm run models:download -- <uid>` | Download model to `public/models/` |
+| `npm test` | Run Vitest test suite |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Run tests with coverage report |
 
 ### Kaiju City Game
 Access at `http://localhost:5173/src/games/kaiju-city/index.html` when dev server is running.
+
+### Void Raiders Game
+Access at `http://localhost:5173/src/games/void-raiders/index.html` when dev server is running.
+GDD at `src/games/void-raiders/GDD.md`. Agentic dev system in `.claude/agents/`.
 
 ## Project Structure
 

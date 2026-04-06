@@ -62,7 +62,7 @@ export class KaijuController {
   _loadModel() {
     const loader = new GLTFLoader();
     loader.load(
-      "/models/godzilla-1954-rigged-and-animated-mixamo-pack/scene.gltf",
+      "/models/godzilla-first-walk-animation-scrunchy32205-alt/scene.gltf",
       (gltf) => {
         const model = gltf.scene;
 
@@ -82,18 +82,25 @@ export class KaijuController {
         this.mixer = new THREE.AnimationMixer(model);
 
         if (gltf.animations.length > 0) {
-          // The Mixamo pack may have one or multiple animations
           for (const clip of gltf.animations) {
-            const action = this.mixer.clipAction(clip);
-            this.actions[clip.name] = action;
-            console.log(`Animation loaded: "${clip.name}" (${clip.duration.toFixed(2)}s, ${clip.tracks.length} tracks)`);
-          }
+            // Log track bindings to debug
+            console.log(`Animation: "${clip.name}" (${clip.duration.toFixed(2)}s, ${clip.tracks.length} tracks)`);
+            for (let i = 0; i < Math.min(3, clip.tracks.length); i++) {
+              console.log(`  Track ${i}: ${clip.tracks[i].name}`);
+            }
 
-          // Play the first animation as idle/walk
-          const firstClip = gltf.animations[0];
-          const action = this.actions[firstClip.name];
-          action.play();
-          this.currentAction = action;
+            const action = this.mixer.clipAction(clip);
+            action.setLoop(THREE.LoopRepeat);
+            action.clampWhenFinished = false;
+            action.enabled = true;
+            action.setEffectiveWeight(1);
+            action.setEffectiveTimeScale(1);
+            action.play();
+            this.actions[clip.name] = action;
+            this.currentAction = action;
+          }
+        } else {
+          console.warn("No animations found in glTF!");
         }
 
         // Make materials respond to scene lighting
@@ -199,10 +206,10 @@ export class KaijuController {
       this.yaw = Math.atan2(-aimDir.x, -aimDir.z);
     }
 
-    // Animation speed: faster when walking, slower when idle
+    // Update skeletal animation
     if (this.mixer) {
-      const animSpeed = this.isMoving ? (sprint ? 1.5 : 1.0) : 0.3;
-      this.mixer.timeScale = animSpeed;
+      // Speed up when moving, slow gentle idle when standing
+      this.mixer.timeScale = this.isMoving ? (sprint ? 1.5 : 1.0) : 0.4;
       this.mixer.update(delta);
     }
 

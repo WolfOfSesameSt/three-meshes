@@ -9,15 +9,26 @@
     "export": "node src/export.js",
     "models": "node src/sketchfab.js",
     "models:search": "node src/sketchfab.js search",
-    "models:download": "node src/sketchfab.js download"
+    "models:download": "node src/sketchfab.js download",
+    "sfx": "node src/games/void-raiders/audio/elevenlabs.js sfx",
+    "music": "node src/games/void-raiders/audio/elevenlabs.js music",
+    "music:plan": "node src/games/void-raiders/audio/elevenlabs.js plan",
+    "audio:budget": "node src/games/void-raiders/audio/elevenlabs.js budget",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.41.1",
+    "dotenv": "^17.4.1",
     "osmtogeojson": "^3.0.0-beta.5",
     "pixi.js": "^8.17.1",
     "three": "^0.170.0",
     "unzipper": "^0.12.3"
   },
   "devDependencies": {
-    "vite": "^6.0.0"
+    "puppeteer": "^24.40.0",
+    "vite": "^6.0.0",
+    "vitest": "^4.1.2"
   }
 }

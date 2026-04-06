@@ -1,0 +1,126 @@
+{
+  "totalCreditsUsed": 960,
+  "limit": 50000,
+  "generations": [
+    {
+      "date": "2026-04-06T02:34:38.185Z",
+      "type": "sfx",
+      "prompt": "sharp sci-fi pulse laser shot, energy weapon, quick burst",
+      "filename": "weapon-pulse.mp3",
+      "credits": 40,
+      "totalAfter": 40
+    },
+    {
+      "date": "2026-04-06T02:34:39.795Z",
+      "type": "sfx",
+      "prompt": "light sci-fi laser zap, small drone weapon, quick",
+      "filename": "weapon-drone-laser.mp3",
+      "credits": 40,
+      "totalAfter": 80
+    },
+    {
+      "date": "2026-04-06T02:34:41.438Z",
+      "type": "sfx",
+      "prompt": "alien plasma bolt launch, crackling energy, sci-fi",
+      "filename": "weapon-plasma-bolt.mp3",
+      "credits": 40,
+      "totalAfter": 120
+    },
+    {
+      "date": "2026-04-06T02:34:42.918Z",
+      "type": "sfx",
+      "prompt": "heavy alien cannon blast, deep reverberating boom, sci-fi",
+      "filename": "weapon-heavy-cannon.mp3",
+      "credits": 80,
+      "totalAfter": 200
+    },
+    {
+      "date": "2026-04-06T02:34:44.471Z",
+      "type": "sfx",
+      "prompt": "sustained energy beam pulse, defense turret, electrical",
+      "filename": "weapon-turret-beam.mp3",
+      "credits": 40,
+      "totalAfter": 240
+    },
+    {
+      "date": "2026-04-06T02:34:52.228Z",
+      "type": "sfx",
+      "prompt": "energy shield absorbing impact, electrical ripple, sci-fi force field",
+      "filename": "shield-hit.mp3",
+      "credits": 40,
+      "totalAfter": 280
+    },
+    {
+      "date": "2026-04-06T02:34:54.067Z",
+      "type": "sfx",
+      "prompt": "metallic hull impact, space debris hitting metal, crunching",
+      "filename": "hull-hit.mp3",
+      "credits": 40,
+      "totalAfter": 320
+    },
+    {
+      "date": "2026-04-06T02:34:55.614Z",
+      "type": "sfx",
+      "prompt": "small spacecraft explosion, brief fireball, debris scatter",
+      "filename": "explosion-small.mp3",
+      "credits": 80,
+      "totalAfter": 400
+    },
+    {
+      "date": "2026-04-06T02:34:57.255Z",
+      "type": "sfx",
+      "prompt": "massive spaceship explosion, deep rumbling boom, debris and metal",
+      "filename": "explosion-large.mp3",
+      "credits": 120,
+      "totalAfter": 520
+    },
+    {
+      "date": "2026-04-06T02:34:59.074Z",
+      "type": "sfx",
+      "prompt": "continuous mining laser on rock, humming energy beam, steady extraction",
+      "filename": "mining-beam.mp3",
+      "credits": 120,
+      "totalAfter": 640
+    },
+    {
+      "date": "2026-04-06T02:35:05.952Z",
+      "type": "sfx",
+      "prompt": "stargate portal opening, deep whooshing energy vortex forming",
+      "filename": "stargate-summon.mp3",
+      "credits": 120,
+      "totalAfter": 760
+    },
+    {
+      "date": "2026-04-06T02:35:07.570Z",
+      "type": "sfx",
+      "prompt": "warp jump through stargate, reality tearing, massive energy surge",
+      "filename": "stargate-warp.mp3",
+      "credits": 80,
+      "totalAfter": 840
+    },
+    {
+      "date": "2026-04-06T02:35:09.257Z",
+      "type": "sfx",
+      "prompt": "small drone launching from bay, thruster ignition, whoosh",
+      "filename": "drone-deploy.mp3",
+      "credits": 40,
+      "totalAfter": 880
+    },
+    {
+      "date": "2026-04-06T02:35:15.626Z",
+      "type": "sfx",
+      "prompt": "soft holographic interface click, futuristic digital",
+      "filename": "ui-click.mp3",
+      "credits": 40,
+      "totalAfter": 920
+    },
+    {
+      "date": "2026-04-06T02:35:17.286Z",
+      "type": "sfx",
+      "prompt": "warning alert chime, urgent sci-fi notification, two-tone",
+      "filename": "ui-alert.mp3",
+      "credits": 40,
+      "totalAfter": 960
+    }
+  ]
+}

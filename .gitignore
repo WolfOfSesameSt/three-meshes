@@ -5,4 +5,7 @@ dist/
 *.webm
 frames/
 .env
+.debug-log
 public/models/
+public/audio/sfx/
+public/audio/music/
