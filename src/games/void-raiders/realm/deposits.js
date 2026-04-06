@@ -172,8 +172,13 @@ export class DepositManager {
       const scale = 0.3 + pct * 0.7;
 
       _dummy.position.set(dep.position.x, dep.position.y, dep.position.z);
-      _dummy.rotation.set(dep.position.x * 0.1, dep.position.z * 0.1, 0); // unique tilt per deposit
-      _dummy.scale.setScalar(scale);
+      // Per-deposit rotation: use rotSeed if available, else fallback to position-based
+      const rot = dep.rotSeed ?? dep.position.x * 0.1;
+      const tilt = dep.position.z * 0.1;
+      _dummy.rotation.set(tilt, rot, rot * 0.3);
+      // Per-deposit scale variation
+      const sMult = dep.scaleMult ?? 1;
+      _dummy.scale.setScalar(scale * sMult);
       _dummy.updateMatrix();
       this.mesh.setMatrixAt(idx, _dummy.matrix);
 

@@ -6,6 +6,7 @@
  *   - Galaxy Map (realm selection)
  *   - Shipyard (mothership upgrades)
  *   - Drone Bay (fleet management)
+ *   - Crafting / Replication Hub (combine materials)
  *   - Research (unlock routine engine values)
  *
  * Imports station.css into the page.

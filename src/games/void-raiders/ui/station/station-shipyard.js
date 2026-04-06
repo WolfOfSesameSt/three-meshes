@@ -1,11 +1,12 @@
 /**
  * Shipyard — view and upgrade the mothership.
  *
- * V1 upgrades:
- *   Hull Plating     +200 hull        500 iron-ore
- *   Shield Booster   +100 shields     300 crystal-shard
- *   Power Core       +20 energy       200 plasma-core
- *   Tesseract Exp.   +5000 capacity   1000 iron-ore + 200 crystal-shard
+ * Upgrade costs (tiered: early raw, mid refined, late advanced):
+ *   Hull Plating     +200 hull        3 steel-plate
+ *   Shield Booster   +100 shields     1 shield-capacitor
+ *   Power Core       +20 energy       2 energy-cell
+ *   Hull Reinforcement +500 hull      2 hull-armor
+ *   Tesseract Exp.   +5000 capacity   2 alloy-composite + 1 quantum-processor
  */
 
 import { gameState, spendResources, canAfford } from "../../economy/game-state.js";
@@ -15,28 +16,35 @@ const UPGRADES = [
     id: "hull-plating",
     name: "Hull Plating",
     description: "+200 max hull",
-    costs: { "iron-ore": 500 },
+    costs: { "steel-plate": 3 },
     apply: (ms) => { ms.hullMax += 200; ms.hull += 200; },
   },
   {
     id: "shield-booster",
     name: "Shield Booster",
     description: "+100 max shields",
-    costs: { "crystal-shard": 300 },
+    costs: { "shield-capacitor": 1 },
     apply: (ms) => { ms.shieldsMax += 100; ms.shields += 100; },
   },
   {
     id: "power-core",
     name: "Power Core",
     description: "+20 max energy",
-    costs: { "plasma-core": 200 },
+    costs: { "energy-cell": 2 },
     apply: (ms) => { ms.energyMax += 20; ms.energy += 20; },
+  },
+  {
+    id: "hull-reinforcement",
+    name: "Hull Reinforcement",
+    description: "+500 max hull (advanced)",
+    costs: { "hull-armor": 2 },
+    apply: (ms) => { ms.hullMax += 500; ms.hull += 500; },
   },
   {
     id: "tesseract-expansion",
     name: "Tesseract Expansion",
     description: "+5000 cargo capacity",
-    costs: { "iron-ore": 1000, "crystal-shard": 200 },
+    costs: { "alloy-composite": 2, "quantum-processor": 1 },
     apply: (ms) => { ms.tesseractCapacity += 5000; },
   },
 ];

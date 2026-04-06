@@ -68,6 +68,8 @@ export class Color {
     this.b = (hex & 255) / 255;
     return this;
   }
+  multiplyScalar(s) { this.r *= s; this.g *= s; this.b *= s; return this; }
+  clone() { return new Color(this.r, this.g, this.b); }
 }
 
 export class Object3D {
@@ -139,6 +141,14 @@ export class SphereGeometry {
   constructor(r = 1, ws = 8, hs = 6) {
     this.parameters = { radius: r };
   }
+  dispose() {}
+}
+
+export class CircleGeometry {
+  constructor(r = 1, s = 8) {
+    this.parameters = { radius: r, segments: s };
+  }
+  rotateX() { return this; }
   dispose() {}
 }
 

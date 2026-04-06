@@ -1,10 +1,10 @@
 /**
  * Drone Bay — view fleet, build new drones, and equip upgrades.
  *
- * V1 drone costs:
- *   Mining Drone    200 iron-ore
- *   Offensive Drone 300 iron-ore + 100 salvage-parts
- *   Repair Drone    250 iron-ore + 50 crystal-shard
+ * Drone costs:
+ *   Mining Drone    150 iron-ore + 50 copper-ore  (raw — early game)
+ *   Offensive Drone 2 steel-plate + 1 circuit-board (refined)
+ *   Repair Drone    1 steel-plate + 1 bio-gel      (refined)
  */
 
 import { gameState, spendResources, canAfford } from "../../economy/game-state.js";
@@ -19,19 +19,19 @@ const DRONE_BLUEPRINTS = [
     type: "worker-mining",
     name: "Mining Drone",
     description: "Mines deposits and hauls cargo",
-    costs: { "iron-ore": 200 },
+    costs: { "iron-ore": 150, "copper-ore": 50 },
   },
   {
     type: "offensive",
     name: "Offensive Drone",
     description: "Attacks hostile targets",
-    costs: { "iron-ore": 300, "salvage-parts": 100 },
+    costs: { "steel-plate": 2, "circuit-board": 1 },
   },
   {
     type: "worker-repair",
     name: "Repair Drone",
     description: "Repairs damaged friendlies",
-    costs: { "iron-ore": 250, "crystal-shard": 50 },
+    costs: { "steel-plate": 1, "bio-gel": 1 },
   },
 ];
 

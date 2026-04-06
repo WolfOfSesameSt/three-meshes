@@ -10,9 +10,12 @@
  */
 
 import * as THREE from "three";
-import { Terrain, getTerrainHeight } from "./realm/terrain.js";
+import { Terrain, getTerrainHeight, setLandmarks } from "./realm/terrain.js";
 import { createAtmosphere } from "./realm/atmosphere.js";
 import { createSky } from "./realm/sky.js";
+import { generateLandmarks } from "./realm/landmarks.js";
+import { StructureManager } from "./realm/structures.js";
+import { DroneLightRenderer } from "./drones/drone-lights.js";
 import { Mothership } from "./ship/mothership.js";
 import { updateMovement, generateTestRoute } from "./ship/movement.js";
 import { FollowCamera } from "./camera/follow-camera.js";
@@ -37,7 +40,7 @@ import { DroneShieldRenderer } from "./combat/drone-shields.js";
 import { DamageVisuals } from "./combat/damage-visuals.js";
 import { HUD } from "./ui/mission/hud.js";
 import { Station } from "./ui/station/station.js";
-import { gameState, deliverResources, recordShipDeath } from "./economy/game-state.js";
+import { gameState, deliverResources, recordShipDeath, clearWreckData } from "./economy/game-state.js";
 import { applyStoredUpgrades } from "./drones/upgrades.js";
 import { AudioManager } from "./audio/audio-manager.js";
 import {
@@ -136,6 +139,7 @@ let mothership, followCam, terrain, atmosphere, sky, depositManager;
 let enemySpawner, enemyRenderer, weaponSystem, combatEffects, screenShake, attackSystem;
 let shieldBubble, fleetManager, fleetRenderer, extraction, hud, routinePanel;
 let powerAllocator, droneShieldRenderer, damageVisuals;
+let droneLightRenderer, structureManager, realmLandmarks;
 let missionComplete = false;
 let missionFailed = false;
 let missionRunning = false;
@@ -208,6 +212,10 @@ async function startMission() {
   followCam = new FollowCamera(camera, renderer.domElement);
   followCam.snap(mothership.position, mothership.mesh.rotation.y);
 
+  // ── Landmarks (must be set before terrain generation) ──
+  realmLandmarks = generateLandmarks(missionSeed);
+  setLandmarks(realmLandmarks);
+
   // ── Terrain ──
   terrain = new Terrain(scene);
   terrain.update(mothership.position);
@@ -227,9 +235,13 @@ async function startMission() {
     if (child.isMesh) child.castShadow = true;
   });
 
-  // ── Deposits ──
-  depositManager = new DepositManager(scene, Date.now());
-  depositManager.spawnAlongRoute(mothership.route, 30);
+  // ── Deposits (biased toward landmarks) ──
+  depositManager = new DepositManager(scene, missionSeed);
+  depositManager.spawnAlongRoute(mothership.route, 30, realmLandmarks);
+
+  // ── Alien Structures ──
+  structureManager = new StructureManager(scene);
+  structureManager.generate(missionSeed, 10000, realmLandmarks);
 
   // ── Combat ──
   enemySpawner = new EnemySpawner();
@@ -308,6 +320,9 @@ async function startMission() {
   // ── Drone Shield Renderer ──
   droneShieldRenderer = new DroneShieldRenderer(scene);
 
+  // ── Drone Light Pools (ground glow beneath drones) ──
+  droneLightRenderer = new DroneLightRenderer(scene);
+
   // ── Damage Visuals ──
   damageVisuals = new DamageVisuals(scene);
 
@@ -334,6 +349,11 @@ function endMission() {
   // Deliver cargo to station
   deliverResources(mothership.tesseract.contents);
   gameState.missionsCompleted++;
+
+  // Clear wreck data on successful extraction (salvage complete)
+  if (gameState.wreckData) {
+    clearWreckData();
+  }
 
   // Full repair between missions (V1)
   const ms = gameState.mothership;
@@ -450,7 +470,11 @@ function cleanupMission() {
   if (hud) { hud.dispose(); hud = null; }
   if (routinePanel) { routinePanel.dispose(); routinePanel = null; }
   if (droneShieldRenderer) { droneShieldRenderer.dispose(); droneShieldRenderer = null; }
+  if (droneLightRenderer) { droneLightRenderer.dispose(); droneLightRenderer = null; }
   if (damageVisuals) { damageVisuals.dispose(); damageVisuals = null; }
+  if (structureManager) { structureManager.dispose(); structureManager = null; }
+  realmLandmarks = null;
+  setLandmarks([]);
   powerAllocator = null;
   if (extraction) { extraction.dispose(); extraction = null; }
   if (fleetRenderer) { fleetRenderer.dispose(); fleetRenderer = null; }
@@ -608,6 +632,9 @@ function gameLoop() {
 
   // ── Drone shield visuals ──
   droneShieldRenderer.update(fleetManager.drones);
+
+  // ── Drone light pools (ground glow) ──
+  droneLightRenderer.update(fleetManager.drones);
 
   // ── Damage visuals (smoke, sparks, scars) ──
   {
