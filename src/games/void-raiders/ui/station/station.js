@@ -15,6 +15,7 @@ import { StationMain } from "./station-main.js";
 import { StationGalaxy } from "./station-galaxy.js";
 import { StationShipyard } from "./station-shipyard.js";
 import { StationDrones } from "./station-drones.js";
+import { StationCrafting } from "./station-crafting.js";
 import { StationResearch } from "./station-research.js";
 import "./station.css";
 
@@ -45,6 +46,10 @@ export class Station {
       onBack: () => this._navigate("main"),
     });
 
+    this.crafting = new StationCrafting({
+      onBack: () => this._navigate("main"),
+    });
+
     this.research = new StationResearch({
       onBack: () => this._navigate("main"),
     });
@@ -54,6 +59,7 @@ export class Station {
       galaxy: this.galaxy,
       shipyard: this.shipyard,
       drones: this.drones,
+      crafting: this.crafting,
       research: this.research,
     };
   }

@@ -6,14 +6,11 @@
  */
 
 import { gameState } from "../../economy/game-state.js";
-
-const RESOURCE_LABELS = {
-  "iron-ore": "IRON",
-  "crystal-shard": "CRYSTAL",
-  "plasma-core": "PLASMA",
-  "organic-matter": "ORGANIC",
-  "salvage-parts": "SALVAGE",
-};
+import {
+  ALL_RESOURCES,
+  RESOURCE_CATEGORY,
+  getResourcesByCategory,
+} from "../../economy/resources.js";
 
 export class StationMain {
   /**
@@ -34,6 +31,7 @@ export class StationMain {
           <button class="station-btn" data-screen="galaxy">GALAXY MAP</button>
           <button class="station-btn" data-screen="shipyard">SHIPYARD</button>
           <button class="station-btn" data-screen="drones">DRONE BAY</button>
+          <button class="station-btn" data-screen="crafting">CRAFTING</button>
           <button class="station-btn" data-screen="research">RESEARCH</button>
         </div>
         <div style="margin-top: 16px;">
@@ -66,14 +64,16 @@ export class StationMain {
   }
 
   _render() {
-    // Resources
+    // Resources — only show types the player has (> 0)
     const resEl = this.el.querySelector("#station-resources");
-    const types = Object.keys(RESOURCE_LABELS);
-    resEl.innerHTML = types
-      .map((type) => {
-        const amount = gameState.resources[type] || 0;
-        const label = RESOURCE_LABELS[type];
-        return `<div class="station-resource-chip"><span class="res-name">${label}</span><span class="res-val">${amount.toLocaleString()}</span></div>`;
+    const owned = ALL_RESOURCES.filter(
+      (r) => (gameState.resources[r.id] || 0) > 0,
+    );
+    resEl.innerHTML = owned
+      .map((r) => {
+        const amount = gameState.resources[r.id] || 0;
+        const label = r.name.toUpperCase();
+        return `<div class="station-resource-chip"><span class="res-dot" style="background:${r.iconColor};"></span><span class="res-name">${label}</span><span class="res-val">${amount.toLocaleString()}</span></div>`;
       })
       .join("");
 

@@ -7,6 +7,7 @@
 
 import * as THREE from "three";
 import { fbm, noise2 } from "../utils/noise.js";
+import { getLandmarkModifier } from "./landmarks.js";
 import {
   CHUNK_SIZE,
   VOXEL_SCALE,
@@ -18,6 +19,9 @@ import {
   TERRAIN_PERSISTENCE,
   TERRAIN_FREQUENCY,
 } from "../config.js";
+
+// Active landmarks — set by setLandmarks() before terrain generation
+let _activeLandmarks = [];
 
 // ─── Biome Palettes ─────────────────────────────────────────────
 // Multiple color palettes selected by a second noise layer
@@ -76,8 +80,25 @@ function getBiomeIndex(worldX, worldZ) {
 }
 
 /**
+ * Set active landmarks for terrain height modification.
+ * Must be called before terrain chunks are built.
+ * @param {Array<object>} landmarks
+ */
+export function setLandmarks(landmarks) {
+  _activeLandmarks = landmarks;
+}
+
+/**
+ * Get currently active landmarks (for external use).
+ * @returns {Array<object>}
+ */
+export function getActiveLandmarks() {
+  return _activeLandmarks;
+}
+
+/**
  * Get terrain height at a world position.
- * Includes plateau smoothing and inter-level blending.
+ * Includes plateau smoothing, inter-level blending, and landmark modifiers.
  * @param {number} worldX
  * @param {number} worldZ
  * @returns {number} height in voxels
@@ -106,7 +127,20 @@ export function getTerrainHeight(worldX, worldZ) {
   const frac = raw - floored;
   // Only step when the fractional part is decisive (sharp transitions at 0.3/0.7)
   const smoothFrac = frac < 0.3 ? 0 : frac > 0.7 ? 1 : (frac - 0.3) / 0.4;
-  return floored + Math.round(smoothFrac);
+  let height = floored + Math.round(smoothFrac);
+
+  // Apply landmark modifiers
+  if (_activeLandmarks.length > 0) {
+    const lm = getLandmarkModifier(worldX, worldZ, _activeLandmarks);
+    if (lm.mesaClamped) {
+      // Mesa overrides height to a flat level
+      height = Math.max(1, Math.round(lm.mesaLevel));
+    }
+    height += Math.round(lm.offset);
+    height = Math.max(0, height);
+  }
+
+  return height;
 }
 
 /**

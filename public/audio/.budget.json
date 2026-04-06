@@ -1,5 +1,5 @@
 {
-  "totalCreditsUsed": 960,
+  "totalCreditsUsed": 2960,
   "limit": 50000,
   "generations": [
     {
@@ -121,6 +121,38 @@
       "filename": "ui-alert.mp3",
       "credits": 40,
       "totalAfter": 960
+    },
+    {
+      "date": "2026-04-06T03:14:10.963Z",
+      "type": "music",
+      "prompt": "dark ambient electronic space pirate station theme, slow pulsing synthesizers, mysterious undertone, deep bass drones, contemplative mood, sparse percussion",
+      "filename": "station-theme.mp3",
+      "credits": 500,
+      "totalAfter": 1460
+    },
+    {
+      "date": "2026-04-06T03:14:26.855Z",
+      "type": "music",
+      "prompt": "tense sci-fi exploration music, building intensity, electronic percussion, layered synth pads, watchful and ominous, alien world atmosphere",
+      "filename": "mission-ambient.mp3",
+      "credits": 500,
+      "totalAfter": 1960
+    },
+    {
+      "date": "2026-04-06T03:14:42.944Z",
+      "type": "music",
+      "prompt": "intense sci-fi battle music, driving electronic drums, aggressive synthesizer leads, urgent and relentless, space combat energy, cinematic orchestral hits",
+      "filename": "combat-escalation.mp3",
+      "credits": 500,
+      "totalAfter": 2460
+    },
+    {
+      "date": "2026-04-06T03:14:55.911Z",
+      "type": "music",
+      "prompt": "frantic escape music, racing tempo, pounding electronic bass, alarm-like synth stabs, desperate urgency, countdown tension, sci-fi",
+      "filename": "extraction-urgency.mp3",
+      "credits": 500,
+      "totalAfter": 2960
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ATTACKS, getAttack, ENEMY_ATTACK_MAP, DRONE_ATTACK_MAP } from "./attack-defs.js";
+import { ENEMY_TYPES } from "./enemy.js";
 
 describe("attack definitions", () => {
   it("all attacks have required fields", () => {
@@ -68,6 +69,42 @@ describe("attack definitions", () => {
       } else if (atk.projectileType === "beam") {
         expect(atk.speed).toBe(0);
       }
+    }
+  });
+
+  it("all new attack defs have required fields", () => {
+    const newAttacks = [
+      "interceptor-burst", "bomber-torpedo", "cruiser-beam", "proximity-mine",
+      "railgun", "scatter-cannon", "plasma-lance", "missile-pod",
+    ];
+    for (const id of newAttacks) {
+      const atk = getAttack(id);
+      expect(atk).not.toBeNull();
+      expect(atk.id).toBe(id);
+      expect(typeof atk.damage).toBe("number");
+      expect(typeof atk.speed).toBe("number");
+      expect(typeof atk.fireRate).toBe("number");
+      expect(typeof atk.range).toBe("number");
+      expect(typeof atk.projectileType).toBe("string");
+      expect(typeof atk.projectileColor).toBe("number");
+    }
+  });
+
+  it("all new enemy types have attack mappings", () => {
+    const newEnemies = ["interceptor", "bomber", "shielded-cruiser", "minelayer"];
+    for (const type of newEnemies) {
+      const attackId = ENEMY_ATTACK_MAP[type];
+      expect(attackId).toBeDefined();
+      const atk = getAttack(attackId);
+      expect(atk).not.toBeNull();
+      expect(atk.damage).toBeGreaterThan(0);
+    }
+  });
+
+  it("every enemy type in ENEMY_TYPES has an attack mapping", () => {
+    for (const type of Object.keys(ENEMY_TYPES)) {
+      expect(ENEMY_ATTACK_MAP[type]).toBeDefined();
+      expect(getAttack(ENEMY_ATTACK_MAP[type])).not.toBeNull();
     }
   });
 });

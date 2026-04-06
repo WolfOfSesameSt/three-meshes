@@ -65,6 +65,15 @@
   letter-spacing: 1px;
 }
 
+.station-resource-chip .res-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
 .station-resource-chip .res-name {
   color: var(--ui-text-dim);
   margin-right: 6px;
@@ -289,4 +298,93 @@
   letter-spacing: 2px;
   text-align: center;
   margin-top: 20px;
+}
+
+/* ─── Crafting Screen ────────────────────────────────────── */
+.crafting-inventory {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.crafting-inv-chip {
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg-secondary);
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.crafting-inv-chip .chip-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.crafting-inv-chip .chip-name {
+  color: var(--ui-text-dim);
+}
+
+.crafting-inv-chip .chip-val {
+  color: var(--ui-text-bright);
+}
+
+.craft-inputs {
+  font-size: 11px;
+  color: var(--ui-text-dim);
+  line-height: 1.6;
+}
+
+.craft-arrow {
+  color: var(--ui-accent);
+  margin: 0 4px;
+}
+
+.craft-output {
+  color: var(--ui-text-bright);
+}
+
+/* ─── Drone Fleet Entries ────────────────────────────────── */
+.drone-fleet-entry {
+  margin-bottom: 8px;
+}
+
+.drone-upgrades-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  padding-left: 8px;
+}
+
+.upgrade-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--ui-accent);
+  background: rgba(74, 158, 255, 0.1);
+  color: var(--ui-accent);
+  letter-spacing: 1px;
+}
+
+.upgrade-remove {
+  background: transparent;
+  border: none;
+  color: var(--ui-danger);
+  font-family: var(--ui-font);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.upgrade-remove:hover {
+  color: #ff6666;
 }

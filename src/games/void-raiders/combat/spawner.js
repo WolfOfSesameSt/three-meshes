@@ -16,9 +16,13 @@ const ESCALATION = [
   { time: 60, type: "patrol-cruiser", count: 1, interval: 20 },
   { time: 90, type: "scout-fighter", count: 4, interval: 10 },
   { time: 120, type: "patrol-cruiser", count: 2, interval: 15 },
+  { time: 120, type: "interceptor", count: 2, interval: 12 },
   { time: 180, type: "scout-fighter", count: 6, interval: 8 },
+  { time: 180, type: "bomber", count: 1, interval: 25 },
   { time: 240, type: "patrol-cruiser", count: 3, interval: 10 },
+  { time: 240, type: "shielded-cruiser", count: 1, interval: 20 },
   { time: 300, type: "scout-fighter", count: 8, interval: 6 },
+  { time: 300, type: "minelayer", count: 2, interval: 18 },
 ];
 
 const SPAWN_DISTANCE = 500; // meters from mothership
@@ -30,34 +34,43 @@ export class EnemySpawner {
   constructor() {
     this.enemies = [];
     this.missionTimer = 0;
-    this._spawnTimer = 0;
+    this._spawnTimers = {}; // per-wave-index timers
     this._currentWave = 0;
   }
 
   /**
    * Update spawner — advance timer, spawn new enemies.
+   * Multiple wave entries can be active simultaneously.
    * @param {number} dt
    * @param {object} mothershipPos — { x, y, z }
    */
   update(dt, mothershipPos) {
     this.missionTimer += dt;
-    this._spawnTimer += dt;
 
-    // Find current escalation level
-    let wave = null;
-    for (let i = ESCALATION.length - 1; i >= 0; i--) {
-      if (this.missionTimer >= ESCALATION[i].time) {
-        wave = ESCALATION[i];
-        break;
+    // Find all active escalation entries
+    for (let i = 0; i < ESCALATION.length; i++) {
+      const wave = ESCALATION[i];
+      if (this.missionTimer < wave.time) continue;
+
+      // Only the highest-time entry per type is active
+      // (later entries for the same type supersede earlier ones)
+      let superseded = false;
+      for (let j = i + 1; j < ESCALATION.length; j++) {
+        if (ESCALATION[j].type === wave.type && this.missionTimer >= ESCALATION[j].time) {
+          superseded = true;
+          break;
+        }
       }
-    }
+      if (superseded) continue;
 
-    if (!wave) return;
+      // Per-wave spawn timer
+      if (this._spawnTimers[i] === undefined) this._spawnTimers[i] = wave.interval; // spawn immediately on first tick
+      this._spawnTimers[i] += dt;
 
-    // Spawn at interval
-    if (this._spawnTimer >= wave.interval) {
-      this._spawnTimer = 0;
-      this._spawnWave(wave, mothershipPos);
+      if (this._spawnTimers[i] >= wave.interval) {
+        this._spawnTimers[i] = 0;
+        this._spawnWave(wave, mothershipPos);
+      }
     }
   }
 

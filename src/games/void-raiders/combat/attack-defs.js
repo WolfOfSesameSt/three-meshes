@@ -120,6 +120,176 @@ export const ATTACKS = {
     screenShake: 0.04,
   },
 
+  // ─── New Enemy Attacks ─────────────────────────────────────
+  "interceptor-burst": {
+    id: "interceptor-burst",
+    label: "Rapid Burst",
+    damage: 4,
+    speed: 180,
+    fireRate: 2.0,
+    range: 120,
+    energyCost: 0,
+    hitRadius: 4,
+    spread: 0.06,
+
+    projectileType: "bolt",
+    projectileColor: 0xff8844,
+    projectileSize: 0.4,
+    trailLength: 2,
+
+    impactEffect: "small",
+    impactColor: 0xffaa66,
+    screenShake: 0.02,
+  },
+
+  "bomber-torpedo": {
+    id: "bomber-torpedo",
+    label: "Plasma Torpedo",
+    damage: 20,
+    speed: 50,
+    fireRate: 0.3,
+    range: 180,
+    energyCost: 0,
+    hitRadius: 12,
+    spread: 0.01,
+
+    projectileType: "bolt",
+    projectileColor: 0xff2266,
+    projectileSize: 2.0,
+    trailLength: 8,
+
+    impactEffect: "large",
+    impactColor: 0xff4488,
+    screenShake: 0.15,
+  },
+
+  "cruiser-beam": {
+    id: "cruiser-beam",
+    label: "Heavy Beam",
+    damage: 10,
+    speed: 0,
+    fireRate: 0.6,
+    range: 220,
+    energyCost: 0,
+    accuracy: 0.75,
+
+    projectileType: "beam",
+    projectileColor: 0xcc3366,
+    projectileSize: 0.5,
+    trailLength: 0,
+    beamDuration: 0.2,
+
+    impactEffect: "medium",
+    impactColor: 0xee4488,
+    screenShake: 0.06,
+  },
+
+  "proximity-mine": {
+    id: "proximity-mine",
+    label: "Proximity Mine",
+    damage: 15,
+    speed: 20,
+    fireRate: 0.4,
+    range: 100,
+    energyCost: 0,
+    hitRadius: 15,
+    spread: 0.0,
+
+    projectileType: "bolt",
+    projectileColor: 0xaaaa22,
+    projectileSize: 1.5,
+    trailLength: 0,
+
+    impactEffect: "medium",
+    impactColor: 0xdddd44,
+    screenShake: 0.1,
+  },
+
+  // ─── New Player Weapons ───────────────────────────────────
+  railgun: {
+    id: "railgun",
+    label: "Railgun",
+    damage: 40,
+    speed: 0,
+    fireRate: 0.3,
+    range: 400,
+    energyCost: 8,
+    accuracy: 0.98,
+
+    projectileType: "beam",
+    projectileColor: 0xeeeeff,
+    projectileSize: 0.8,
+    trailLength: 0,
+    beamDuration: 0.05,
+
+    impactEffect: "large",
+    impactColor: 0xffffff,
+    screenShake: 0.12,
+  },
+
+  "scatter-cannon": {
+    id: "scatter-cannon",
+    label: "Scatter Cannon",
+    damage: 5,
+    speed: 150,
+    fireRate: 2.0,
+    range: 120,
+    energyCost: 3,
+    hitRadius: 4,
+    spread: 0.12,
+
+    projectileType: "bolt",
+    projectileColor: 0x88ffaa,
+    projectileSize: 0.3,
+    trailLength: 1,
+
+    impactEffect: "small",
+    impactColor: 0xaaffcc,
+    screenShake: 0.02,
+  },
+
+  "plasma-lance": {
+    id: "plasma-lance",
+    label: "Plasma Lance",
+    damage: 25,
+    speed: 0,
+    fireRate: 0.8,
+    range: 250,
+    energyCost: 5,
+    accuracy: 0.88,
+
+    projectileType: "beam",
+    projectileColor: 0xff6600,
+    projectileSize: 0.6,
+    trailLength: 0,
+    beamDuration: 0.3,
+
+    impactEffect: "medium",
+    impactColor: 0xff8833,
+    screenShake: 0.08,
+  },
+
+  "missile-pod": {
+    id: "missile-pod",
+    label: "Missile Pod",
+    damage: 18,
+    speed: 60,
+    fireRate: 1.0,
+    range: 300,
+    energyCost: 4,
+    hitRadius: 10,
+    spread: 0.05,
+
+    projectileType: "bolt",
+    projectileColor: 0xffcc00,
+    projectileSize: 1.2,
+    trailLength: 6,
+
+    impactEffect: "large",
+    impactColor: 0xffdd33,
+    screenShake: 0.1,
+  },
+
   // ─── Repair Beam (visual only, always hits) ────────────────
   "repair-beam": {
     id: "repair-beam",
@@ -179,6 +349,10 @@ export const ENEMY_ATTACK_MAP = {
   "scout-fighter": "alien-plasma-bolt",
   "patrol-cruiser": "alien-heavy-cannon",
   turret: "turret-beam",
+  interceptor: "interceptor-burst",
+  bomber: "bomber-torpedo",
+  "shielded-cruiser": "cruiser-beam",
+  minelayer: "proximity-mine",
 };
 
 /**

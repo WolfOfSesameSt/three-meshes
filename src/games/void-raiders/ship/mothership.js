@@ -115,6 +115,9 @@ export class Mothership {
 
     // State
     this.alive = true;
+
+    // Death callback — set by main.js to trigger mission failure
+    this.onDeath = null;
   }
 
   /**
@@ -138,7 +141,10 @@ export class Mothership {
     this.systems.hull -= amount;
     if (this.systems.hull <= 0) {
       this.systems.hull = 0;
-      this.alive = false;
+      if (this.alive) {
+        this.alive = false;
+        if (this.onDeath) this.onDeath();
+      }
     }
   }
 

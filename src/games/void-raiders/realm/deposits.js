@@ -12,10 +12,34 @@ import { mulberry32 } from "../utils/noise.js";
 import { VOXEL_SCALE } from "../config.js";
 
 const DEPOSIT_TYPES = {
-  "iron-ore": { color: 0x88aacc, amount: [200, 600], weight: 5 },
-  "crystal-shard": { color: 0xaa66dd, amount: [100, 300], weight: 3 },
-  "plasma-core": { color: 0x44ddff, amount: [50, 150], weight: 1 },
-  "organic-matter": { color: 0x66cc44, amount: [150, 400], weight: 2 },
+  // Common metals — high weight, large deposits
+  "iron-ore":       { color: 0x88aacc, amount: [200, 600], weight: 5 },
+  "copper-ore":     { color: 0xcc8844, amount: [200, 500], weight: 4 },
+  // Tech / energy crystals
+  "crystal-shard":  { color: 0xaa66dd, amount: [100, 300], weight: 3 },
+  "quartz-crystal": { color: 0xccaaee, amount: [100, 250], weight: 2 },
+  // Biological
+  "organic-matter": { color: 0x66cc44, amount: [150, 400], weight: 3 },
+  "bio-compound":   { color: 0x44cc88, amount: [80, 200],  weight: 1 },
+  // Electronics
+  "silicon-dust":   { color: 0xaabb88, amount: [120, 350], weight: 3 },
+  "rare-earth":     { color: 0xddaa66, amount: [60, 180],  weight: 1 },
+  // Rare metals
+  "titanium-ore":   { color: 0x99bbdd, amount: [80, 250],  weight: 1 },
+  // Energy — rare, small deposits
+  "plasma-core":    { color: 0x44ddff, amount: [30, 120],  weight: 1 },
+  "exotic-matter":  { color: 0xff44dd, amount: [10, 50],   weight: 0.3 },
+  // Salvage
+  "salvage-parts":  { color: 0x8899aa, amount: [100, 300], weight: 2 },
+};
+
+// Landmark affinity — which deposit types prefer which landmarks
+const LANDMARK_DEPOSIT_AFFINITY = {
+  monolith: ["exotic-matter", "crystal-shard", "plasma-core"],
+  crater: ["bio-compound", "organic-matter"],
+  ridge: ["iron-ore", "titanium-ore", "copper-ore"],
+  mesa: ["iron-ore", "silicon-dust", "organic-matter"],
+  canyon: ["plasma-core", "exotic-matter", "rare-earth"],
 };
 
 const DEPOSIT_VISUAL_SCALE = 5;
@@ -49,31 +73,44 @@ export class DepositManager {
   }
 
   /**
-   * Spawn deposits along a route path.
+   * Spawn deposits along a route path, optionally biased toward landmarks.
+   * When landmarks are provided, 70% of deposits spawn near landmarks
+   * with type affinity (rarer deposits near interesting landmarks).
    * @param {Array<{x: number, z: number}>} route — mothership route waypoints
    * @param {number} count — number of deposits to scatter
+   * @param {Array<object>} [landmarks] — optional landmark array from generateLandmarks
    */
-  spawnAlongRoute(route, count = 30) {
+  spawnAlongRoute(route, count = 30, landmarks = []) {
     const typeKeys = Object.keys(DEPOSIT_TYPES);
+    const hasLandmarks = landmarks.length > 0;
 
     for (let i = 0; i < count; i++) {
-      // Bias early deposits toward the start of the route for faster first-contact
-      const routeIdx = Math.floor(Math.pow(this.rng(), 1.5) * route.length);
-      const waypoint = route[routeIdx];
-      const spread = 150;
-      const x = waypoint.x + (this.rng() - 0.5) * spread * 2;
-      const z = waypoint.z + (this.rng() - 0.5) * spread * 2;
+      let x, z, selectedType;
+      const nearLandmark = hasLandmarks && this.rng() < 0.7;
 
-      // Weighted random type selection
-      const totalWeight = Object.values(DEPOSIT_TYPES).reduce((s, t) => s + t.weight, 0);
-      let roll = this.rng() * totalWeight;
-      let selectedType = typeKeys[0];
-      for (const key of typeKeys) {
-        roll -= DEPOSIT_TYPES[key].weight;
-        if (roll <= 0) {
-          selectedType = key;
-          break;
+      if (nearLandmark) {
+        // Pick a random landmark and spawn near it
+        const lm = landmarks[Math.floor(this.rng() * landmarks.length)];
+        const spread = 100;
+        x = lm.x + (this.rng() - 0.5) * spread * 2;
+        z = lm.z + (this.rng() - 0.5) * spread * 2;
+
+        // Use landmark affinity for type selection
+        const affinityTypes = LANDMARK_DEPOSIT_AFFINITY[lm.type];
+        if (affinityTypes && this.rng() < 0.6) {
+          // 60% chance to pick an affinity type
+          selectedType = affinityTypes[Math.floor(this.rng() * affinityTypes.length)];
+        } else {
+          selectedType = this._weightedRandomType(typeKeys);
         }
+      } else {
+        // Route-based placement (original behavior)
+        const routeIdx = Math.floor(Math.pow(this.rng(), 1.5) * route.length);
+        const waypoint = route[routeIdx];
+        const spread = 150;
+        x = waypoint.x + (this.rng() - 0.5) * spread * 2;
+        z = waypoint.z + (this.rng() - 0.5) * spread * 2;
+        selectedType = this._weightedRandomType(typeKeys);
       }
 
       const typeDef = DEPOSIT_TYPES[selectedType];
@@ -81,6 +118,10 @@ export class DepositManager {
       const amount = Math.floor(minAmt + this.rng() * (maxAmt - minAmt));
 
       const terrainY = getTerrainHeight(x, z) * VOXEL_SCALE;
+
+      // Visual variety: per-deposit rotation and scale variation based on type
+      const rotSeed = this.rng() * Math.PI * 2;
+      const scaleMult = 0.7 + this.rng() * 0.6; // 0.7 to 1.3
 
       this.deposits.push({
         id: `deposit-${i}`,
@@ -90,10 +131,31 @@ export class DepositManager {
         position: { x, y: terrainY + DEPOSIT_VISUAL_SCALE, z },
         color: typeDef.color,
         depleted: false,
+        rotSeed,
+        scaleMult,
       });
     }
 
     this._updateInstances();
+  }
+
+  /**
+   * Weighted random type selection from deposit types.
+   * @param {Array<string>} typeKeys
+   * @returns {string}
+   */
+  _weightedRandomType(typeKeys) {
+    const totalWeight = Object.values(DEPOSIT_TYPES).reduce((s, t) => s + t.weight, 0);
+    let roll = this.rng() * totalWeight;
+    let selectedType = typeKeys[0];
+    for (const key of typeKeys) {
+      roll -= DEPOSIT_TYPES[key].weight;
+      if (roll <= 0) {
+        selectedType = key;
+        break;
+      }
+    }
+    return selectedType;
   }
 
   /**
@@ -130,6 +192,26 @@ export class DepositManager {
       this.mesh.instanceMatrix.needsUpdate = true;
       if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
     }
+  }
+
+  /**
+   * Add a wreck deposit at a specific position (for salvage missions).
+   * The wreck acts like a special resource deposit containing "salvage-parts".
+   * @param {{ x: number, y: number, z: number }} position
+   * @param {number} amount — total salvageable value
+   */
+  addWreckDeposit(position, amount) {
+    const terrainY = getTerrainHeight(position.x, position.z) * VOXEL_SCALE;
+    this.deposits.push({
+      id: "wreck-deposit",
+      resourceType: "salvage-parts",
+      amount,
+      maxAmount: amount,
+      position: { x: position.x, y: terrainY + DEPOSIT_VISUAL_SCALE, z: position.z },
+      color: 0xff8844,
+      depleted: false,
+    });
+    this._updateInstances();
   }
 
   /**

@@ -74,6 +74,24 @@ export class HUD {
     this._missionComplete.id = "mission-complete";
     this._missionComplete.innerHTML = `<div id="mission-complete-inner"><h1>EXTRACTION COMPLETE</h1><div id="mission-loot"></div></div>`;
     document.body.appendChild(this._missionComplete);
+
+    // Ship destroyed overlay (added to body, not hud)
+    this._shipDestroyed = document.createElement("div");
+    this._shipDestroyed.id = "ship-destroyed";
+    this._shipDestroyed.innerHTML = `
+      <div id="ship-destroyed-inner">
+        <h1>SHIP DESTROYED</h1>
+        <div id="ship-destroyed-losses"></div>
+        <div id="ship-destroyed-buttons">
+          <button class="station-btn danger" id="btn-return-station">RETURN TO STATION</button>
+          <button class="station-btn accent" id="btn-salvage-wreck" style="display:none;">SALVAGE WRECK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(this._shipDestroyed);
+    this._btnReturnStation = this._shipDestroyed.querySelector("#btn-return-station");
+    this._btnSalvageWreck = this._shipDestroyed.querySelector("#btn-salvage-wreck");
+
     this._perfFps = this.el.querySelector("#perf-fps");
     this._perfDraws = this.el.querySelector("#perf-draws");
     this._perfTris = this.el.querySelector("#perf-tris");
@@ -214,6 +232,48 @@ export class HUD {
   }
 
   /**
+   * Show ship destroyed overlay.
+   * @param {object} lostCargo — tesseract contents lost
+   * @param {Array} lostDrones — [{ type, count }] drones on board
+   * @param {boolean} canSalvage — whether a salvage mission is available
+   */
+  showShipDestroyed(lostCargo, lostDrones, canSalvage = true) {
+    const cargoRows = Object.entries(lostCargo || {})
+      .filter(([, amt]) => amt > 0)
+      .map(([type, amt]) => `<div class="loss-row">${type.replace(/-/g, " ")}: ${Math.floor(amt).toLocaleString()}</div>`)
+      .join("");
+
+    const droneRows = (lostDrones || [])
+      .filter(d => d.count > 0)
+      .map(d => `<div class="loss-row">${d.type.replace(/-/g, " ")}: ${d.count}</div>`)
+      .join("");
+
+    const lossesEl = this._shipDestroyed.querySelector("#ship-destroyed-losses");
+    lossesEl.innerHTML = `
+      <div class="loss-section"><div class="loss-title">CARGO LOST</div>${cargoRows || "<div class=\"loss-row\">None</div>"}</div>
+      <div class="loss-section"><div class="loss-title">DRONES LOST</div>${droneRows || "<div class=\"loss-row\">None</div>"}</div>
+      <div class="loss-note">Station resources and research are safe.</div>
+    `;
+
+    this._btnSalvageWreck.style.display = canSalvage ? "" : "none";
+    this._shipDestroyed.classList.add("visible");
+  }
+
+  /**
+   * Set callback for return to station button on ship destroyed screen.
+   */
+  onReturnToStation(callback) {
+    this._btnReturnStation.addEventListener("click", callback);
+  }
+
+  /**
+   * Set callback for salvage wreck button on ship destroyed screen.
+   */
+  onSalvageWreck(callback) {
+    this._btnSalvageWreck.addEventListener("click", callback);
+  }
+
+  /**
    * Set extract button callback.
    */
   onExtract(callback) {
@@ -226,5 +286,6 @@ export class HUD {
   dispose() {
     this.el.remove();
     this._missionComplete.remove();
+    this._shipDestroyed.remove();
   }
 }

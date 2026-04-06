@@ -215,6 +215,70 @@
   font-size: 14px;
 }
 
+/* ─── Ship Destroyed Overlay ────────────────────────────────── */
+#ship-destroyed {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 5, 5, 0.92);
+  z-index: 100;
+  font-family: var(--ui-font);
+}
+
+#ship-destroyed.visible {
+  display: flex;
+}
+
+#ship-destroyed-inner {
+  text-align: center;
+  padding: 40px;
+  border: 1px solid var(--ui-danger);
+  background: var(--ui-bg-primary);
+  box-shadow: 0 0 40px rgba(255, 68, 68, 0.25);
+  min-width: 320px;
+}
+
+#ship-destroyed-inner h1 {
+  font-size: 24px;
+  letter-spacing: 6px;
+  color: var(--ui-danger);
+  margin-bottom: 20px;
+}
+
+.loss-section {
+  margin-bottom: 12px;
+}
+
+.loss-title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--ui-text-dim);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.loss-row {
+  color: var(--ui-text);
+  line-height: 2;
+  font-size: 13px;
+}
+
+.loss-note {
+  font-size: 11px;
+  color: var(--ui-text-dim);
+  margin-top: 12px;
+  letter-spacing: 1px;
+}
+
+#ship-destroyed-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
 /* ─── Routine Panel ──────────────────────────────────────────── */
 #routine-panel {
   position: fixed;

@@ -32,6 +32,38 @@ export const ENEMY_TYPES = {
     size: [2.0, 3.0, 2.0],
     loot: { type: "salvage-parts", amount: [10, 30] },
   },
+  interceptor: {
+    label: "Interceptor",
+    category: "ship",
+    stats: { hull: 25, hullMax: 25, speed: 30, damage: 8, range: 120, fireRate: 2.0 },
+    color: 0xff8844,
+    size: [1.4, 0.4, 2.0],
+    loot: { type: "salvage-parts", amount: [3, 10] },
+  },
+  bomber: {
+    label: "Bomber",
+    category: "ship",
+    stats: { hull: 80, hullMax: 80, speed: 8, damage: 20, range: 180, fireRate: 0.3 },
+    color: 0x882222,
+    size: [3.5, 1.2, 4.5],
+    loot: { type: "salvage-parts", amount: [25, 60] },
+  },
+  "shielded-cruiser": {
+    label: "Shielded Cruiser",
+    category: "ship",
+    stats: { hull: 150, hullMax: 150, shields: 80, shieldsMax: 80, speed: 7, damage: 10, range: 220, fireRate: 0.6 },
+    color: 0xcc3366,
+    size: [3.5, 1.2, 5.0],
+    loot: { type: "salvage-parts", amount: [30, 70] },
+  },
+  minelayer: {
+    label: "Minelayer",
+    category: "ship",
+    stats: { hull: 50, hullMax: 50, speed: 12, damage: 15, range: 100, fireRate: 0.4 },
+    color: 0x888822,
+    size: [2.5, 0.8, 3.0],
+    loot: { type: "salvage-parts", amount: [15, 35] },
+  },
 };
 
 /**

@@ -28,6 +28,49 @@ describe("enemy", () => {
   });
 });
 
+describe("new enemy types", () => {
+  it("creates interceptor with correct stats", () => {
+    const e = createEnemy("interceptor", { x: 0, y: 50, z: 0 });
+    expect(e.type).toBe("interceptor");
+    expect(e.stats.hull).toBe(25);
+    expect(e.stats.speed).toBe(30);
+    expect(e.stats.damage).toBe(8);
+  });
+
+  it("creates bomber with correct stats", () => {
+    const e = createEnemy("bomber", { x: 0, y: 50, z: 0 });
+    expect(e.type).toBe("bomber");
+    expect(e.stats.hull).toBe(80);
+    expect(e.stats.speed).toBe(8);
+    expect(e.stats.damage).toBe(20);
+  });
+
+  it("shielded cruiser has shield stats", () => {
+    const e = createEnemy("shielded-cruiser", { x: 0, y: 50, z: 0 });
+    expect(e.stats.shields).toBe(80);
+    expect(e.stats.shieldsMax).toBe(80);
+    expect(e.stats.hull).toBe(150);
+  });
+
+  it("creates minelayer with correct stats", () => {
+    const e = createEnemy("minelayer", { x: 0, y: 50, z: 0 });
+    expect(e.type).toBe("minelayer");
+    expect(e.stats.hull).toBe(50);
+    expect(e.stats.speed).toBe(12);
+  });
+
+  it("all new enemy types have valid loot tables", () => {
+    const newTypes = ["interceptor", "bomber", "shielded-cruiser", "minelayer"];
+    for (const type of newTypes) {
+      const def = ENEMY_TYPES[type];
+      expect(def.loot).toBeDefined();
+      expect(def.loot.type).toBe("salvage-parts");
+      expect(def.loot.amount).toHaveLength(2);
+      expect(def.loot.amount[0]).toBeLessThan(def.loot.amount[1]);
+    }
+  });
+});
+
 describe("enemy AI", () => {
   it("attacks nearby drones", () => {
     const enemy = createEnemy("scout-fighter", { x: 0, y: 50, z: 0 });

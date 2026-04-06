@@ -37,7 +37,8 @@ import { DroneShieldRenderer } from "./combat/drone-shields.js";
 import { DamageVisuals } from "./combat/damage-visuals.js";
 import { HUD } from "./ui/mission/hud.js";
 import { Station } from "./ui/station/station.js";
-import { gameState, deliverResources } from "./economy/game-state.js";
+import { gameState, deliverResources, recordShipDeath } from "./economy/game-state.js";
+import { applyStoredUpgrades } from "./drones/upgrades.js";
 import { AudioManager } from "./audio/audio-manager.js";
 import {
   BG_COLOR,
@@ -136,10 +137,13 @@ let enemySpawner, enemyRenderer, weaponSystem, combatEffects, screenShake, attac
 let shieldBubble, fleetManager, fleetRenderer, extraction, hud, routinePanel;
 let powerAllocator, droneShieldRenderer, damageVisuals;
 let missionComplete = false;
+let missionFailed = false;
 let missionRunning = false;
 let prevShields = 0;
 let prevHull = 0;
 let animFrameId = null;
+let missionSeed = 0;
+let isSalvageMission = false;
 
 const clock = new THREE.Clock();
 let frameCount = 0;
@@ -170,7 +174,9 @@ async function startMission() {
   cleanupMission();
 
   missionComplete = false;
+  missionFailed = false;
   missionRunning = true;
+  missionSeed = Date.now();
 
   // ── Audio preload ──
   await audio.preload(SFX_MANIFEST);
@@ -194,6 +200,9 @@ async function startMission() {
   mothership.mesh.position.set(startX, tH * VOXEL_SCALE + 50, startZ);
   scene.add(mothership.mesh);
   mothership.route = generateTestRoute(startX, startZ, 5000, 20);
+
+  // ── Ship death handler ──
+  mothership.onDeath = () => handleShipDeath();
 
   // ── Camera ──
   followCam = new FollowCamera(camera, renderer.domElement);
@@ -253,6 +262,15 @@ async function startMission() {
   }
   fleetManager.createStarterFleet(minerCount, fighterCount);
 
+  // Apply stored upgrades to miners and fighters
+  for (const entry of gameState.drones) {
+    if (!entry.upgrades || entry.upgrades.length === 0) continue;
+    const matchingDrones = fleetManager.drones.filter(d => d.type === entry.type);
+    for (const drone of matchingDrones) {
+      applyStoredUpgrades(drone, entry.upgrades);
+    }
+  }
+
   // Spawn repair drones if any
   const repairEntry = gameState.drones.find(d => d.type === "worker-repair");
   if (repairEntry && repairEntry.count > 0) {
@@ -267,6 +285,13 @@ async function startMission() {
       fleetManager._deployQueue.push(drone);
     }
     fleetManager.swarms.push(repairSwarm);
+
+    // Apply stored upgrades to repair drones
+    if (repairEntry.upgrades && repairEntry.upgrades.length > 0) {
+      for (const drone of repairSwarm.drones) {
+        applyStoredUpgrades(drone, repairEntry.upgrades);
+      }
+    }
   }
 
   // ── Extraction ──
@@ -325,6 +350,97 @@ function endMission() {
   }, 3000);
 }
 
+function handleShipDeath() {
+  if (missionFailed || missionComplete) return;
+  missionFailed = true;
+
+  // Death explosion
+  if (combatEffects) {
+    combatEffects.addDeathEffect(mothership.position, "mothership", 0x334455);
+  }
+  if (screenShake) {
+    screenShake.addTrauma(1.0);
+  }
+  audio.playSFX("explosion-large", mothership.position);
+
+  // Hide the ship mesh
+  mothership.mesh.visible = false;
+
+  // Gather what was lost
+  const lostCargo = { ...mothership.tesseract.contents };
+  const lostDrones = [];
+  const droneCounts = {};
+  for (const drone of fleetManager.drones) {
+    droneCounts[drone.type] = (droneCounts[drone.type] || 0) + 1;
+  }
+  for (const [type, count] of Object.entries(droneCounts)) {
+    lostDrones.push({ type, count });
+  }
+
+  // Record death in game state
+  recordShipDeath({
+    position: mothership.position,
+    lostCargo,
+    lostDrones,
+    seed: missionSeed,
+  });
+
+  // Show destroyed screen after a brief pause for the explosion
+  setTimeout(() => {
+    if (hud) {
+      hud.showShipDestroyed(lostCargo, lostDrones, true);
+      hud.onReturnToStation(() => failMission(false));
+      hud.onSalvageWreck(() => failMission(true));
+    }
+  }, 1500);
+}
+
+function failMission(startSalvage = false) {
+  if (!missionRunning) return;
+  missionRunning = false;
+
+  // Full repair for next mission (rebuilt ship)
+  const ms = gameState.mothership;
+  ms.hull = ms.hullMax;
+  ms.shields = ms.shieldsMax;
+  ms.energy = ms.energyMax;
+
+  if (startSalvage) {
+    // Go directly into a salvage mission
+    cleanupMission();
+    startSalvageMission();
+  } else {
+    // Return to station
+    setTimeout(() => {
+      cleanupMission();
+      station.show();
+    }, 500);
+  }
+}
+
+async function startSalvageMission() {
+  const wreck = gameState.wreckData;
+  if (!wreck) {
+    station.show();
+    return;
+  }
+
+  isSalvageMission = true;
+
+  // Start a regular mission — wreck mining is overlaid on the same flow
+  await startMission();
+
+  // Place a wreck deposit at the death position so drones can mine it
+  if (depositManager && wreck.position) {
+    // Calculate total lost value for the deposit amount
+    const totalCargo = Object.values(wreck.lostCargo).reduce((a, b) => a + b, 0);
+    const wreckAmount = Math.max(totalCargo, 500);
+    depositManager.addWreckDeposit(wreck.position, wreckAmount);
+  }
+
+  isSalvageMission = false;
+}
+
 function cleanupMission() {
   if (animFrameId) {
     cancelAnimationFrame(animFrameId);
@@ -357,8 +473,8 @@ function cleanupMission() {
 
 // ─── Extraction ────────────────────────────────────────────────
 function triggerExtraction() {
-  if (!extraction || !mothership) return;
-  if (extraction.state === "idle" && !missionComplete) {
+  if (!extraction || !mothership || !mothership.alive) return;
+  if (extraction.state === "idle" && !missionComplete && !missionFailed) {
     extraction.summon(mothership.position, mothership.mesh.rotation.y);
     const gatePos = extraction.getGatePosition();
     mothership.route = [gatePos];
@@ -382,12 +498,16 @@ function gameLoop() {
   // ── Audio listener (camera position/orientation) ──
   audio.updateListener(camera.position, camera.quaternion);
 
-  // ── Mothership movement ──
-  updateMovement(mothership, dt);
+  const shipAlive = mothership.alive;
 
-  const shipTerrainH = getTerrainHeight(mothership.position.x, mothership.position.z);
-  const targetY = shipTerrainH * VOXEL_SCALE + 50;
-  mothership.position.y += (targetY - mothership.position.y) * 2 * dt;
+  // ── Mothership movement (only when alive) ──
+  if (shipAlive) {
+    updateMovement(mothership, dt);
+
+    const shipTerrainH = getTerrainHeight(mothership.position.x, mothership.position.z);
+    const targetY = shipTerrainH * VOXEL_SCALE + 50;
+    mothership.position.y += (targetY - mothership.position.y) * 2 * dt;
+  }
 
   // ── Enemies ──
   enemySpawner.update(dt, mothership.position);
@@ -395,26 +515,28 @@ function gameLoop() {
   const aliveDrones = fleetManager.drones.filter(d => d.state !== "destroyed");
 
   // Set target pools for real collision detection
-  attackSystem.setTargets(aliveDrones, aliveEnemies, mothership);
+  attackSystem.setTargets(aliveDrones, aliveEnemies, shipAlive ? mothership : null);
 
-  const combatTargets = { mothership, drones: fleetManager.drones };
+  const combatTargets = { mothership: shipAlive ? mothership : null, drones: fleetManager.drones };
   for (const enemy of aliveEnemies) {
     updateEnemyAI(enemy, combatTargets, dt, elapsed, attackSystem);
   }
   enemyRenderer.update(enemySpawner.enemies);
 
-  // ── Mothership weapons ──
-  const hits = weaponSystem.update(mothership.position, aliveEnemies, mothership.systems, dt);
-  for (const hit of hits) {
-    // Fire through attack system for consistent visuals + audio
-    const pulseLaser = getAttack("pulse-laser");
-    attackSystem.fire(mothership, hit.enemy, { ...pulseLaser, damage: 0 }, "player");
+  // ── Mothership weapons (only when alive) ──
+  if (shipAlive) {
+    const hits = weaponSystem.update(mothership.position, aliveEnemies, mothership.systems, dt);
+    for (const hit of hits) {
+      // Fire through attack system for consistent visuals + audio
+      const pulseLaser = getAttack("pulse-laser");
+      attackSystem.fire(mothership, hit.enemy, { ...pulseLaser, damage: 0 }, "player");
 
-    if (hit.enemy.state === "dead") {
-      combatEffects.addDeathEffect(hit.enemy.position, hit.enemy.type, hit.enemy.color);
-      // Audio: enemy explosion (large for cruisers, small for scouts)
-      const explosionType = hit.enemy.type === "patrol-cruiser" ? "explosion-large" : "explosion-small";
-      audio.playSFX(explosionType, hit.enemy.position);
+      if (hit.enemy.state === "dead") {
+        combatEffects.addDeathEffect(hit.enemy.position, hit.enemy.type, hit.enemy.color);
+        // Audio: enemy explosion (large for cruisers, small for scouts)
+        const explosionType = hit.enemy.type === "patrol-cruiser" ? "explosion-large" : "explosion-small";
+        audio.playSFX(explosionType, hit.enemy.position);
+      }
     }
   }
 
@@ -422,56 +544,60 @@ function gameLoop() {
   attackSystem.update(dt);
   combatEffects.update(dt);
 
-  // ── Shield visual ──
-  shieldBubble.update(elapsed);
-  shieldBubble.setVisible(mothership.systems.shields > 0);
+  // ── Shield visual (only when alive) ──
+  if (shipAlive) {
+    shieldBubble.update(elapsed);
+    shieldBubble.setVisible(mothership.systems.shields > 0);
 
-  const shieldDrop = prevShields - mothership.systems.shields;
-  if (shieldDrop > 0) {
-    const hitAngle = Math.random() * Math.PI * 2;
-    const hitPos = {
-      x: mothership.position.x + Math.cos(hitAngle) * 12,
-      y: mothership.position.y + (Math.random() - 0.5) * 8,
-      z: mothership.position.z + Math.sin(hitAngle) * 12,
-    };
-    shieldBubble.hit(hitPos, elapsed);
-    combatEffects.addHitFlash(hitPos);
-    screenShake.addTrauma(damageToTrauma(shieldDrop));
-    // Audio: shield hit
-    audio.playSFX("shield-hit", mothership.position);
-  }
-  prevShields = mothership.systems.shields;
+    const shieldDrop = prevShields - mothership.systems.shields;
+    if (shieldDrop > 0) {
+      const hitAngle = Math.random() * Math.PI * 2;
+      const hitPos = {
+        x: mothership.position.x + Math.cos(hitAngle) * 12,
+        y: mothership.position.y + (Math.random() - 0.5) * 8,
+        z: mothership.position.z + Math.sin(hitAngle) * 12,
+      };
+      shieldBubble.hit(hitPos, elapsed);
+      combatEffects.addHitFlash(hitPos);
+      screenShake.addTrauma(damageToTrauma(shieldDrop));
+      // Audio: shield hit
+      audio.playSFX("shield-hit", mothership.position);
+    }
+    prevShields = mothership.systems.shields;
 
-  const hullDrop = prevHull - mothership.systems.hull;
-  if (hullDrop > 0) {
-    screenShake.addTrauma(damageToTrauma(hullDrop * 2));
-    // Audio: hull impact
-    audio.playSFX("hull-hit", mothership.position);
-    // Damage visuals: register hull hit with scar
-    const hullHitAngle = Math.random() * Math.PI * 2;
-    const hullHitPos = {
-      x: mothership.position.x + Math.cos(hullHitAngle) * 8,
-      y: mothership.position.y + (Math.random() - 0.5) * 4,
-      z: mothership.position.z + Math.sin(hullHitAngle) * 8,
-    };
-    const intensity = Math.min(1, hullDrop / mothership.systems.hullMax * 10);
-    damageVisuals.registerHit(hullHitPos, intensity, mothership.mesh);
-  }
-  prevHull = mothership.systems.hull;
+    const hullDrop = prevHull - mothership.systems.hull;
+    if (hullDrop > 0) {
+      screenShake.addTrauma(damageToTrauma(hullDrop * 2));
+      // Audio: hull impact
+      audio.playSFX("hull-hit", mothership.position);
+      // Damage visuals: register hull hit with scar
+      const hullHitAngle = Math.random() * Math.PI * 2;
+      const hullHitPos = {
+        x: mothership.position.x + Math.cos(hullHitAngle) * 8,
+        y: mothership.position.y + (Math.random() - 0.5) * 4,
+        z: mothership.position.z + Math.sin(hullHitAngle) * 8,
+      };
+      const intensity = Math.min(1, hullDrop / mothership.systems.hullMax * 10);
+      damageVisuals.registerHit(hullHitPos, intensity, mothership.mesh);
+    }
+    prevHull = mothership.systems.hull;
 
-  // ── Energy regen ──
-  mothership.systems.energy = Math.min(
-    mothership.systems.energyMax,
-    mothership.systems.energy + mothership.systems.energyProduction * dt
-  );
-
-  // ── Shield regen (energy-based) ──
-  const shieldRegenRate = powerAllocator.getShieldRegenRate(mothership.systems.energyProduction);
-  if (mothership.systems.shields < mothership.systems.shieldsMax) {
-    mothership.systems.shields = Math.min(
-      mothership.systems.shieldsMax,
-      mothership.systems.shields + shieldRegenRate * dt
+    // ── Energy regen ──
+    mothership.systems.energy = Math.min(
+      mothership.systems.energyMax,
+      mothership.systems.energy + mothership.systems.energyProduction * dt
     );
+
+    // ── Shield regen (energy-based) ──
+    const shieldRegenRate = powerAllocator.getShieldRegenRate(mothership.systems.energyProduction);
+    if (mothership.systems.shields < mothership.systems.shieldsMax) {
+      mothership.systems.shields = Math.min(
+        mothership.systems.shieldsMax,
+        mothership.systems.shields + shieldRegenRate * dt
+      );
+    }
+  } else {
+    shieldBubble.setVisible(false);
   }
 
   // ── Drone shield regen rate (from power allocation) ──
@@ -486,16 +612,18 @@ function gameLoop() {
   // ── Damage visuals (smoke, sparks, scars) ──
   {
     const damagedUnits = [];
-    // Mothership
-    const msHealthPct = mothership.systems.hull / mothership.systems.hullMax;
-    if (msHealthPct < 0.7) {
-      damagedUnits.push({
-        position: mothership.position,
-        healthPct: msHealthPct,
-        velocity: { x: 0, y: 0, z: 0 },
-        isMothership: true,
-        id: "mothership",
-      });
+    // Mothership (only when alive)
+    if (shipAlive) {
+      const msHealthPct = mothership.systems.hull / mothership.systems.hullMax;
+      if (msHealthPct < 0.7) {
+        damagedUnits.push({
+          position: mothership.position,
+          healthPct: msHealthPct,
+          velocity: { x: 0, y: 0, z: 0 },
+          isMothership: true,
+          id: "mothership",
+        });
+      }
     }
     // Drones
     for (const drone of fleetManager.drones) {
@@ -587,8 +715,8 @@ function gameLoop() {
   sun.target.position.copy(mothership.position);
   sun.target.updateMatrixWorld();
 
-  // ── Extraction ──
-  if (extraction.isActive()) {
+  // ── Extraction (only when alive) ──
+  if (shipAlive && extraction.isActive()) {
     const extState = extraction.update(dt, elapsed, mothership.position);
 
     // Audio: extraction state transitions
@@ -610,13 +738,15 @@ function gameLoop() {
     }
   }
 
-  // ── HUD ──
-  hud.updateMissionTimer(enemySpawner.missionTimer);
-  hud.updateShipStatus(mothership.systems);
-  hud.updateCargo(mothership.tesseract.contents, mothership.tesseract.capacity);
-  hud.updateDrones(fleetManager.getAliveCount(), fleetManager.drones.length);
-  hud.updateCombat(aliveEnemies.length, enemySpawner.getThreatLevel());
-  hud.updateExtraction(extraction.state, extraction.getProgress(), extraction.getTimeRemaining());
+  // ── HUD (only when ship alive) ──
+  if (!missionFailed) {
+    hud.updateMissionTimer(enemySpawner.missionTimer);
+    hud.updateShipStatus(mothership.systems);
+    hud.updateCargo(mothership.tesseract.contents, mothership.tesseract.capacity);
+    hud.updateDrones(fleetManager.getAliveCount(), fleetManager.drones.length);
+    hud.updateCombat(aliveEnemies.length, enemySpawner.getThreatLevel());
+    hud.updateExtraction(extraction.state, extraction.getProgress(), extraction.getTimeRemaining());
+  }
 
   // ── Performance stats ──
   frameCount++;
