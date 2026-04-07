@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Void Raiders — Ship Configurator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a14;
+      color: #c8c8e0;
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+    }
+
+    /* --- Left sidebar: model list --- */
+    #sidebar {
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      width: 260px;
+      background: #0e0e1a;
+      border-right: 1px solid #2a2a4a;
+      overflow-y: auto;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebar h1 {
+      font-size: 13px;
+      padding: 14px;
+      color: #7b7bf7;
+      border-bottom: 1px solid #2a2a4a;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .model-card {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1a1a30;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .model-card:hover { background: #16163a; }
+    .model-card.active { background: #1a1a50; border-left: 3px solid #7b7bf7; }
+    .model-card .name { font-size: 12px; font-weight: bold; color: #e0e0ff; margin-bottom: 3px; }
+    .model-card .meta { font-size: 10px; color: #6868a0; }
+    .model-card .meta span { margin-right: 10px; }
+    .model-card .author { font-size: 10px; color: #5858a0; margin-top: 2px; }
+
+    /* --- Viewport --- */
+    #viewport { position: fixed; left: 260px; top: 0; right: 0; bottom: 0; }
+    canvas { display: block; }
+
+    /* --- Bottom info bar --- */
+    #info-bar {
+      position: fixed;
+      left: 260px; bottom: 0; right: 0;
+      height: 36px;
+      background: rgba(10, 10, 20, 0.9);
+      border-top: 1px solid #2a2a4a;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-size: 11px;
+      color: #6868a0;
+      gap: 20px;
+      z-index: 10;
+    }
+    #info-bar .stat { color: #a0a0d0; }
+
+    /* --- Loading overlay --- */
+    #loading {
+      position: fixed;
+      left: 260px; top: 0; right: 0; bottom: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #5858a0;
+      z-index: 5;
+      pointer-events: none;
+    }
+    #loading.hidden { display: none; }
+
+    /* --- Right panel --- */
+    #right-panel {
+      position: fixed;
+      right: 0; top: 0; bottom: 36px;
+      width: 300px;
+      background: rgba(14, 14, 26, 0.95);
+      border-left: 1px solid #2a2a4a;
+      z-index: 10;
+      display: none;
+      flex-direction: column;
+    }
+    #right-panel.visible { display: flex; }
+
+    /* Tabs */
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .panel-tab {
+      flex: 1;
+      padding: 10px 8px;
+      font-size: 11px;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: none;
+      border: none;
+      color: #5858a0;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .panel-tab:hover { color: #a0a0d0; }
+    .panel-tab.active { color: #7b7bf7; border-bottom-color: #7b7bf7; }
+
+    .tab-content { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+    .tab-content.active { display: flex; }
+
+    /* --- Mesh tab --- */
+    .mesh-item {
+      padding: 6px 12px;
+      border-bottom: 1px solid #14142a;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.1s;
+    }
+    .mesh-item:hover { background: #1a1a3a; }
+    .mesh-item.highlighted { background: #2a2a50; }
+    .mesh-item .mesh-name { flex: 1; color: #b0b0d0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mesh-item .mesh-faces { color: #5858a0; font-size: 10px; }
+    .mesh-item.dimmed .mesh-name { color: #444460; text-decoration: line-through; }
+    .mesh-item.turret-tagged { background: #1a2a1a; border-left: 2px solid #7bf77b; }
+    .mesh-item.turret-tagged .mesh-name { color: #7bf77b; }
+    .mesh-item.turret-base-tagged { background: #1a2a2a; border-left: 2px solid #7bf7f7; }
+    .mesh-item.turret-base-tagged .mesh-name { color: #7bf7f7; }
+    .mesh-item.island { padding-left: 24px; font-size: 10px; }
+
+    .small-btn {
+      padding: 2px 5px;
+      font-size: 9px;
+      font-family: inherit;
+      background: #1a1a30;
+      color: #6868a0;
+      border: 1px solid #2a2a4a;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .small-btn:hover { border-color: #7b7bf7; color: #a0a0d0; }
+    .small-btn.active { background: #2a2a60; border-color: #7b7bf7; color: #7bf77b; }
+    .small-btn.danger { background: #301a1a; border-color: #7b4040; color: #f77b7b; }
+
+    /* --- Hardpoint tab --- */
+    #hp-toolbar {
+      padding: 8px 12px;
+      border-bottom: 1px solid #2a2a4a;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    #hp-toolbar .small-btn { padding: 4px 8px; font-size: 10px; }
+    #hp-place-mode.active { background: #1a3a1a; border-color: #40a040; color: #7bf77b; }
+
+    #hp-list { flex: 1; overflow-y: auto; }
+
+    .hp-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #14142a;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .hp-item:hover { background: #1a1a3a; }
+    .hp-item.selected { background: #1a1a50; border-left: 3px solid #7b7bf7; }
+    .hp-item .hp-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .hp-item .hp-name { flex: 1; font-size: 12px; color: #e0e0ff; font-weight: bold; }
+    .hp-item .hp-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; }
+    .hp-type-turret { background: #2a2a50; color: #7b7bf7; }
+    .hp-type-missile_launcher { background: #502a2a; color: #f77b7b; }
+    .hp-type-drone_bay { background: #2a502a; color: #7bf77b; }
+    .hp-type-point_defense { background: #50502a; color: #f7f77b; }
+
+    /* --- Hardpoint editor --- */
+    #hp-editor {
+      border-top: 1px solid #2a2a4a;
+      padding: 10px 12px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+    }
+    #hp-editor.visible { display: flex; }
+    #hp-editor label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #8888b0;
+    }
+    #hp-editor input[type="text"], #hp-editor select {
+      background: #12122a;
+      color: #c8c8e0;
+      border: 1px solid #2a2a4a;
+      border-radius: 3px;
+      padding: 3px 6px;
+      font-family: inherit;
+      font-size: 11px;
+      width: 150px;
+    }
+    #hp-editor input[type="range"] {
+      width: 100px;
+      accent-color: #7b7bf7;
+    }
+    .arc-row { display: flex; align-items: center; gap: 6px; }
+    .arc-row span { width: 32px; text-align: right; color: #a0a0d0; font-size: 10px; }
+    .arc-row input { flex: 1; }
+    #hp-editor .editor-section {
+      border-top: 1px solid #1a1a30;
+      padding-top: 6px;
+      margin-top: 2px;
+    }
+    #hp-editor .editor-section-title {
+      font-size: 10px;
+      color: #5858a0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    /* --- Save/load bar --- */
+    #hp-actions {
+      padding: 8px 12px;
+      border-top: 1px solid #2a2a4a;
+      display: flex;
+      gap: 6px;
+    }
+    #hp-actions .small-btn { padding: 4px 8px; font-size: 10px; flex: 1; text-align: center; }
+
+    /* --- Controls hint --- */
+    #controls-hint {
+      position: fixed;
+      right: 310px; top: 12px;
+      font-size: 10px;
+      color: #3a3a55;
+      text-align: right;
+      line-height: 1.5;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <h1>Ship Configurator</h1>
+    <div id="model-list"></div>
+  </div>
+
+  <div id="viewport"></div>
+  <div id="loading">Select a model to preview</div>
+
+  <div id="info-bar">
+    <span>Faces: <span id="stat-faces" class="stat">--</span></span>
+    <span>Verts: <span id="stat-verts" class="stat">--</span></span>
+    <span>Meshes: <span id="stat-meshes" class="stat">--</span></span>
+    <span>Author: <span id="stat-author" class="stat">--</span></span>
+  </div>
+
+  <div id="right-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="meshes">Meshes</button>
+      <button class="panel-tab" data-tab="hardpoints">Hardpoints</button>
+    </div>
+
+    <!-- Meshes tab -->
+    <div class="tab-content active" id="tab-meshes">
+      <div id="split-controls" style="padding:8px 12px;border-bottom:1px solid #2a2a4a;display:none;font-size:11px;color:#6868a0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <label style="flex:1">Min faces: <span id="split-threshold-val">20</span></label>
+          <input type="range" id="split-threshold" min="5" max="100" value="20" style="width:100px;accent-color:#7b7bf7" />
+          <button id="split-undo" class="small-btn danger" style="display:none">Undo</button>
+        </div>
+      </div>
+      <div id="mesh-list"></div>
+    </div>
+
+    <!-- Hardpoints tab -->
+    <div class="tab-content" id="tab-hardpoints">
+      <div id="hp-toolbar">
+        <button id="hp-place-mode" class="small-btn" title="Click ship to place hardpoint">+ Place</button>
+        <button id="hp-show-arcs" class="small-btn active" title="Show/hide firing arcs">Arcs</button>
+        <button id="hp-simulate" class="small-btn" title="Simulate turrets tracking a target">Simulate</button>
+        <button id="hp-auto-detect" class="small-btn" title="Auto-detect turrets from split meshes">Auto-detect</button>
+        <span style="flex:1"></span>
+        <span id="hp-count" style="font-size:10px;color:#5858a0">0 hardpoints</span>
+      </div>
+      <div id="hp-list"></div>
+      <div id="hp-editor">
+        <label>Name <input type="text" id="hp-name" /></label>
+        <label>Type
+          <select id="hp-type">
+            <option value="turret">Turret</option>
+            <option value="missile_launcher">Missile Launcher</option>
+            <option value="drone_bay">Drone Bay</option>
+            <option value="point_defense">Point Defense</option>
+          </select>
+        </label>
+        <div class="editor-section">
+          <div class="editor-section-title">Yaw Arc</div>
+          <div class="arc-row">
+            <span id="hp-yaw-min-val">-180</span>
+            <input type="range" id="hp-yaw-min" min="-180" max="0" value="-180" />
+            <input type="range" id="hp-yaw-max" min="0" max="180" value="180" />
+            <span id="hp-yaw-max-val">180</span>
+          </div>
+        </div>
+        <div class="editor-section">
+          <div class="editor-section-title">Pitch Arc</div>
+          <div class="arc-row">
+            <span id="hp-pitch-min-val">-10</span>
+            <input type="range" id="hp-pitch-min" min="-90" max="0" value="-10" />
+            <input type="range" id="hp-pitch-max" min="0" max="90" value="60" />
+            <span id="hp-pitch-max-val">60</span>
+          </div>
+        </div>
+        <button id="hp-delete" class="small-btn danger" style="align-self:flex-end;margin-top:4px">Delete Hardpoint</button>
+      </div>
+      <div id="hp-actions">
+        <button id="hp-save" class="small-btn">Save JSON</button>
+        <button id="hp-load" class="small-btn">Load JSON</button>
+        <button id="hp-export" class="small-btn">Copy JSON</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls-hint">
+    Left-drag: orbit<br>
+    Scroll: zoom<br>
+    Right-drag: pan<br>
+    Dbl-click: reset<br>
+  </div>
+
+  <input type="file" id="hp-file-input" accept=".json" style="display:none" />
+  <script type="module" src="./preview.js"></script>
+</body>
+</html>
