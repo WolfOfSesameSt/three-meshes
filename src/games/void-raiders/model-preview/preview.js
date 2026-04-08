@@ -2304,10 +2304,46 @@ class ArenaEffects {
   }
 }
 
+// Sandbox beam tuning — the shared attack defs use beamDuration 0.15-0.32s
+// and projectileSize 0.25-0.8 so beams are brief tracers at in-game scale.
+// At the 5-unit sandbox scale those same values render as ~11-frame flicks
+// that are easy to miss, especially for point-defense-pulse. We temporarily
+// overwrite those fields on arenaStart and restore them on arenaStop so
+// live testing has obvious visible beams without affecting the main game.
+const SANDBOX_BEAM_WEAPONS = [
+  "point-defense-pulse", "arc-emitter", "shield-breaker", "heavy-railgun",
+];
+const SANDBOX_BEAM_LIFETIME = 0.8;   // 8x typical
+const SANDBOX_BEAM_SIZE_MULT = 2.5;  // 2.5x wider than default
+function applySandboxBeamOverrides() {
+  const saved = new Map();
+  for (const id of SANDBOX_BEAM_WEAPONS) {
+    const def = ATTACKS[id];
+    if (!def) continue;
+    saved.set(id, {
+      beamDuration: def.beamDuration,
+      projectileSize: def.projectileSize,
+    });
+    def.beamDuration = Math.max(def.beamDuration ?? 0.18, SANDBOX_BEAM_LIFETIME);
+    def.projectileSize = (def.projectileSize ?? 0.3) * SANDBOX_BEAM_SIZE_MULT;
+  }
+  return saved;
+}
+function restoreSandboxBeamOverrides(saved) {
+  if (!saved) return;
+  for (const [id, orig] of saved) {
+    const def = ATTACKS[id];
+    if (!def) continue;
+    def.beamDuration = orig.beamDuration;
+    def.projectileSize = orig.projectileSize;
+  }
+}
+
 const arena = {
   running: false,
   turretSystem: null,
   effects: null, // ArenaEffects instance, created in arenaStart
+  beamOverrides: null, // Map of original beam values restored on stop
   // Fake mothership object shaped like the real one so TurretSystem can
   // consume it. mesh is an Object3D we create when arena starts; turrets
   // is the adapter list built from hardpoints[].
@@ -2449,6 +2485,10 @@ async function arenaStart() {
   arena.startTime = performance.now();
   arena.stats.clear();
 
+  // Apply sandbox beam duration + width overrides so hitscan weapons
+  // render as clearly visible tracers instead of 11-frame flicks.
+  arena.beamOverrides = applySandboxBeamOverrides();
+
   // Scene container for everything the arena owns (turrets + enemies +
   // shader pool meshes all live in scene, but we need a way to know what
   // to tear down on stop).
@@ -2547,6 +2587,11 @@ async function arenaStart() {
 function arenaStop() {
   if (!arena.running) return;
   arena.running = false;
+
+  // Restore the attack defs' original beam values so the main game isn't
+  // left with the sandbox-bumped durations if you navigate between pages.
+  restoreSandboxBeamOverrides(arena.beamOverrides);
+  arena.beamOverrides = null;
 
   if (arena.turretSystem) {
     arena.turretSystem.dispose();
