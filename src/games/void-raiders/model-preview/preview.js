@@ -1831,6 +1831,12 @@ function importHardpoints(data) {
   taggedTurrets = [];
   if (!data.hardpoints) return;
 
+  // Suppress per-hp autoSave during the import loop. Each createHardpoint
+  // call triggers autoSave BEFORE the caller gets a chance to set scale /
+  // offset / yawOffset / etc. from the saved entry, so without this guard
+  // the last hp's overrides never make it back to localStorage.
+  importingHardpoints = true;
+
   if (data.splitThreshold) {
     splitThreshold = data.splitThreshold;
     splitThresholdSlider.value = splitThreshold;
@@ -1959,10 +1965,28 @@ function importHardpoints(data) {
   }
   rebuildHpList();
   if (hardpoints.length > 0) selectHardpoint(hardpoints[0]);
+
+  // Re-enable autoSave and persist the final state. This is the ONLY
+  // autoSave call during import — it captures every hp's overrides
+  // (scale / offsetX/Y/Z / yaw / pitch / attackId) after the loop has
+  // finished populating them from the saved entries.
+  importingHardpoints = false;
+  autoSave();
 }
 
+// When importingHardpoints is true, autoSave() becomes a no-op. We set it
+// while importHardpoints is running to prevent the per-createHardpoint
+// autoSave from writing partial state — each iteration's createHardpoint
+// call happens BEFORE the loop body sets hp.scale / hp.offsetX / etc., so
+// the old behavior captured the LAST hp with default overrides (scale=1
+// etc.) instead of the values that came out of the saved config. That bug
+// manifested as "the last hardpoint is always bigger than the rest after
+// a reload" because its overrides lived in memory but never made it back
+// to localStorage.
+let importingHardpoints = false;
 function autoSave() {
   if (!currentModelId) return;
+  if (importingHardpoints) return;
   localStorage.setItem(`ship-hp-${currentModelId}`, JSON.stringify(serializeHardpoints()));
 }
 
