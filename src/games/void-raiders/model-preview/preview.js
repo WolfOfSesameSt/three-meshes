@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // so balance tuning uses the same shaders + damage paths as a mission. All
 // of these come from the live game code so there's no drift.
 import { TurretSystem } from '../ship/turret-system.js';
-import { buildBallTurret, buildMissileLauncher } from '../ship/turret-rigger.js';
+import { buildBallTurret, buildMissileLauncher, applyTurretSkin, loadActiveTurretSkins } from '../ship/turret-rigger.js';
 import { getAttack } from '../combat/attack-defs.js';
 import { ENEMY_TYPES } from '../combat/enemy.js';
 
@@ -2239,7 +2239,7 @@ function arenaBuildFakeTurretFromHp(hp) {
   return { hp, built, turretObj };
 }
 
-function arenaStart() {
+async function arenaStart() {
   if (arena.running || !currentModel) return;
   arena.running = true;
   arena.startTime = performance.now();
@@ -2252,6 +2252,12 @@ function arenaStart() {
   arena.sceneGroup.name = "arena-root";
   scene.add(arena.sceneGroup);
 
+  // Load the saved turret skins so the arena turrets wear the same
+  // textures the in-game mothership does. Baked defaults are used when
+  // the lab hasn't saved a custom skin. loadActiveTurretSkins returns
+  // { small, heavy } Three textures (or null per slot).
+  const skins = await loadActiveTurretSkins();
+
   // Build real turrets for each hp. Hide the sandbox editor preview
   // turrets while the arena is live so we're not showing two turrets
   // per hardpoint.
@@ -2262,6 +2268,13 @@ function arenaStart() {
     const entry = arenaBuildFakeTurretFromHp(hp);
     if (!entry) continue;
     arena.sceneGroup.add(entry.built.group);
+    // Apply the skin — missile launchers and heavy cannons wear the heavy
+    // skin, lighter weapons wear the small skin. Mirrors the in-game
+    // applyMothershipConfig branching.
+    const isHeavySkin = entry.turretObj.weaponType === "missile_launcher" ||
+      entry.turretObj.attackId === "heavy-railgun" ||
+      entry.turretObj.attackId === "flak-burst";
+    applyTurretSkin(entry.built, isHeavySkin ? skins.heavy : skins.small);
     arena.builtTurrets.push(entry);
   }
 

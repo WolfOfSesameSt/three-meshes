@@ -109,7 +109,12 @@ export function buildBallTurret(position, normal, opts = {}) {
   // local coords. Callers do `pitchPivot.localToWorld(muzzleLocal.clone())`.
   const muzzleLocal = new THREE.Vector3(0, cfg.headR * 0.6, barrelBaseZ + cfg.barrelL);
 
-  return { group: root, yawPivot, pitchPivot, muzzleLocal, head, barrel };
+  return {
+    group: root, yawPivot, pitchPivot, muzzleLocal, head, barrel,
+    // skinMeshes for parity with buildMissileLauncher so applyTurretSkin
+    // can use a single code path. Ball turrets only skin head + barrel.
+    skinMeshes: [head, barrel],
+  };
 }
 
 // ─── Active turret skin loader ──────────────────────────────────
@@ -157,13 +162,30 @@ export async function loadActiveTurretSkins() {
 }
 
 /**
- * Apply a texture map to a built ball turret's head + barrel materials.
- * Lightens the base color so the texture isn't tinted dark.
+ * Apply a texture map to a built turret's skinnable meshes. The builder
+ * exposes `built.skinMeshes` (preferred) — a flat list of every structural
+ * piece that should wear the skin. Legacy builders only set `built.head`
+ * and `built.barrel`, so we fall back to those when skinMeshes is missing.
+ *
+ * Missile launchers set skinMeshes = [housing, backPlate, frontPlate,
+ * tubes[0..5]] so the 6 visible bores wear the designed texture instead
+ * of the default procedural grey that was dominating the launcher's look.
+ * Missile tips keep their accent material so they pop against the skin.
+ *
+ * Lightens the base color to white so the texture isn't tinted dark.
  */
 export function applyTurretSkin(built, texture) {
   if (!built || !texture) return;
-  for (const m of [built.head, built.barrel]) {
-    if (!m) continue;
+  const meshes = built.skinMeshes && built.skinMeshes.length
+    ? built.skinMeshes
+    : [built.head, built.barrel];
+  const seen = new Set();
+  for (const m of meshes) {
+    if (!m || !m.material) continue;
+    // Materials can be shared between meshes (e.g. launcher backPlate +
+    // frontPlate share revolverFaceMat). Skin each unique material once.
+    if (seen.has(m.material)) continue;
+    seen.add(m.material);
     m.material.map = texture;
     m.material.color.set(0xffffff);
     m.material.needsUpdate = true;
@@ -472,6 +494,11 @@ export function buildMissileLauncher(position, normal, opts = {}) {
     muzzleLocal,
     head: housing,
     barrel: frontPlate,
+    // Skin targets — every structural piece that should wear the designed
+    // texture. The base disc + housing + front plate + back plate + 6 tubes
+    // cover every visible face of the launcher except the missile tips
+    // (which keep the warm accentColor so they pop against the skin).
+    skinMeshes: [base, housing, frontPlate, backPlate, ...tubes],
     config: cfg,
   };
 }
