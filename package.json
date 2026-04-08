@@ -15,17 +15,24 @@
     "music:plan": "node src/games/void-raiders/audio/elevenlabs.js plan",
     "audio:budget": "node src/games/void-raiders/audio/elevenlabs.js budget",
     "texture": "node src/games/void-raiders/textures/gemini.mjs",
+    "remotion:studio": "remotion studio",
+    "remotion:render": "remotion render AnaglyphScene src/remotion/out/anaglyph.mp4",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.41.1",
+    "@remotion/cli": "^4.0.447",
     "dotenv": "^17.4.1",
     "osmtogeojson": "^3.0.0-beta.5",
     "pixi.js": "^8.17.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "remotion": "^4.0.447",
     "three": "^0.170.0",
-    "unzipper": "^0.12.3"
+    "unzipper": "^0.12.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "puppeteer": "^24.40.0",
