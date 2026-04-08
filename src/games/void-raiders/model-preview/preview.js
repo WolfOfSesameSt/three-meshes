@@ -1108,80 +1108,94 @@ function buildTurretMesh(hp) {
   if (hp.turretGroup) {
     hpGroup.remove(hp.turretGroup);
     hp.turretGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material?.dispose) c.material.dispose(); });
+    hp.turretGroup = null;
   }
 
+  // Drone bays get a flat marker — no gun.
+  if (hp.type === "drone_bay") {
+    return _buildLegacyPlaceholder(hp);
+  }
+
+  // Everything else delegates to the REAL in-game builders so the sandbox
+  // preview matches what ships in the mission. The old TURRET_GEOM-based
+  // preview had a 4-barrel "missile_launcher" look that was completely
+  // different from the 6-tube revolver launcher buildMissileLauncher
+  // creates. Unifying both paths means WYSIWYG tuning — what you see in
+  // the sandbox is what the in-game mothership builds.
+  let built;
+  if (hp.type === "missile_launcher") {
+    built = buildMissileLauncher(hp.position, hp.normal, {
+      baseR: 0.10, baseH: 0.04,
+      revolverR: 0.16, revolverL: 0.30,
+      tubeR: 0.045, tubeOffsetR: 0.10, tipL: 0.06,
+      color: 0x556677, accentColor: 0xff8844,
+    });
+  } else if (hp.type === "heavy_cannon") {
+    built = buildBallTurret(hp.position, hp.normal, {
+      baseR: 0.18, baseH: 0.07,
+      barrelR: 0.06, barrelL: 0.55,
+      headR: 0.24,
+      color: 0xddddee,
+    });
+  } else {
+    // ball_turret / turret / point_defense — small PD-style ball
+    built = buildBallTurret(hp.position, hp.normal, {
+      baseR: 0.035, baseH: 0.014,
+      barrelR: 0.010, barrelL: 0.10,
+      headR: 0.035,
+      color: HP_COLORS[hp.type] || 0x9b9bff,
+    });
+  }
+
+  // Wrap everything the builder produced under an adjuster group so the
+  // per-hp scale / offset / yaw-pitch overrides still apply visually. This
+  // matches what applyMothershipConfig does at mission start so the same
+  // override values render identically here and in the game.
+  const adjuster = new THREE.Group();
+  adjuster.scale.setScalar(hp.scale ?? 1);
+  adjuster.position.set(hp.offsetX ?? 0, hp.offsetY ?? 0, hp.offsetZ ?? 0);
+  adjuster.rotation.set(hp.pitchOffset ?? 0, hp.yawOffset ?? 0, 0);
+  const rootChildren = [...built.group.children];
+  for (const c of rootChildren) adjuster.add(c);
+  built.group.add(adjuster);
+
+  hp.turretGroup = built.group;
+  hp.turretYaw = built.yawPivot;
+  hp.turretPitch = built.pitchPivot;
+  // Missile launcher-only refs so future sandbox features (like the
+  // simulate button running the real revolver state machine) can reach
+  // the hide transform + tubes + missile tips.
+  hp.hideTransform = built.hideTransform || null;
+  hp.revolver = built.revolver || null;
+  hp.tubes = built.tubes || null;
+  hp.missileTips = built.missileTips || null;
+  hpGroup.add(built.group);
+}
+
+// Legacy helper kept for drone-bay placeholders only — the old procedural
+// TURRET_GEOM-based renderer used to handle these inline. Ball + missile +
+// heavy now all go through the real turret-rigger builders.
+function _buildLegacyPlaceholder(hp) {
   const cfg = TURRET_GEOM[hp.type] || TURRET_GEOM.turret;
   const color = HP_COLORS[hp.type] || 0xffffff;
-
-  // Root group: positioned at hardpoint, oriented so local Y = surface normal.
-  // Per-hardpoint overrides applied here so the preview reflects the saved
-  // tuning: extra translation in slot-local space, extra yaw/pitch rotation,
-  // uniform scale. The in-game applyMothershipConfig applies the same
-  // transforms to the procedural turret at mission start.
   const root = new THREE.Group();
   root.position.copy(hp.position);
-  const up = new THREE.Vector3(0, 1, 0);
-  root.quaternion.setFromUnitVectors(up, hp.normal);
-
-  // Holder group sits under root and carries the override transforms so
-  // the marker (which attaches to the root) doesn't get scaled/shifted.
+  root.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), hp.normal);
   const holder = new THREE.Group();
-  const s = hp.scale ?? 1;
-  holder.scale.setScalar(s);
+  holder.scale.setScalar(hp.scale ?? 1);
   holder.position.set(hp.offsetX ?? 0, hp.offsetY ?? 0, hp.offsetZ ?? 0);
   holder.rotation.set(hp.pitchOffset ?? 0, hp.yawOffset ?? 0, 0);
   root.add(holder);
-
-  // Base (cylinder sitting on the surface)
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0x444466, roughness: 0.4, metalness: 0.7 });
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(cfg.baseR, cfg.baseR * 1.1, cfg.baseH, 12), baseMat);
-  base.position.y = cfg.baseH / 2;
-  holder.add(base);
-
-  // Yaw pivot (rotates around Y / normal axis)
-  const yawPivot = new THREE.Group();
-  yawPivot.position.y = cfg.baseH;
-  holder.add(yawPivot);
-
-  // Pitch pivot (tilts up/down)
-  const pitchPivot = new THREE.Group();
-  yawPivot.add(pitchPivot);
-
-  if (cfg.barrels > 0) {
-    // Turret head — full sphere for ball turrets, half-dome otherwise
-    const headMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6, emissive: new THREE.Color(color).multiplyScalar(0.15) });
-    const headRadius = cfg.headR || cfg.baseR * 0.8;
-    const headGeom = cfg.ballHead
-      ? new THREE.SphereGeometry(headRadius, 14, 10)
-      : new THREE.SphereGeometry(headRadius, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-    const head = new THREE.Mesh(headGeom, headMat);
-    if (cfg.ballHead) head.position.y = headRadius * 0.6; // raise so the sphere sits on the base
-    pitchPivot.add(head);
-
-    // Barrels
-    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.3, metalness: 0.8 });
-    const barrelGeom = new THREE.CylinderGeometry(cfg.barrelR, cfg.barrelR, cfg.barrelL, 8);
-    barrelGeom.rotateX(Math.PI / 2); // point along Z
-
-    const barrelStartZ = cfg.ballHead ? headRadius * 0.7 : 0;
-    const barrelY = cfg.ballHead ? headRadius * 0.6 : 0;
-    for (let i = 0; i < cfg.barrels; i++) {
-      const barrel = new THREE.Mesh(barrelGeom, barrelMat);
-      const offset = (i - (cfg.barrels - 1) / 2) * cfg.spacing;
-      barrel.position.set(offset, barrelY, barrelStartZ + cfg.barrelL / 2);
-      pitchPivot.add(barrel);
-    }
-  } else {
-    // Drone bay: flat open hangar
-    const bayMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.3, emissive: new THREE.Color(color).multiplyScalar(0.3) });
-    const bay = new THREE.Mesh(new THREE.BoxGeometry(cfg.baseR * 1.5, 0.02, cfg.baseR * 1.5), bayMat);
-    bay.position.y = 0.01;
-    pitchPivot.add(bay);
-  }
-
+  const bayMat = new THREE.MeshStandardMaterial({
+    color, roughness: 0.5, metalness: 0.3,
+    emissive: new THREE.Color(color).multiplyScalar(0.3),
+  });
+  const bay = new THREE.Mesh(new THREE.BoxGeometry(cfg.baseR * 1.5, 0.02, cfg.baseR * 1.5), bayMat);
+  bay.position.y = 0.01;
+  holder.add(bay);
   hp.turretGroup = root;
-  hp.turretYaw = yawPivot;
-  hp.turretPitch = pitchPivot;
+  hp.turretYaw = null;
+  hp.turretPitch = null;
   hpGroup.add(root);
 }
 
