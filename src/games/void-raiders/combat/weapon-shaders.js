@@ -142,11 +142,13 @@ const BEAM_FRAGMENT_SHADER = /* glsl */ `
     float t = clamp(uAge / max(uLifetime, 0.0001), 0.0, 1.0);
     float fade = 1.0 - smoothstep(0.0, 1.0, t);
 
-    // Hot core / soft glow falloff. Magnitude varies per style.
-    float coreWidth = 0.18;
+    // Hot core / soft glow falloff. Wider core than before so the beam
+    // reads solidly at typical camera distance instead of appearing as
+    // a hairline under additive blending.
+    float coreWidth = 0.35;
     float glowWidth = 1.0;
-    if (uStyle == 1) { coreWidth = 0.10; glowWidth = 0.8; } // shield-breaker — tight
-    if (uStyle == 3) { coreWidth = 0.06; glowWidth = 0.6; } // railgun — razor
+    if (uStyle == 1) { coreWidth = 0.25; glowWidth = 0.9; } // shield-breaker — tight but bright
+    if (uStyle == 3) { coreWidth = 0.15; glowWidth = 0.7; } // railgun — razor precision
 
     float aOff = abs(vOffset);
     float core = smoothstep(coreWidth, 0.0, aOff);
@@ -157,31 +159,33 @@ const BEAM_FRAGMENT_SHADER = /* glsl */ `
     if (uStyle == 0) {
       // Standard — scrolling energy stripes along the beam length
       float stripes = 0.5 + 0.5 * sin(vAlong * 60.0 - uTime * 40.0);
-      bodyMod = 0.7 + 0.3 * stripes;
+      bodyMod = 1.0 + 0.5 * stripes;
     } else if (uStyle == 1) {
       // Shield-breaker — hard pulse intensity with a bright leading edge
       float lead = smoothstep(0.0, 0.3, vAlong) * (1.0 - smoothstep(0.7, 1.0, vAlong));
-      bodyMod = 0.6 + 0.6 * lead;
+      bodyMod = 1.2 + 0.8 * lead;
     } else if (uStyle == 2) {
       // Lightning — high-frequency flicker + branching forks
       float crackle = vrFbm(vec2(vAlong * 22.0, uTime * 60.0));
       float forks = smoothstep(0.55, 1.0, crackle);
-      bodyMod = 0.5 + 1.6 * forks;
-      // Add some sub-bolt streaks: squash the glow on the noise field
-      glow *= (0.4 + 0.6 * crackle);
+      bodyMod = 1.0 + 2.0 * forks;
+      glow *= (0.6 + 0.6 * crackle);
     } else if (uStyle == 3) {
       // Railgun — clean blinding line, with a leading flash at impact
       float impactFlash = smoothstep(0.85, 1.0, vAlong) * (1.0 - t * 0.5);
-      bodyMod = 1.0 + impactFlash * 3.0;
+      bodyMod = 1.8 + impactFlash * 4.0;
     }
 
-    float intensity = (core * 1.4 + glow * 0.55) * fade * bodyMod;
+    // Bumped intensity multipliers — core boost ×3, glow ×1.2.
+    // The previous values (1.4 / 0.55) rendered as faint hairlines
+    // under additive blending against the dark space background.
+    float intensity = (core * 3.0 + glow * 1.2) * fade * bodyMod;
 
     vec3 color = uColor * intensity;
-    // Hot white core for every style — pegs the bloom
-    color += vec3(1.0) * core * core * fade * (uStyle == 3 ? 1.6 : 0.9);
+    // Hot white core for every style — pegs the bloom even harder
+    color += vec3(1.0) * core * core * fade * (uStyle == 3 ? 2.5 : 1.6);
 
-    float alpha = clamp(intensity * 0.95, 0.0, 1.0);
+    float alpha = clamp(intensity, 0.0, 1.0);
     gl_FragColor = vec4(color, alpha);
   }
 `;

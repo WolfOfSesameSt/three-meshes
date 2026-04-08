@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+// ── Arena imports ──
+// The sandbox arena runs the real in-game combat loop against test enemies
+// so balance tuning uses the same shaders + damage paths as a mission. All
+// of these come from the live game code so there's no drift.
+import { TurretSystem } from '../ship/turret-system.js';
+import { buildBallTurret, buildMissileLauncher } from '../ship/turret-rigger.js';
+import { getAttack } from '../combat/attack-defs.js';
+import { ENEMY_TYPES } from '../combat/enemy.js';
 
 // One-shot escape hatch: visit ?reset=1 to wipe all saved hardpoints before
 // the page touches them. Recovers from bad localStorage state without devtools.
@@ -994,10 +1002,36 @@ const TURRET_GEOM = {
     ballHead: true,
     headR: 0.035,
   },
+  // Heavy cannon — chunky ball head + long thick barrel. Mirrors the
+  // in-game heavy-railgun hardware (turret-rigger.js applyMothershipConfig
+  // `isHeavy` branch). Sized to match the preview scale.
+  heavy_cannon: {
+    baseR: 0.06, baseH: 0.02,
+    barrelR: 0.02, barrelL: 0.18,
+    barrels: 1, spacing: 0,
+    ballHead: true,
+    headR: 0.08,
+  },
 };
 
-// HP_COLORS lookup also needs ball_turret to render the head color
+// HP_COLORS lookup also needs ball_turret + heavy_cannon to render the head color
 HP_COLORS.ball_turret = 0x9b9bff;
+HP_COLORS.heavy_cannon = 0xffaa55;
+
+// Default attackId for each hardpoint type, used by the arena when the hp
+// hasn't overridden it via the editor dropdown. Keeps a sensible mapping
+// even on freshly placed turrets.
+const DEFAULT_ATTACK_BY_TYPE = {
+  turret: "point-defense-pulse",
+  point_defense: "point-defense-pulse",
+  ball_turret: "point-defense-pulse",
+  heavy_cannon: "heavy-railgun",
+  missile_launcher: "guided-missile",
+  drone_bay: null,
+};
+function resolveAttackId(hp) {
+  return hp.attackId || DEFAULT_ATTACK_BY_TYPE[hp.type] || "point-defense-pulse";
+}
 
 let hpIdCounter = 0;
 let simulating = false;
@@ -1017,6 +1051,29 @@ function createHardpoint(position, normal, type = 'turret') {
     normal: normal.clone(),
     yawMin: -180, yawMax: 180,
     pitchMin: -10, pitchMax: 60,
+    // Arena attack def ID — null means "auto-pick from hp.type". Set via
+    // the hp editor dropdown when you want to test a specific weapon on a
+    // specific turret. Serialized in the saved config so the sandbox can
+    // reload a tuning session.
+    attackId: null,
+    // Per-hardpoint size + position + rotation OVERRIDES. These let the
+    // player tune the look of each turret from the model-preview UI
+    // without having to hand-edit the TURRET_GEOM config. The in-game
+    // applyMothershipConfig reads these and passes them into the
+    // procedural turret builder.
+    //   scale       — uniform multiplier on the whole turret (base + barrel).
+    //                 1.0 = default catalog size.
+    //   offsetX/Y/Z — extra translation applied to the turret ROOT in the
+    //                 slot's local frame (local +Y is the surface normal).
+    //                 Use offsetY > 0 to lift a turret out of hull, or
+    //                 offsetZ > 0 to shift it forward along the barrel axis.
+    //   yawOffset   — extra yaw rotation (radians). Applied after the
+    //                 normal-alignment quaternion so you can spin a turret
+    //                 to face a specific direction at rest.
+    //   pitchOffset — extra pitch rotation (radians).
+    scale: 1,
+    offsetX: 0, offsetY: 0, offsetZ: 0,
+    yawOffset: 0, pitchOffset: 0,
     // 3D objects
     marker: null,
     arcMesh: null,
@@ -1056,22 +1113,35 @@ function buildTurretMesh(hp) {
   const cfg = TURRET_GEOM[hp.type] || TURRET_GEOM.turret;
   const color = HP_COLORS[hp.type] || 0xffffff;
 
-  // Root group: positioned at hardpoint, oriented so local Y = surface normal
+  // Root group: positioned at hardpoint, oriented so local Y = surface normal.
+  // Per-hardpoint overrides applied here so the preview reflects the saved
+  // tuning: extra translation in slot-local space, extra yaw/pitch rotation,
+  // uniform scale. The in-game applyMothershipConfig applies the same
+  // transforms to the procedural turret at mission start.
   const root = new THREE.Group();
   root.position.copy(hp.position);
   const up = new THREE.Vector3(0, 1, 0);
   root.quaternion.setFromUnitVectors(up, hp.normal);
 
+  // Holder group sits under root and carries the override transforms so
+  // the marker (which attaches to the root) doesn't get scaled/shifted.
+  const holder = new THREE.Group();
+  const s = hp.scale ?? 1;
+  holder.scale.setScalar(s);
+  holder.position.set(hp.offsetX ?? 0, hp.offsetY ?? 0, hp.offsetZ ?? 0);
+  holder.rotation.set(hp.pitchOffset ?? 0, hp.yawOffset ?? 0, 0);
+  root.add(holder);
+
   // Base (cylinder sitting on the surface)
   const baseMat = new THREE.MeshStandardMaterial({ color: 0x444466, roughness: 0.4, metalness: 0.7 });
   const base = new THREE.Mesh(new THREE.CylinderGeometry(cfg.baseR, cfg.baseR * 1.1, cfg.baseH, 12), baseMat);
   base.position.y = cfg.baseH / 2;
-  root.add(base);
+  holder.add(base);
 
   // Yaw pivot (rotates around Y / normal axis)
   const yawPivot = new THREE.Group();
   yawPivot.position.y = cfg.baseH;
-  root.add(yawPivot);
+  holder.add(yawPivot);
 
   // Pitch pivot (tilts up/down)
   const pitchPivot = new THREE.Group();
@@ -1307,9 +1377,19 @@ function rebuildHpList() {
       <div class="hp-header">
         <span class="hp-name">${hp.name}</span>
         <span class="hp-type hp-type-${hp.type}">${hp.type.replace('_', ' ')}</span>
+        <button class="hp-row-delete" title="Delete this hardpoint" data-hp-id="${hp.id}">×</button>
       </div>
     `;
-    item.addEventListener('click', () => selectHardpoint(hp));
+    // Select on row click (but not on the delete × button)
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('hp-row-delete')) return;
+      selectHardpoint(hp);
+    });
+    const delBtn = item.querySelector('.hp-row-delete');
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeHardpoint(hp);
+    });
     hpListEl.appendChild(item);
   }
 }
@@ -1321,6 +1401,7 @@ function selectHardpoint(hp) {
   // Populate editor
   document.getElementById('hp-name').value = hp.name;
   document.getElementById('hp-type').value = hp.type;
+  document.getElementById('hp-attack-id').value = hp.attackId || "";
   document.getElementById('hp-yaw-min').value = hp.yawMin;
   document.getElementById('hp-yaw-max').value = hp.yawMax;
   document.getElementById('hp-pitch-min').value = hp.pitchMin;
@@ -1329,6 +1410,26 @@ function selectHardpoint(hp) {
   document.getElementById('hp-yaw-max-val').textContent = hp.yawMax;
   document.getElementById('hp-pitch-min-val').textContent = hp.pitchMin;
   document.getElementById('hp-pitch-max-val').textContent = hp.pitchMax;
+  // Override sliders — mirror the hp's current override values into the UI.
+  const scale = hp.scale ?? 1;
+  const offsetX = hp.offsetX ?? 0;
+  const offsetY = hp.offsetY ?? 0;
+  const offsetZ = hp.offsetZ ?? 0;
+  const yawOff = hp.yawOffset ?? 0;
+  const pitchOff = hp.pitchOffset ?? 0;
+  document.getElementById('hp-scale').value = scale;
+  document.getElementById('hp-scale-val').textContent = scale.toFixed(2);
+  document.getElementById('hp-offsetX').value = offsetX;
+  document.getElementById('hp-offsetX-val').textContent = offsetX.toFixed(2);
+  document.getElementById('hp-offsetY').value = offsetY;
+  document.getElementById('hp-offsetY-val').textContent = offsetY.toFixed(2);
+  document.getElementById('hp-offsetZ').value = offsetZ;
+  document.getElementById('hp-offsetZ-val').textContent = offsetZ.toFixed(2);
+  // Yaw/pitch offsets stored as radians, displayed as degrees
+  document.getElementById('hp-yawOffset').value = Math.round(yawOff * 180 / Math.PI);
+  document.getElementById('hp-yawOffset-val').textContent = Math.round(yawOff * 180 / Math.PI) + '°';
+  document.getElementById('hp-pitchOffset').value = Math.round(pitchOff * 180 / Math.PI);
+  document.getElementById('hp-pitchOffset-val').textContent = Math.round(pitchOff * 180 / Math.PI) + '°';
   hpEditor.classList.add('visible');
 
   // Highlight marker
@@ -1350,7 +1451,13 @@ document.getElementById('hp-type').addEventListener('change', (e) => {
   if (!selectedHp) return;
   selectedHp.type = e.target.value;
   buildHpVisuals(selectedHp);
+  buildTurretMesh(selectedHp);
   rebuildHpList();
+  autoSave();
+});
+document.getElementById('hp-attack-id').addEventListener('change', (e) => {
+  if (!selectedHp) return;
+  selectedHp.attackId = e.target.value || null;
   autoSave();
 });
 
@@ -1368,21 +1475,77 @@ for (const field of ['hp-yaw-min', 'hp-yaw-max', 'hp-pitch-min', 'hp-pitch-max']
   });
 }
 
+// Override sliders (scale + offset + rotation). On change, rebuild the
+// turret mesh so the preview reflects the new tuning immediately, then
+// autoSave so the in-game applyMothershipConfig picks it up next mission.
+function wireOverrideSlider(id, hpKey, { radians = false } = {}) {
+  const input = document.getElementById(id);
+  const label = document.getElementById(id + '-val');
+  input.addEventListener('input', (e) => {
+    if (!selectedHp) return;
+    const raw = parseFloat(e.target.value);
+    const value = radians ? raw * Math.PI / 180 : raw;
+    selectedHp[hpKey] = value;
+    if (radians) label.textContent = Math.round(raw) + '°';
+    else label.textContent = raw.toFixed(2);
+    buildTurretMesh(selectedHp);
+    autoSave();
+  });
+}
+wireOverrideSlider('hp-scale', 'scale');
+wireOverrideSlider('hp-offsetX', 'offsetX');
+wireOverrideSlider('hp-offsetY', 'offsetY');
+wireOverrideSlider('hp-offsetZ', 'offsetZ');
+wireOverrideSlider('hp-yawOffset', 'yawOffset', { radians: true });
+wireOverrideSlider('hp-pitchOffset', 'pitchOffset', { radians: true });
+
+document.getElementById('hp-reset-overrides').addEventListener('click', () => {
+  if (!selectedHp) return;
+  selectedHp.scale = 1;
+  selectedHp.offsetX = 0;
+  selectedHp.offsetY = 0;
+  selectedHp.offsetZ = 0;
+  selectedHp.yawOffset = 0;
+  selectedHp.pitchOffset = 0;
+  buildTurretMesh(selectedHp);
+  autoSave();
+  selectHardpoint(selectedHp); // refresh the sliders
+});
+
 document.getElementById('hp-delete').addEventListener('click', () => {
   if (selectedHp) removeHardpoint(selectedHp);
 });
 
-// Place mode toggle
+// Place mode toggle — now supports per-weapon-type placement. Clicking a
+// "+Ball"/"+Heavy"/"+Missile" button arms place mode with that specific
+// type; clicking the generic "Place" button uses "turret" as before. The
+// click handler on the canvas reads `placeType` to decide what kind of
+// hardpoint to create at the hit point.
+let placeType = "turret";
+const placeTypeButtons = Array.from(document.querySelectorAll('.hp-place-type'));
+for (const btn of placeTypeButtons) {
+  btn.addEventListener('click', () => {
+    const wantedType = btn.dataset.placeType;
+    // Clicking the active placement type toggles it off
+    if (placeMode && placeType === wantedType) {
+      placeMode = false;
+      placeType = "turret";
+    } else {
+      placeMode = true;
+      placeType = wantedType;
+    }
+    // Update button highlights — only the active one is lit
+    for (const b of placeTypeButtons) {
+      b.classList.toggle('active', placeMode && b.dataset.placeType === placeType);
+    }
+    renderer.domElement.style.cursor = placeMode ? 'crosshair' : '';
+    // Mutually exclusive with rig / auto-rig / bay modes
+    if (placeMode && rigMode) setRigMode(false);
+    if (placeMode && autoRigMode) setAutoRigMode(false);
+    if (placeMode && bayMode) setBayMode(false);
+  });
+}
 const placeModeBtn = document.getElementById('hp-place-mode');
-placeModeBtn.addEventListener('click', () => {
-  placeMode = !placeMode;
-  placeModeBtn.classList.toggle('active', placeMode);
-  renderer.domElement.style.cursor = placeMode ? 'crosshair' : '';
-  // Mutually exclusive with rig / auto-rig / bay modes
-  if (placeMode && rigMode) setRigMode(false);
-  if (placeMode && autoRigMode) setAutoRigMode(false);
-  if (placeMode && bayMode) setBayMode(false);
-});
 
 // Arc visibility toggle
 const showArcsBtn = document.getElementById('hp-show-arcs');
@@ -1584,7 +1747,16 @@ function serializeHardpoints() {
         normal: { x: hp.normal.x, y: hp.normal.y, z: hp.normal.z },
         yawMin: hp.yawMin, yawMax: hp.yawMax,
         pitchMin: hp.pitchMin, pitchMax: hp.pitchMax,
+        // Per-hardpoint size/position/rotation overrides — only written
+        // when they differ from defaults to keep the save file small.
       };
+      if (hp.attackId) entry.attackId = hp.attackId;
+      if ((hp.scale ?? 1) !== 1) entry.scale = hp.scale;
+      if ((hp.offsetX ?? 0) !== 0) entry.offsetX = hp.offsetX;
+      if ((hp.offsetY ?? 0) !== 0) entry.offsetY = hp.offsetY;
+      if ((hp.offsetZ ?? 0) !== 0) entry.offsetZ = hp.offsetZ;
+      if ((hp.yawOffset ?? 0) !== 0) entry.yawOffset = hp.yawOffset;
+      if ((hp.pitchOffset ?? 0) !== 0) entry.pitchOffset = hp.pitchOffset;
       // Save model turret binding info (old click-Rig flow that reparents
       // the model meshes under turret pivots)
       if (hp.modelGeometry) {
@@ -1698,8 +1870,16 @@ function importHardpoints(data) {
       hp.yawMax = hpData.yawMax ?? 180;
       hp.pitchMin = hpData.pitchMin ?? -10;
       hp.pitchMax = hpData.pitchMax ?? 60;
+      hp.attackId = hpData.attackId || null;
+      hp.scale = hpData.scale ?? 1;
+      hp.offsetX = hpData.offsetX ?? 0;
+      hp.offsetY = hpData.offsetY ?? 0;
+      hp.offsetZ = hpData.offsetZ ?? 0;
+      hp.yawOffset = hpData.yawOffset ?? 0;
+      hp.pitchOffset = hpData.pitchOffset ?? 0;
       hp.modelSlot = true;
       hp.hiddenMeshNames = hiddenNames;
+      buildTurretMesh(hp); // rebuild with overrides applied
       taggedTurrets.push({
         hpRef: hp,
         islands: hiddenMeshes,
@@ -1712,14 +1892,22 @@ function importHardpoints(data) {
       // Regular procedural hardpoint
       const pos = new THREE.Vector3(hpData.position.x, hpData.position.y, hpData.position.z);
       const norm = new THREE.Vector3(hpData.normal.x, hpData.normal.y, hpData.normal.z);
-      const hp = createHardpoint(pos, norm);
+      const hp = createHardpoint(pos, norm, hpData.type);
       hp.name = hpData.name;
       hp.type = hpData.type;
       hp.yawMin = hpData.yawMin ?? -180;
       hp.yawMax = hpData.yawMax ?? 180;
       hp.pitchMin = hpData.pitchMin ?? -10;
       hp.pitchMax = hpData.pitchMax ?? 60;
+      hp.attackId = hpData.attackId || null;
+      hp.scale = hpData.scale ?? 1;
+      hp.offsetX = hpData.offsetX ?? 0;
+      hp.offsetY = hpData.offsetY ?? 0;
+      hp.offsetZ = hpData.offsetZ ?? 0;
+      hp.yawOffset = hpData.yawOffset ?? 0;
+      hp.pitchOffset = hpData.pitchOffset ?? 0;
       buildHpVisuals(hp);
+      buildTurretMesh(hp);
     }
   }
   rebuildHpList();
@@ -1861,9 +2049,12 @@ renderer.domElement.addEventListener('click', (e) => {
       document.querySelector('[data-tab="hardpoints"]').classList.add('active');
       document.getElementById('tab-hardpoints').classList.add('active');
     } else if (placeMode) {
-      // Place hardpoint at hit point
+      // Place a hardpoint of the currently-armed type at the hit point.
+      // The face normal is transformed into world space so the turret's
+      // local +Y aligns with the outward-pointing hull direction.
       const hit = hits[0];
-      createHardpoint(hit.point, hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize());
+      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize();
+      createHardpoint(hit.point, normal, placeType);
       // Switch to hardpoints tab
       document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -1907,9 +2098,453 @@ resize();
 // RENDER LOOP
 // ============================================================
 const clock = new THREE.Clock();
+// ============================================================
+// TEST ARENA — runs the real in-game TurretSystem against sandbox
+// hardpoints so balance tuning uses the same shaders + damage paths
+// as a mission. Toggle with Run/Stop; hit the spawn buttons to add
+// test enemies from the real ENEMY_TYPES catalog.
+// ============================================================
+
+const arena = {
+  running: false,
+  turretSystem: null,
+  // Fake mothership object shaped like the real one so TurretSystem can
+  // consume it. mesh is an Object3D we create when arena starts; turrets
+  // is the adapter list built from hardpoints[].
+  fakeMothership: null,
+  // Arena-owned container for real turret meshes + enemy meshes
+  sceneGroup: null,
+  // Built turret records: { hp, built, turretObj } — turretObj is the
+  // entry inserted into fakeMothership.turrets.
+  builtTurrets: [],
+  // Test enemies — simple { type, position, velocity, stats, mesh, alive }
+  // objects. TurretSystem's _pickTarget + applyDamage consume this shape.
+  enemies: [],
+  motionMode: "static",
+  // Stats keyed by attackId — populated by the TurretSystem hooks
+  stats: new Map(),
+  startTime: 0,
+};
+
+function arenaResolveMothershipCenter() {
+  // Use the origin of the currentModel as the arena center. Enemies spawn
+  // at a fixed radius from here; turrets pick them up via their hemisphere
+  // checks against the turret-local frame.
+  if (!currentModel) return new THREE.Vector3(0, 0, 0);
+  const box = new THREE.Box3().setFromObject(currentModel);
+  return box.getCenter(new THREE.Vector3());
+}
+
+function arenaBuildFakeTurretFromHp(hp) {
+  // Pick the matching real builder based on the hp's resolved attackId.
+  // Missile launchers use buildMissileLauncher; everything else uses
+  // buildBallTurret with cfg matching the in-game tier assignment.
+  const attackId = resolveAttackId(hp);
+  const attackDef = getAttack(attackId);
+  if (!attackDef) return null;
+
+  let built;
+  let weaponType;
+  // Route by attack def's shape, mirroring turret-rigger.js applyMothershipConfig.
+  // Guided missile + flak-burst-missile use the revolver launcher. Flak burst
+  // (slow projectile) and heavy railgun (hitscan) use the ball-turret shape.
+  const isMissile = attackDef.shaderStyle === undefined && attackId === "guided-missile";
+  if (isMissile) {
+    built = buildMissileLauncher(hp.position, hp.normal, {
+      baseR: 0.10, baseH: 0.04,
+      revolverR: 0.16, revolverL: 0.30,
+      tubeR: 0.045, tubeOffsetR: 0.10, tipL: 0.06,
+      color: 0x556677, accentColor: 0xff8844,
+    });
+    weaponType = "missile_launcher";
+  } else if (attackId === "heavy-railgun") {
+    built = buildBallTurret(hp.position, hp.normal, {
+      baseR: 0.18, baseH: 0.07,
+      barrelR: 0.06, barrelL: 0.55,
+      headR: 0.24,
+      color: 0xddddee,
+    });
+    weaponType = "laser";
+  } else if (attackId === "flak-burst") {
+    built = buildBallTurret(hp.position, hp.normal, {
+      baseR: 0.06, baseH: 0.020,
+      barrelR: 0.018, barrelL: 0.18,
+      headR: 0.06,
+      color: 0xffbb33,
+    });
+    weaponType = "heavy_cannon";
+  } else if (attackId === "shield-breaker") {
+    built = buildBallTurret(hp.position, hp.normal, {
+      baseR: 0.06, baseH: 0.020,
+      barrelR: 0.018, barrelL: 0.18,
+      headR: 0.06,
+      color: 0x66ffff,
+    });
+    weaponType = "laser";
+  } else if (attackId === "arc-emitter") {
+    built = buildBallTurret(hp.position, hp.normal, {
+      baseR: 0.040, baseH: 0.016,
+      barrelR: 0.012, barrelL: 0.12,
+      headR: 0.040,
+      color: 0xcc66ff,
+    });
+    weaponType = "laser";
+  } else {
+    // Default PD pulse ball
+    built = buildBallTurret(hp.position, hp.normal, {
+      baseR: 0.035, baseH: 0.014,
+      barrelR: 0.010, barrelL: 0.10,
+      headR: 0.035,
+      color: 0x66ddff,
+    });
+    weaponType = "laser";
+  }
+
+  built.barrelYawOffset = 0;
+  built.barrelPitchOffset = 0;
+
+  // Apply per-hp overrides via the adjuster group wrapper — same trick
+  // as applyMothershipConfig so the overrides match between sandbox
+  // preview, arena, and in-game.
+  const adjuster = new THREE.Group();
+  adjuster.scale.setScalar(hp.scale ?? 1);
+  adjuster.position.set(hp.offsetX ?? 0, hp.offsetY ?? 0, hp.offsetZ ?? 0);
+  adjuster.rotation.set(hp.pitchOffset ?? 0, hp.yawOffset ?? 0, 0);
+  const rootChildren = [...built.group.children];
+  for (const c of rootChildren) adjuster.add(c);
+  built.group.add(adjuster);
+
+  // Construct the turret object TurretSystem expects
+  const turretObj = {
+    name: hp.name,
+    type: hp.type,
+    weaponType,
+    attackId,
+    position: hp.position.clone(),
+    normal: hp.normal.clone(),
+    yawArc: [hp.yawMin, hp.yawMax],
+    pitchArc: [hp.pitchMin, hp.pitchMax],
+    group: built.group,
+    yawPivot: built.yawPivot,
+    pitchPivot: built.pitchPivot,
+    muzzleLocal: built.muzzleLocal,
+    barrelYawOffset: 0,
+    barrelPitchOffset: 0,
+    hideTransform: built.hideTransform,
+    revolver: built.revolver,
+    tubes: built.tubes,
+    missileTips: built.missileTips,
+    active: true,
+  };
+  return { hp, built, turretObj };
+}
+
+function arenaStart() {
+  if (arena.running || !currentModel) return;
+  arena.running = true;
+  arena.startTime = performance.now();
+  arena.stats.clear();
+
+  // Scene container for everything the arena owns (turrets + enemies +
+  // shader pool meshes all live in scene, but we need a way to know what
+  // to tear down on stop).
+  arena.sceneGroup = new THREE.Group();
+  arena.sceneGroup.name = "arena-root";
+  scene.add(arena.sceneGroup);
+
+  // Build real turrets for each hp. Hide the sandbox editor preview
+  // turrets while the arena is live so we're not showing two turrets
+  // per hardpoint.
+  arena.builtTurrets = [];
+  for (const hp of hardpoints) {
+    if (hp.turretGroup) hp.turretGroup.visible = false;
+    if (hp.type === "drone_bay") continue;
+    const entry = arenaBuildFakeTurretFromHp(hp);
+    if (!entry) continue;
+    arena.sceneGroup.add(entry.built.group);
+    arena.builtTurrets.push(entry);
+  }
+
+  // Fake mothership: TurretSystem calls mothership.mesh.updateMatrixWorld
+  // and reads mothership.turrets. Our sceneGroup is at identity and
+  // sceneGroup.updateMatrixWorld propagates to the turret roots.
+  arena.fakeMothership = {
+    mesh: arena.sceneGroup,
+    turrets: arena.builtTurrets.map(e => e.turretObj),
+  };
+
+  // Instrument TurretSystem with the per-attackId stats hooks
+  const getStats = (attackId) => {
+    let s = arena.stats.get(attackId);
+    if (!s) {
+      s = { fires: 0, hits: 0, damage: 0 };
+      arena.stats.set(attackId, s);
+    }
+    return s;
+  };
+
+  arena.turretSystem = new TurretSystem(scene, {
+    audioManager: null,
+    combatEffects: null,
+    getEnemies: () => arena.enemies.filter(e => e.alive),
+    screenShake: null,
+    onFire: (_turret, attackDef) => {
+      if (attackDef?.id) getStats(attackDef.id).fires++;
+    },
+    onHit: (_turret, attackDef, _target, dealt) => {
+      if (attackDef?.id && dealt > 0) {
+        const s = getStats(attackDef.id);
+        s.hits++;
+        s.damage += dealt;
+      }
+    },
+  });
+
+  document.getElementById("arena-run").style.display = "none";
+  document.getElementById("arena-stop").style.display = "";
+}
+
+function arenaStop() {
+  if (!arena.running) return;
+  arena.running = false;
+
+  if (arena.turretSystem) {
+    arena.turretSystem.dispose();
+    arena.turretSystem = null;
+  }
+  // Remove arena-built turrets + enemy meshes from the scene
+  if (arena.sceneGroup) {
+    arena.sceneGroup.traverse(c => {
+      if (c.geometry && c.geometry.dispose) c.geometry.dispose();
+      if (c.material && c.material.dispose) c.material.dispose();
+    });
+    scene.remove(arena.sceneGroup);
+    arena.sceneGroup = null;
+  }
+  arena.builtTurrets = [];
+  arena.fakeMothership = null;
+
+  // Dispose enemy meshes (parented to sceneGroup which is already removed,
+  // but make sure geometry/material are released so the GPU doesn't leak)
+  for (const e of arena.enemies) arenaDisposeEnemy(e);
+  arena.enemies = [];
+
+  // Unhide sandbox editor preview turrets
+  for (const hp of hardpoints) {
+    if (hp.turretGroup) hp.turretGroup.visible = true;
+  }
+
+  document.getElementById("arena-run").style.display = "";
+  document.getElementById("arena-stop").style.display = "none";
+  // Clear HUD
+  const hud = document.getElementById("arena-hud");
+  if (hud) hud.innerHTML = "";
+}
+
+function arenaDisposeEnemy(e) {
+  if (!e.mesh) return;
+  // Enemy meshes are parented to arena.sceneGroup, not scene. Walk up to
+  // whichever parent they're on and detach.
+  e.mesh.removeFromParent();
+  e.mesh.geometry?.dispose?.();
+  e.mesh.material?.dispose?.();
+}
+
+function arenaReset() {
+  // Clear enemies, clear stats, keep arena running if it was running
+  for (const e of arena.enemies) arenaDisposeEnemy(e);
+  arena.enemies = [];
+  arena.stats.clear();
+  arena.startTime = performance.now();
+}
+
+function arenaSpawn(type, overridePos) {
+  if (!arena.running) return;
+  const def = ENEMY_TYPES[type];
+  if (!def) return;
+  const center = arenaResolveMothershipCenter();
+  // Pick a spawn position on a sphere around the model, random angle.
+  const radius = 3 + Math.random() * 2; // 3-5 units in 5-unit fit space
+  const theta = Math.random() * Math.PI * 2;
+  const phi = (Math.random() - 0.5) * Math.PI; // -90°..+90°
+  const pos = overridePos || {
+    x: center.x + radius * Math.cos(phi) * Math.cos(theta),
+    y: center.y + radius * Math.sin(phi),
+    z: center.z + radius * Math.cos(phi) * Math.sin(theta),
+  };
+
+  // Simple colored box mesh sized from def.size
+  const [sx, sy, sz] = def.size || [1, 0.5, 1];
+  // Scale down — def.size is in-game meters, sandbox is 5-unit fit space.
+  // The SD model is ~5 units long here vs ~40m in-game, so divide by 8.
+  const scale = 1 / 8;
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(sx * scale, sy * scale, sz * scale),
+    new THREE.MeshStandardMaterial({ color: def.color, emissive: new THREE.Color(def.color).multiplyScalar(0.3) }),
+  );
+  mesh.position.set(pos.x, pos.y, pos.z);
+  arena.sceneGroup.add(mesh);
+
+  // Enemy object shaped for TurretSystem's target API
+  const enemy = {
+    type,
+    position: { x: pos.x, y: pos.y, z: pos.z },
+    velocity: { x: 0, y: 0, z: 0 },
+    stats: { ...def.stats },
+    color: def.color,
+    size: def.size,
+    alive: true,
+    mesh,
+    // Orbit state (filled in if motionMode === "orbit")
+    orbitAngle: theta,
+    orbitRadius: radius,
+    orbitHeight: Math.sin(phi) * radius,
+    orbitSpeed: (def.stats?.speed ?? 5) / 50, // rad/s scaled down
+    takeDamage(amount, _impactPos) {
+      if (!this.alive) return;
+      let remaining = amount;
+      if (this.stats.shields > 0) {
+        const absorbed = Math.min(this.stats.shields, remaining);
+        this.stats.shields -= absorbed;
+        remaining -= absorbed;
+      }
+      this.stats.hull = Math.max(0, (this.stats.hull ?? 0) - remaining);
+      if (this.stats.hull <= 0) {
+        this.alive = false;
+        if (this.mesh) this.mesh.visible = false;
+      }
+    },
+  };
+  arena.enemies.push(enemy);
+}
+
+function arenaSpawnCluster() {
+  if (!arena.running) return;
+  const center = arenaResolveMothershipCenter();
+  const clusterCenter = {
+    x: center.x + (Math.random() - 0.5) * 4,
+    y: center.y + 1 + Math.random() * 2,
+    z: center.z + (Math.random() - 0.5) * 4,
+  };
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    arenaSpawn("scout-fighter", {
+      x: clusterCenter.x + Math.cos(angle) * 0.2,
+      y: clusterCenter.y + (Math.random() - 0.5) * 0.2,
+      z: clusterCenter.z + Math.sin(angle) * 0.2,
+    });
+  }
+}
+
+function arenaUpdate(dt) {
+  if (!arena.running) return;
+
+  // Update enemy positions (orbit mode moves them around the ship)
+  if (arena.motionMode === "orbit") {
+    const center = arenaResolveMothershipCenter();
+    for (const e of arena.enemies) {
+      if (!e.alive) continue;
+      e.orbitAngle += e.orbitSpeed * dt;
+      const newX = center.x + Math.cos(e.orbitAngle) * e.orbitRadius;
+      const newZ = center.z + Math.sin(e.orbitAngle) * e.orbitRadius;
+      const newY = center.y + e.orbitHeight;
+      e.velocity.x = (newX - e.position.x) / Math.max(dt, 0.0001);
+      e.velocity.y = 0;
+      e.velocity.z = (newZ - e.position.z) / Math.max(dt, 0.0001);
+      e.position.x = newX;
+      e.position.y = newY;
+      e.position.z = newZ;
+      if (e.mesh) e.mesh.position.set(newX, newY, newZ);
+    }
+  } else {
+    // Static mode — zero out velocity so PID homing treats them as still.
+    for (const e of arena.enemies) {
+      e.velocity.x = 0;
+      e.velocity.y = 0;
+      e.velocity.z = 0;
+    }
+  }
+
+  // Run the real TurretSystem
+  arena.turretSystem.update(dt, arena.fakeMothership, arena.enemies);
+
+  // Update HUD (throttled to ~10 Hz)
+  arena._hudTimer = (arena._hudTimer ?? 0) + dt;
+  if (arena._hudTimer >= 0.1) {
+    arena._hudTimer = 0;
+    arenaRenderHud();
+  }
+}
+
+function arenaRenderHud() {
+  const hud = document.getElementById("arena-hud");
+  if (!hud) return;
+  const elapsed = (performance.now() - arena.startTime) / 1000;
+  const parts = [];
+  parts.push(`<div class="arena-hud-section">Elapsed ${elapsed.toFixed(1)}s · Enemies ${arena.enemies.filter(e => e.alive).length}/${arena.enemies.length}</div>`);
+
+  // Enemy rows
+  for (const e of arena.enemies) {
+    const hull = e.stats.hull ?? 0;
+    const hullMax = e.stats.hullMax ?? 1;
+    const shields = e.stats.shields ?? 0;
+    const shieldsMax = e.stats.shieldsMax ?? 0;
+    const hullPct = Math.round((hull / hullMax) * 100);
+    const shieldPct = shieldsMax > 0 ? Math.round((shields / shieldsMax) * 100) : 0;
+    parts.push(
+      `<div class="arena-hud-row${e.alive ? '' : ' dead'}">` +
+      `<span>${e.type}</span>` +
+      `<span>` +
+      `<span class="arena-hull-bar"><span style="width:${hullPct}%"></span></span>${hull}` +
+      (shieldsMax > 0 ? ` <span class="arena-hull-bar arena-shield-bar"><span style="width:${shieldPct}%;background:#44aaff"></span></span>${shields}` : '') +
+      `</span></div>`
+    );
+  }
+
+  // Per-attack stats
+  if (arena.stats.size > 0) {
+    parts.push(`<div class="arena-hud-section">Weapon stats</div>`);
+    for (const [attackId, s] of arena.stats) {
+      const dps = elapsed > 0 ? (s.damage / elapsed).toFixed(1) : "0.0";
+      const acc = s.fires > 0 ? Math.round((s.hits / s.fires) * 100) : 0;
+      parts.push(
+        `<div class="arena-hud-row">` +
+        `<span>${attackId}</span>` +
+        `<span>${s.fires}f ${s.hits}h ${acc}% ${Math.round(s.damage)}dmg ${dps}DPS</span>` +
+        `</div>`
+      );
+    }
+  }
+
+  hud.innerHTML = parts.join("");
+}
+
+// ── Arena UI bindings ──
+document.getElementById("arena-run").addEventListener("click", arenaStart);
+document.getElementById("arena-stop").addEventListener("click", arenaStop);
+document.getElementById("arena-reset").addEventListener("click", arenaReset);
+document.getElementById("arena-spawn-scout").addEventListener("click", () => arenaSpawn("scout-fighter"));
+document.getElementById("arena-spawn-patrol").addEventListener("click", () => arenaSpawn("patrol-cruiser"));
+document.getElementById("arena-spawn-shielded").addEventListener("click", () => arenaSpawn("shielded-cruiser"));
+document.getElementById("arena-spawn-bomber").addEventListener("click", () => arenaSpawn("bomber"));
+document.getElementById("arena-spawn-interceptor").addEventListener("click", () => arenaSpawn("interceptor"));
+document.getElementById("arena-spawn-cluster").addEventListener("click", arenaSpawnCluster);
+document.getElementById("arena-clear-enemies").addEventListener("click", () => {
+  for (const e of arena.enemies) arenaDisposeEnemy(e);
+  arena.enemies = [];
+});
+for (const input of document.querySelectorAll('input[name="arena-motion"]')) {
+  input.addEventListener("change", (e) => {
+    arena.motionMode = e.target.value;
+  });
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
+
+  // Arena runs its own combat tick when active
+  if (arena.running) arenaUpdate(dt);
 
   if (simulating) {
     simTime += dt;

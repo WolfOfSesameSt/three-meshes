@@ -87,6 +87,17 @@ export class TurretSystem {
     this.combatEffects = opts.combatEffects || null;
     this.getEnemies = opts.getEnemies || null;
     this.screenShake = opts.screenShake || null;
+    // Optional instrumentation hooks — off by default, the sandbox arena
+    // attaches them to populate its DPS / fires / hits HUD. Both callbacks
+    // are tolerated to throw without breaking the fire path.
+    //   onFire(turret, attackDef, target)
+    //       — called once per shot spawned (lasers + projectiles + missiles)
+    //   onHit(turret, attackDef, target, damageDealt)
+    //       — called after applyDamage runs. For projectiles this fires from
+    //         the onImpact callback (possibly seconds after onFire). For
+    //         hitscan beams it fires from the same tick as onFire.
+    this.onFire = opts.onFire || null;
+    this.onHit = opts.onHit || null;
 
     // ── Shader-based weapon FX pools ──
     // Replaces the legacy cylinder/sphere pools with full ShaderMaterial
@@ -96,7 +107,7 @@ export class TurretSystem {
     this.lasers = createBeamShaderPool(scene, { poolSize: 30 });
     this.heavyProjectiles = createTrailedProjectilePool(scene, {
       poolSize: 16,
-      size: 3.0, // bolt sphere radius — reads as a clear glowing missile head
+      size: 4.5, // bolt sphere radius — reads as a clear glowing missile head
     });
     this.shockwaves = createShockwavePool(scene, { poolSize: 12 });
     this.chargeUps = createChargeUpPool(scene, { poolSize: 6 });
@@ -505,6 +516,11 @@ export class TurretSystem {
 
     const trackedTarget = target;
     const trackedDef = attackDef;
+    const trackedTurret = turret;
+
+    if (this.onFire) {
+      try { this.onFire(turret, attackDef, target); } catch {}
+    }
 
     this.heavyProjectiles.fire(_muzzleWorld, _barrelDirWorld, {
       speed: attackDef.speed,
@@ -518,7 +534,7 @@ export class TurretSystem {
       flakDetonationRange: attackDef.flakDetonationRange || 0,
       flakArmingDistance: attackDef.flakArmingDistance || 0,
       getFlakEnemies: this.getEnemies,
-      onImpact: (impactPos) => this._onProjectileImpact(impactPos, trackedTarget, trackedDef),
+      onImpact: (impactPos) => this._onProjectileImpact(impactPos, trackedTarget, trackedDef, trackedTurret),
       // Visual cfg — guided missiles get the puffy contrail by default so
       // the player can track the homing curve through the sky
       color: attackDef.projectileColor ?? 0xffaa44,
@@ -733,13 +749,12 @@ export class TurretSystem {
     // "shield-breaker" / "railgun" styles are tighter and brighter than
     // "standard". Falls back to standard for any def that didn't opt in.
     const beamStyle = attackDef.shaderStyle || "standard";
-    // Width scales with the def's projectileSize. The 3.0x multiplier I
-    // tried first produced 1.95m wide arc-emitter beams which, combined
-    // with the lightning style's perpendicular vertex jitter (×6 width),
-    // filled the camera view with purple additive fog whenever the camera
-    // was close to the beam line. 1.2x is the sweet spot — visible beams
-    // without sucking up the whole frustum near the muzzle.
-    const beamWidth = (attackDef.projectileSize ?? 0.3) * 1.2;
+    // Width: 2.5x multiplier. Tried 3.0 first (too wide → purple fog
+    // when camera is close to arc-emitter); 1.2 worked but was too
+    // subtle to read during real gameplay. 2.5 gives readable beams
+    // while the lightning jitter (capped at 1.5m fixed displacement
+    // inside the shader) prevents the fog problem.
+    const beamWidth = (attackDef.projectileSize ?? 0.3) * 2.5;
     this.lasers.fire(_muzzleWorld, _laserEnd, {
       color: attackDef.projectileColor ?? 0x66ffff,
       width: beamWidth,
@@ -759,11 +774,25 @@ export class TurretSystem {
       this.audioManager.playSFX(attackDef.fireSfx, _muzzleWorld);
     }
 
+    // Sandbox fire hook — record this shot for the arena HUD before the
+    // damage routes so a turret that misses its canFire gate doesn't get
+    // counted.
+    if (this.onFire) {
+      try { this.onFire(turret, attackDef, target); } catch {}
+    }
+
     // Damage routed through the resolver — handles damageVsShields and
     // damageVsHull modifiers, calls target.takeDamage when present so the
     // existing shield ripple visuals at impactPos still anchor correctly.
     const impactPos = { x: target.position.x, y: target.position.y, z: target.position.z };
+    const hullBefore = target.stats?.hull ?? 0;
+    const shieldsBefore = target.stats?.shields ?? 0;
     applyDamage(target, attackDef, impactPos);
+    // Sandbox hit hook — total damage dealt = shield loss + hull loss.
+    if (this.onHit) {
+      const dealt = (hullBefore - (target.stats?.hull ?? 0)) + (shieldsBefore - (target.stats?.shields ?? 0));
+      try { this.onHit(turret, attackDef, target, dealt); } catch {}
+    }
 
     // Railgun-class hits get an expanding fresnel shockwave centred on the
     // impact point. Anything with a shockwaveRadius gets one — currently
@@ -852,6 +881,14 @@ export class TurretSystem {
 
     const trackedTarget = target;
     const trackedDef = attackDef;
+    const trackedTurret = turret;
+
+    // Sandbox fire hook — record the launch. Impact/damage hook fires
+    // from _onProjectileImpact when the bolt actually lands (may be
+    // several seconds later).
+    if (this.onFire) {
+      try { this.onFire(turret, attackDef, target); } catch {}
+    }
 
     this.heavyProjectiles.fire(_muzzleWorld, _barrelDirWorld, {
       speed: attackDef.speed,
@@ -868,7 +905,7 @@ export class TurretSystem {
       // toward their assigned target. The pool reads target.velocity for the
       // derivative term.
       homing: attackDef.homing || null,
-      onImpact: (impactPos) => this._onProjectileImpact(impactPos, trackedTarget, trackedDef),
+      onImpact: (impactPos) => this._onProjectileImpact(impactPos, trackedTarget, trackedDef, trackedTurret),
       // Visual cfg consumed by the trailed-projectile shader pool
       color: attackDef.projectileColor ?? 0xffaa44,
       trailColor: attackDef.trailColor ?? attackDef.projectileColor ?? 0xffaa44,
@@ -898,11 +935,22 @@ export class TurretSystem {
    * flak / guided missile). Routes direct damage through the resolver, runs
    * the AOE pass with falloff, and triggers the visual + screen shake from
    * the attack def.
+   *
+   * @param {{x,y,z}} impactPos
+   * @param {object} trackedTarget
+   * @param {object} attackDef
+   * @param {object} [trackedTurret] — source turret for the onHit hook
    */
-  _onProjectileImpact(impactPos, trackedTarget, attackDef) {
+  _onProjectileImpact(impactPos, trackedTarget, attackDef, trackedTurret) {
     // Direct hit damage on the tracked target if still alive
     if (trackedTarget && trackedTarget.stats && trackedTarget.stats.hull > 0) {
+      const hullBefore = trackedTarget.stats.hull ?? 0;
+      const shieldsBefore = trackedTarget.stats.shields ?? 0;
       applyDamage(trackedTarget, attackDef, impactPos);
+      if (this.onHit && trackedTurret) {
+        const dealt = (hullBefore - (trackedTarget.stats.hull ?? 0)) + (shieldsBefore - (trackedTarget.stats.shields ?? 0));
+        try { this.onHit(trackedTurret, attackDef, trackedTarget, dealt); } catch {}
+      }
     }
     // AOE pass — every other live enemy inside the blast radius
     if (attackDef.aoeDamage > 0 && attackDef.aoeRadius > 0 && this.getEnemies) {

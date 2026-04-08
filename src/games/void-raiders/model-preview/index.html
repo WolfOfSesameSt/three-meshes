@@ -167,6 +167,7 @@
     }
     #hp-toolbar .small-btn { padding: 4px 8px; font-size: 10px; }
     #hp-place-mode.active { background: #1a3a1a; border-color: #40a040; color: #7bf77b; }
+    .hp-place-type.active { background: #2a3a50; border-color: #5080a0; color: #9bccff; }
     #hp-rig-mode.active { background: #1a3a2a; border-color: #40a060; color: #7bf77b; }
     #hp-auto-mode.active { background: #1a3a3a; border-color: #40a0a0; color: #7bf7f7; }
     #hp-bay-mode.active { background: #2a3a1a; border-color: #60a040; color: #aaff7b; }
@@ -193,6 +194,76 @@
     .hp-item .hp-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
     .hp-item .hp-name { flex: 1; font-size: 12px; color: #e0e0ff; font-weight: bold; }
     .hp-item .hp-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; }
+    .hp-item .hp-row-delete {
+      background: transparent; border: 1px solid #3a1a1a; color: #f77b7b;
+      width: 18px; height: 18px; line-height: 14px; padding: 0; font-size: 12px;
+      border-radius: 3px; cursor: pointer;
+    }
+    .hp-item .hp-row-delete:hover { background: #3a1a1a; border-color: #a04040; }
+    /* Test arena panel */
+    #arena-panel {
+      margin-top: 10px;
+      padding: 8px;
+      background: #11131c;
+      border: 1px solid #1f2233;
+      border-radius: 4px;
+    }
+    .arena-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: #ffaa55;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+    .arena-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    #arena-hud {
+      margin-top: 6px;
+      padding: 6px;
+      background: #0a0c14;
+      border: 1px solid #1a1d2a;
+      border-radius: 3px;
+      font-size: 10px;
+      color: #b8c4dd;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    #arena-hud .arena-hud-section {
+      color: #88ccff;
+      font-weight: bold;
+      margin: 4px 0 2px 0;
+    }
+    #arena-hud .arena-hud-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 1px 0;
+      color: #b8c4dd;
+    }
+    #arena-hud .arena-hud-row.dead {
+      color: #5a5f70;
+      text-decoration: line-through;
+    }
+    #arena-hud .arena-hull-bar {
+      display: inline-block;
+      width: 30px;
+      height: 5px;
+      background: #2a2020;
+      margin: 0 3px;
+      vertical-align: middle;
+    }
+    #arena-hud .arena-hull-bar span {
+      display: block;
+      height: 100%;
+      background: #66ff88;
+    }
+    #arena-hud .arena-shield-bar span { background: #44aaff; }
     .hp-type-turret { background: #2a2a50; color: #7b7bf7; }
     .hp-type-ball_turret { background: #2a2a60; color: #9b9bff; }
     .hp-type-missile_launcher { background: #502a2a; color: #f77b7b; }
@@ -306,7 +377,10 @@
         <button id="hp-detect" class="small-btn" title="Auto-detect and rig all ball turrets on this ship in one click">Detect</button>
         <button id="hp-auto-mode" class="small-btn" title="Click any turret to rig it (one click = one turret)">Auto</button>
         <button id="hp-rig-mode" class="small-btn" title="Click barrel mesh, then base mesh (single turret)">Rig</button>
-        <button id="hp-place-mode" class="small-btn" title="Click ship to place a procedural hardpoint">Place</button>
+        <button id="hp-place-mode" class="small-btn hp-place-type" data-place-type="turret" title="Click ship to place a generic turret hardpoint">Place</button>
+        <button id="hp-place-ball" class="small-btn hp-place-type" data-place-type="ball_turret" title="Click ship to place a ball turret">+Ball</button>
+        <button id="hp-place-heavy" class="small-btn hp-place-type" data-place-type="heavy_cannon" title="Click ship to place a heavy cannon">+Heavy</button>
+        <button id="hp-place-missile" class="small-btn hp-place-type" data-place-type="missile_launcher" title="Click ship to place a missile launcher">+Missile</button>
         <button id="hp-bay-mode" class="small-btn" title="Click ship to place a drone bay (drones spawn from here)">Bay</button>
         <button id="hp-show-arcs" class="small-btn active" title="Show/hide firing arcs">Arcs</button>
         <button id="hp-simulate" class="small-btn" title="Simulate turrets tracking a target">Sim</button>
@@ -321,9 +395,21 @@
           <select id="hp-type">
             <option value="turret">Turret</option>
             <option value="ball_turret">Ball Turret</option>
+            <option value="heavy_cannon">Heavy Cannon</option>
             <option value="missile_launcher">Missile Launcher</option>
             <option value="drone_bay">Drone Bay</option>
             <option value="point_defense">Point Defense</option>
+          </select>
+        </label>
+        <label>Attack
+          <select id="hp-attack-id">
+            <option value="">(auto — from type)</option>
+            <option value="point-defense-pulse">Point-Defense Pulse</option>
+            <option value="arc-emitter">Arc Emitter</option>
+            <option value="shield-breaker">Shield Breaker</option>
+            <option value="flak-burst">Flak Burst</option>
+            <option value="guided-missile">Guided Missile</option>
+            <option value="heavy-railgun">Heavy Railgun</option>
           </select>
         </label>
         <div class="editor-section">
@@ -344,6 +430,28 @@
             <span id="hp-pitch-max-val">60</span>
           </div>
         </div>
+        <div class="editor-section">
+          <div class="editor-section-title">Size + Position Overrides</div>
+          <label>Scale <span id="hp-scale-val">1.00</span>
+            <input type="range" id="hp-scale" min="0.2" max="4" step="0.05" value="1" />
+          </label>
+          <label>Offset X <span id="hp-offsetX-val">0.00</span>
+            <input type="range" id="hp-offsetX" min="-1" max="1" step="0.01" value="0" />
+          </label>
+          <label>Offset Y (outward) <span id="hp-offsetY-val">0.00</span>
+            <input type="range" id="hp-offsetY" min="-1" max="1" step="0.01" value="0" />
+          </label>
+          <label>Offset Z (forward) <span id="hp-offsetZ-val">0.00</span>
+            <input type="range" id="hp-offsetZ" min="-1" max="1" step="0.01" value="0" />
+          </label>
+          <label>Yaw <span id="hp-yawOffset-val">0°</span>
+            <input type="range" id="hp-yawOffset" min="-180" max="180" step="1" value="0" />
+          </label>
+          <label>Pitch <span id="hp-pitchOffset-val">0°</span>
+            <input type="range" id="hp-pitchOffset" min="-90" max="90" step="1" value="0" />
+          </label>
+          <button id="hp-reset-overrides" class="small-btn" style="align-self:flex-end;margin-top:2px">Reset overrides</button>
+        </div>
         <button id="hp-delete" class="small-btn danger" style="align-self:flex-end;margin-top:4px">Delete Hardpoint</button>
       </div>
       <div id="hp-actions">
@@ -351,6 +459,30 @@
         <button id="hp-load" class="small-btn">Load</button>
         <button id="hp-export" class="small-btn">Copy</button>
         <button id="hp-clear-all" class="small-btn danger" title="Delete all hardpoints and reload the model">Clear</button>
+      </div>
+      <div id="arena-panel">
+        <div class="arena-title">Test Arena</div>
+        <div class="arena-row">
+          <button id="arena-run" class="small-btn">▶ Run</button>
+          <button id="arena-stop" class="small-btn" style="display:none">■ Stop</button>
+          <button id="arena-reset" class="small-btn" title="Clear enemies + zero stats">Reset</button>
+          <label style="font-size:10px;color:#8a92a6;">
+            <input type="radio" name="arena-motion" value="static" checked /> Static
+          </label>
+          <label style="font-size:10px;color:#8a92a6;">
+            <input type="radio" name="arena-motion" value="orbit" /> Orbit
+          </label>
+        </div>
+        <div class="arena-row">
+          <button id="arena-spawn-scout" class="small-btn" title="Scout fighter — hull 40, fast">+Scout</button>
+          <button id="arena-spawn-patrol" class="small-btn" title="Patrol cruiser — hull 120, slow">+Cruiser</button>
+          <button id="arena-spawn-shielded" class="small-btn" title="Shielded cruiser — hull 150 + shields 80">+Shielded</button>
+          <button id="arena-spawn-bomber" class="small-btn" title="Bomber — hull 80, tough">+Bomber</button>
+          <button id="arena-spawn-interceptor" class="small-btn" title="Interceptor — hull 25, very fast">+Interceptor</button>
+          <button id="arena-spawn-cluster" class="small-btn" title="6 scouts in a 15m cluster — tests flak + arc emitter">+Cluster×6</button>
+          <button id="arena-clear-enemies" class="small-btn danger">Clear</button>
+        </div>
+        <div id="arena-hud"></div>
       </div>
     </div>
   </div>

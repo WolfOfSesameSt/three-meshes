@@ -859,6 +859,28 @@ export function applyMothershipConfig(modelGroup, attachGroup, config, opts = {}
     built.barrelPitchOffset = 0;
     attachGroup.add(built.group);
 
+    // Per-hardpoint overrides — scale, local offset, and extra rotation
+    // pulled from the saved hp. Applied AFTER the procedural builder has
+    // positioned the group at hp.position + oriented local +Y to hp.normal,
+    // so the offset is in SLOT LOCAL space (local +Y = outward from hull,
+    // local +Z = barrel forward direction).
+    //
+    // Wrap the whole built.group under an adjuster node that carries the
+    // overrides — this way scale + rotation compose cleanly with the
+    // existing slot transform and both the visible meshes AND the
+    // yawPivot/pitchPivot that TurretSystem aims respect the changes.
+    const adjuster = new THREE.Group();
+    adjuster.scale.setScalar(hp.scale ?? 1);
+    adjuster.position.set(hp.offsetX ?? 0, hp.offsetY ?? 0, hp.offsetZ ?? 0);
+    adjuster.rotation.set(hp.pitchOffset ?? 0, hp.yawOffset ?? 0, 0);
+    // Re-parent the root's children under the adjuster so the adjuster
+    // transform sits between the slot's normal-aligned root and its content.
+    // This is safer than applying the overrides directly to built.group
+    // because applyMothershipConfig already set built.group.position/rotation.
+    const rootChildren = [...built.group.children];
+    for (const c of rootChildren) adjuster.add(c);
+    built.group.add(adjuster);
+
     // Apply the saved texture skin (if any). Missile launcher uses the
     // heavy skin (closest match in vibe — both are "big weapon" tier).
     applyTurretSkin(built, (isHeavy || isMissile) ? skins.heavy : skins.small);
