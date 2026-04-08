@@ -490,6 +490,27 @@
   font-size: 12px;
 }
 
+#repair-bay-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 220px;
+  padding: 8px 12px;
+  background: var(--ui-bg-primary);
+  border: 1px solid var(--ui-border);
+  border-left: 3px solid var(--ui-success, #44dd88);
+  font-size: 12px;
+  min-width: 160px;
+}
+
+#repair-bay-panel .repair-header {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--ui-success, #44dd88);
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(68, 221, 136, 0.3);
+  padding-bottom: 3px;
+}
+
 .resource-row {
   display: flex;
   justify-content: space-between;

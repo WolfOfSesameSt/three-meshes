@@ -1,0 +1,6 @@
+{
+  "prompt": "Flat 2D tile, no 3D rendering, no perspective, no shading, no background. Hexagonal sci-fi armor plating pattern viewed completely flat from straight above. Brushed gunmetal gray and deep blue-violet panels, subtle rivets along the seams, small glowing cyan vent slits scattered across the surface. Looks like a top-down screenshot of a flat metal panel, not a curved object. Even lighting, no highlights, no shadows. Texture should tile seamlessly left-right.",
+  "model": "gemini-2.5-flash-image",
+  "generated": "2026-04-07T23:46:46.146Z",
+  "bytes": 1472901
+}

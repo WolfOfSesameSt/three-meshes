@@ -72,6 +72,85 @@ describe("routine engine", () => {
       const result = evaluateRoutine(drone, routine, { x: 0, y: 50, z: 0 }, ctx);
       expect(result.retreating).toBe(true);
     });
+
+    // ── Damaged retreat — hook for the RepairBay flow ─────────
+
+    it("damaged triggers below 50% hull", () => {
+      const drone = createDrone({ type: "worker-mining" }); // hull 40, no shields
+      drone.stats.hull = 15; // 37.5%
+      drone.state = "active";
+      const routine = {
+        anchor: "follow-mothership",
+        range: 200,
+        priority: "nearest",
+        action: "mine",
+        retreat: "damaged",
+      };
+      const result = evaluateRoutine(drone, routine, { x: 0, y: 50, z: 0 }, makeCtx());
+      expect(result.retreating).toBe(true);
+      expect(result.reason).toBe("damaged");
+    });
+
+    it("damaged triggers below 25% shields for shield-equipped drones", () => {
+      const drone = createDrone({ type: "offensive" }); // hull 60, shields 20
+      // Plenty of hull (above 50%) but shields below 25%
+      drone.stats.hull = drone.stats.hullMax; // 100% hull
+      drone.stats.shields = 4; // 20% of 20
+      drone.state = "active";
+      const routine = {
+        anchor: "follow-mothership",
+        range: 200,
+        priority: "nearest",
+        action: "attack",
+        retreat: "damaged",
+      };
+      const result = evaluateRoutine(drone, routine, { x: 0, y: 50, z: 0 }, makeCtx());
+      expect(result.retreating).toBe(true);
+      expect(result.reason).toBe("damaged");
+    });
+
+    it("damaged does NOT trigger at 60% hull / 50% shields", () => {
+      const drone = createDrone({ type: "offensive" }); // hull 60, shields 20
+      drone.stats.hull = drone.stats.hullMax * 0.6;
+      drone.stats.shields = drone.stats.shieldsMax * 0.5;
+      drone.state = "active";
+      const routine = {
+        anchor: "follow-mothership",
+        range: 200,
+        priority: "nearest",
+        action: "attack",
+        retreat: "damaged",
+      };
+      const result = evaluateRoutine(drone, routine, { x: 0, y: 50, z: 0 }, makeCtx());
+      expect(result.retreating).toBe(false);
+    });
+
+    it("evaluateRoutine result includes .reason for every retreat type", () => {
+      // cargo-full case — the existing retreat path should also surface
+      // a reason so the fleet-manager dock handler can switch on it.
+      const miner = createDrone({ type: "worker-mining" });
+      miner.state = "active";
+      miner.cargo = miner.stats.cargoCapacity;
+      const cargoRoutine = {
+        anchor: "follow-mothership",
+        range: 200,
+        priority: "nearest",
+        action: "mine",
+        retreat: "cargo-full",
+      };
+      const cargoResult = evaluateRoutine(miner, cargoRoutine, { x: 0, y: 0, z: 0 }, makeCtx());
+      expect(cargoResult.retreating).toBe(true);
+      expect(cargoResult.reason).toBe("cargo-full");
+
+      // damaged case — identical shape
+      const fighter = createDrone({ type: "offensive" });
+      fighter.state = "active";
+      fighter.stats.hull = fighter.stats.hullMax * 0.3;
+      const dmgRoutine = { ...cargoRoutine, action: "attack", retreat: "damaged" };
+      const dmgResult = evaluateRoutine(fighter, dmgRoutine, { x: 0, y: 0, z: 0 }, makeCtx());
+      expect(dmgResult.retreating).toBe(true);
+      expect(dmgResult.reason).toBe("damaged");
+    });
   });
 
   // ── TARGET SELECTION ───────────────────────────────────────

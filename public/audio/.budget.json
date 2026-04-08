@@ -1,5 +1,5 @@
 {
-  "totalCreditsUsed": 3280,
+  "totalCreditsUsed": 4720,
   "limit": 50000,
   "generations": [
     {
@@ -193,6 +193,102 @@
       "filename": "ui-build-drone.mp3",
       "credits": 80,
       "totalAfter": 3280
+    },
+    {
+      "date": "2026-04-07T17:55:58.826Z",
+      "type": "sfx",
+      "prompt": "satisfying sci-fi resource deposit ding, brief bright bell tone, short and clean",
+      "filename": "cargo-deposit.mp3",
+      "credits": 40,
+      "totalAfter": 3320
+    },
+    {
+      "date": "2026-04-07T23:06:23.412Z",
+      "type": "music",
+      "prompt": "synthwave, cinematic, Space opera, synthwave orchestrated., instrumental, sci-fi game soundtrack, cinematic production, looping composition",
+      "filename": "space-opera.mp3",
+      "credits": 500,
+      "totalAfter": 3820
+    },
+    {
+      "date": "2026-04-07T23:34:27.621Z",
+      "type": "music",
+      "prompt": "cinematic, synthwave, orchestral, Escaping with enemies close to destroying you., instrumental, sci-fi game soundtrack, cinematic production, looping composition",
+      "filename": "hot-escape.mp3",
+      "credits": 500,
+      "totalAfter": 4320
+    },
+    {
+      "date": "2026-04-08T01:17:03.221Z",
+      "type": "sfx",
+      "prompt": "fast sci-fi point defense pulse cannon firing single shot, sharp transient pew, bright energy weapon, tight metallic resonance, no reverb tail, dry and snappy",
+      "filename": "weapon-pd-pulse.mp3",
+      "credits": 40,
+      "totalAfter": 4360
+    },
+    {
+      "date": "2026-04-08T01:17:09.377Z",
+      "type": "sfx",
+      "prompt": "continuous tesla coil arc lightning sustained electric crackle, high pitched zapping discharge, ionized buzz, sci-fi chain beam weapon firing, branching electric arcs sparking",
+      "filename": "weapon-arc-emitter.mp3",
+      "credits": 80,
+      "totalAfter": 4440
+    },
+    {
+      "date": "2026-04-08T01:17:13.968Z",
+      "type": "sfx",
+      "prompt": "sharp anti-shield zap, bright magenta energy crack, ionized buzz, splitting force field, single short cracking pulse, sci-fi shield breaker beam, no tail",
+      "filename": "weapon-shield-breaker.mp3",
+      "credits": 40,
+      "totalAfter": 4480
+    },
+    {
+      "date": "2026-04-08T01:17:18.825Z",
+      "type": "sfx",
+      "prompt": "heavy naval flak cannon firing, deep bass thump with metallic recoil clank, big artillery boom, weighty mechanical kick, single shot launching shell, no echo",
+      "filename": "weapon-flak-launch.mp3",
+      "credits": 40,
+      "totalAfter": 4520
+    },
+    {
+      "date": "2026-04-08T01:17:23.454Z",
+      "type": "sfx",
+      "prompt": "flak airburst explosion, sharp explosive crack with shrapnel hiss tail, high energy fragmentation pop, metallic shell bursting in mid-air, sizzling debris",
+      "filename": "weapon-flak-detonate.mp3",
+      "credits": 40,
+      "totalAfter": 4560
+    },
+    {
+      "date": "2026-04-08T01:17:28.085Z",
+      "type": "sfx",
+      "prompt": "guided missile launching from tube, mechanical clack then rocket motor ignition whoosh, hissing rocket exhaust with punchy launch transient, jet propellant kick",
+      "filename": "weapon-missile-launch.mp3",
+      "credits": 40,
+      "totalAfter": 4600
+    },
+    {
+      "date": "2026-04-08T01:17:33.772Z",
+      "type": "sfx",
+      "prompt": "rising electrical capacitor whine charging up, high pitched energy build-up, sci-fi railgun charging crescendo, electric hum gaining intensity, ending with peak right at the end",
+      "filename": "weapon-railgun-charge.mp3",
+      "credits": 40,
+      "totalAfter": 4640
+    },
+    {
+      "date": "2026-04-08T01:17:40.901Z",
+      "type": "sfx",
+      "prompt": "massive railgun discharge devastating instant CRACK, sub-bass thoom, electrical crackle, kinetic penetrator fired, loudest weapon on the ship, huge percussive impact",
+      "filename": "weapon-railgun-fire.mp3",
+      "credits": 40,
+      "totalAfter": 4680
+    },
+    {
+      "date": "2026-04-08T01:17:45.957Z",
+      "type": "sfx",
+      "prompt": "huge electrical discharge slam, energy weapon impact shockwave, screen-filling kinetic strike, deep boom with electric crackle aftershock, distinct from chemical explosion, sci-fi",
+      "filename": "weapon-railgun-impact.mp3",
+      "credits": 40,
+      "totalAfter": 4720
     }
   ]
 }

@@ -46,6 +46,44 @@ const RESEARCH_ITEMS = [
     ruleType: "retreat",
     ruleKey: "never",
   },
+  // ── Repair Bay tier ────────────────────────────────────────
+  // "repair-bay-unlock" also unlocks the "damaged" retreat condition so
+  // players can actually assign a swarm to return for repair. The other
+  // three repair-bay entries are read at mission start by
+  // mothership.repairBay.applyResearchModifiers(gameState.research).
+  {
+    id: "repair-bay-unlock",
+    name: "Repair Bay — Online",
+    description: "Mothership can repair damaged drones. Unlocks the 'Damaged' retreat condition.",
+    costs: { "bio-gel": 2, "nano-repair-paste": 1, "salvage-parts": 300 },
+    ruleType: "retreat",
+    ruleKey: "damaged",
+  },
+  {
+    id: "repair-bay-speed",
+    name: "Nano-Assembler Tuning",
+    description: "+50% repair rate for hull and shields",
+    costs: { "circuit-board": 2, "crystal-shard": 150 },
+    // No rule unlock — read at mission start by repair-bay.applyResearchModifiers()
+  },
+  {
+    id: "repair-bay-efficiency",
+    name: "Capacitor Routing",
+    description: "−30% mothership energy cost for drone shield restoration",
+    costs: { "energy-cell": 2, "plasma-core": 50 },
+  },
+  {
+    id: "repair-bay-replicator",
+    name: "Replicator Optimization",
+    description: "−30% raw material cost for drone hull repair",
+    costs: { "quantum-processor": 1, "titanium-ore": 200 },
+  },
+  {
+    id: "repair-bay-capacity",
+    name: "Twin-Slot Refit",
+    description: "+1 concurrent repair slot (2 drones at once)",
+    costs: { "alloy-composite": 3, "rare-earth": 80 },
+  },
 ];
 
 const RULE_MAPS = {
@@ -53,6 +91,25 @@ const RULE_MAPS = {
   action: ACTION_TYPES,
   retreat: RETREAT_TYPES,
 };
+
+/**
+ * Propagate `gameState.research` flags into the rule maps so default-unlocked
+ * research takes effect at startup. The research dialog normally mutates
+ * rule maps on click — this covers the case where a flag was set in the
+ * initial gameState (e.g. test defaults, save-file reloads, cheats).
+ *
+ * Safe to call any time; it only flips booleans forward, never off.
+ */
+export function syncResearchToRules() {
+  for (const item of RESEARCH_ITEMS) {
+    if (!gameState.research[item.id]) continue;
+    if (!item.ruleType || !item.ruleKey) continue;
+    const ruleMap = RULE_MAPS[item.ruleType];
+    if (ruleMap && ruleMap[item.ruleKey]) {
+      ruleMap[item.ruleKey].unlocked = true;
+    }
+  }
+}
 
 function formatCosts(costs) {
   return Object.entries(costs)

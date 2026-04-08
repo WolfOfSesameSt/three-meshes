@@ -10,3 +10,5 @@ public/models/
 public/audio/sfx/
 public/audio/music/
 .claude/worktrees/
+src/games/void-raiders/.qa-game/
+src/games/void-raiders/model-preview/.qa/

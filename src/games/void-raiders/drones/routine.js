@@ -228,6 +228,24 @@ export const RETREAT_TYPES = {
     check: (drone) => drone.stats.hull / drone.stats.hullMax < 0.15,
     unlocked: false,
   },
+  damaged: {
+    id: "damaged",
+    label: "Damaged — Return for Repair",
+    // Triggers below 50% hull, or below 25% shields for shield-equipped drones.
+    // Distinct from health-low because fleet-manager uses this reason to
+    // route the drone into the mothership's RepairBay rather than just
+    // offloading cargo and redeploying.
+    check: (drone) => {
+      const hullFrac = drone.stats.hull / drone.stats.hullMax;
+      if (hullFrac < 0.5) return true;
+      if (drone.stats.shieldsMax > 0) {
+        const shieldFrac = drone.stats.shields / drone.stats.shieldsMax;
+        if (shieldFrac < 0.25) return true;
+      }
+      return false;
+    },
+    unlocked: false, // gated by "repair-bay-unlock" research
+  },
   never: {
     id: "never",
     label: "Never Retreat",
@@ -259,7 +277,7 @@ export function evaluateRoutine(drone, routine, anchorPos, ctx) {
   // 1. Check RETREAT
   const retreatDef = RETREAT_TYPES[routine.retreat] ?? RETREAT_TYPES["health-low"];
   if (retreatDef.check(drone, ctx)) {
-    return { type: "retreat", target: null, retreating: true };
+    return { type: "retreat", target: null, retreating: true, reason: retreatDef.id };
   }
 
   // 2. ANCHOR already resolved (passed as anchorPos)

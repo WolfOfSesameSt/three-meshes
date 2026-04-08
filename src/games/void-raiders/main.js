@@ -23,11 +23,13 @@ import { FleetManager } from "./drones/fleet-manager.js";
 import { FleetRenderer } from "./drones/fleet-renderer.js";
 import { createDrone } from "./drones/drone.js";
 import { createSwarm, addDroneToSwarm } from "./drones/swarm.js";
+import { RETREAT_TYPES } from "./drones/routine.js";
 import { DepositManager } from "./realm/deposits.js";
 import { EnemySpawner } from "./combat/spawner.js";
 import { EnemyRenderer } from "./combat/enemy-renderer.js";
 import { updateEnemyAI } from "./combat/enemy-ai.js";
 import { WeaponSystem } from "./ship/weapon.js";
+import { TurretSystem } from "./ship/turret-system.js";
 import { CombatEffects } from "./combat/effects.js";
 import { ScreenShake, damageToTrauma, weaponFireTrauma } from "./combat/screen-shake.js";
 import { createShieldBubble } from "./combat/shield-effect.js";
@@ -42,8 +44,15 @@ import { DamageVisuals } from "./combat/damage-visuals.js";
 import { HUD } from "./ui/mission/hud.js";
 import { Station } from "./ui/station/station.js";
 import { gameState, deliverResources, recordShipDeath, clearWreckData } from "./economy/game-state.js";
+import { syncResearchToRules } from "./ui/station/station-research.js";
 import { applyStoredUpgrades } from "./drones/upgrades.js";
 import { AudioManager } from "./audio/audio-manager.js";
+import { getMusicConfig } from "./audio/music-config.js";
+
+// Propagate any default-unlocked research (see gameState.research) into
+// the routine-engine rule maps so the "Damaged" retreat condition etc.
+// appear in the routine panel from the first mission.
+syncResearchToRules();
 import {
   BG_COLOR,
   FOG_NEAR,
@@ -112,14 +121,19 @@ const audio = new AudioManager();
 setStationAudio(audio);
 
 // UI sounds preloaded immediately (station needs them before mission starts)
-// Music tracks
-const MUSIC = {
-  station: "/audio/music/station-theme.mp3",
-  mission: "/audio/music/mission-ambient.mp3",
-  combat: "/audio/music/combat-escalation.mp3",
-  extraction: "/audio/music/extraction-urgency.mp3",
-};
+// Music tracks — loaded from music-config.js (lab can override via localStorage).
+// Re-read at each situation change so lab edits take effect without a reload.
+let MUSIC_CONFIG = getMusicConfig();
+function refreshMusicConfig() { MUSIC_CONFIG = getMusicConfig(); }
 let currentMusicTrack = null;
+
+// React to lab saves in the same tab (custom event) or other tabs (storage event)
+if (typeof window !== "undefined") {
+  window.addEventListener("vr-music-config-changed", refreshMusicConfig);
+  window.addEventListener("storage", (e) => {
+    if (e.key === "vr-music-config-v1") refreshMusicConfig();
+  });
+}
 
 const UI_SFX = {
   "ui-click": "/audio/sfx/ui-click.mp3",
@@ -137,6 +151,16 @@ const SFX_MANIFEST = {
   "weapon-plasma-bolt": "/audio/sfx/weapon-plasma-bolt.mp3",
   "weapon-heavy-cannon": "/audio/sfx/weapon-heavy-cannon.mp3",
   "weapon-turret-beam": "/audio/sfx/weapon-turret-beam.mp3",
+  // Mothership turret catalog (v2) — one per weapon role
+  "weapon-pd-pulse": "/audio/sfx/weapon-pd-pulse.mp3",
+  "weapon-arc-emitter": "/audio/sfx/weapon-arc-emitter.mp3",
+  "weapon-shield-breaker": "/audio/sfx/weapon-shield-breaker.mp3",
+  "weapon-flak-launch": "/audio/sfx/weapon-flak-launch.mp3",
+  "weapon-flak-detonate": "/audio/sfx/weapon-flak-detonate.mp3",
+  "weapon-missile-launch": "/audio/sfx/weapon-missile-launch.mp3",
+  "weapon-railgun-charge": "/audio/sfx/weapon-railgun-charge.mp3",
+  "weapon-railgun-fire": "/audio/sfx/weapon-railgun-fire.mp3",
+  "weapon-railgun-impact": "/audio/sfx/weapon-railgun-impact.mp3",
   "shield-hit": "/audio/sfx/shield-hit.mp3",
   "hull-hit": "/audio/sfx/hull-hit.mp3",
   "explosion-small": "/audio/sfx/explosion-small.mp3",
@@ -145,6 +169,7 @@ const SFX_MANIFEST = {
   "stargate-summon": "/audio/sfx/stargate-summon.mp3",
   "stargate-warp": "/audio/sfx/stargate-warp.mp3",
   "drone-deploy": "/audio/sfx/drone-deploy.mp3",
+  "cargo-deposit": "/audio/sfx/cargo-deposit.mp3",
   "ui-click": "/audio/sfx/ui-click.mp3",
   "ui-alert": "/audio/sfx/ui-alert.mp3",
   "ui-upgrade": "/audio/sfx/ui-upgrade.mp3",
@@ -163,7 +188,7 @@ let prevExtractionState = "idle";
 
 // ─── Mission-scoped state ──────────────────────────────────────
 let mothership, followCam, terrain, atmosphere, sky, depositManager;
-let enemySpawner, enemyRenderer, weaponSystem, combatEffects, screenShake, attackSystem;
+let enemySpawner, enemyRenderer, weaponSystem, turretSystem, combatEffects, screenShake, attackSystem;
 let shieldBubble, fleetManager, fleetRenderer, extraction, hud, routinePanel;
 let powerAllocator, droneShieldRenderer, damageVisuals;
 let droneLightRenderer, structureManager, realmLandmarks;
@@ -204,6 +229,389 @@ const station = new Station({
 
 station.show();
 
+// ─── QA debug surface ─────────────────────────────────────────
+// Lets a puppeteer harness inspect game state without poking at internals.
+window.__qa = {
+  startMission: () => {
+    // Mirror what station._launch() does — hide the station overlay so it
+    // doesn't cover the in-mission scene in QA screenshots
+    if (station && typeof station.hide === "function") station.hide();
+    return startMission();
+  },
+  // Diagnostic: report whether the mothership turret system is actually
+  // firing weapons. Returns counts per attack ID + scene-level totals so
+  // we can distinguish "weapons aren't firing" from "weapons fire but
+  // visuals don't render". Run from devtools: __qa.weaponStats()
+  weaponStats: () => {
+    if (!turretSystem) return { error: "turretSystem not initialized" };
+    const ts = turretSystem;
+    const stats = {
+      hasLasersPool: !!ts.lasers,
+      hasProjectilesPool: !!ts.heavyProjectiles,
+      hasShockwavePool: !!ts.shockwaves,
+      hasChargeUpPool: !!ts.chargeUps,
+      hasMuzzleFlashPool: !!ts.muzzleFlashes,
+      turretCount: mothership?.turrets?.length ?? 0,
+      enemyCount: enemySpawner?.getAlive?.()?.length ?? 0,
+    };
+    // Walk the turrets and report each one's attackId + canFire + cooldown
+    if (mothership?.turrets) {
+      stats.turrets = mothership.turrets.map(t => ({
+        name: t.name,
+        attackId: t.attackId,
+        weaponType: t.weaponType,
+        active: t.active,
+        canFire: t.canFire,
+        fireCooldown: +(t.fireCooldown ?? 0).toFixed(2),
+        currentTarget: t._currentTarget?.type || null,
+      }));
+    }
+    // Pool stats — totalFires is the cumulative count since the
+    // mission started. If this stays at 0 the turret system isn't
+    // calling .fire() at all (gameplay/AI bug). If it's > 0 but
+    // nothing is visible, the issue is in the shader render path.
+    if (ts.lasers?.getStats) stats.beamPool = ts.lasers.getStats();
+    if (ts.heavyProjectiles?.getStats) stats.projectilePool = ts.heavyProjectiles.getStats();
+    return stats;
+  },
+  // Flood the resource pool to test-mode floors. Useful from devtools when
+  // you've burned through your stockpile and want to keep crafting/buying
+  // without leaving the game. Returns the new resource snapshot.
+  flood: () => {
+    const floors = {
+      "iron-ore": 50000, "copper-ore": 50000, "titanium-ore": 25000,
+      "crystal-shard": 25000, "quartz-crystal": 25000, "plasma-core": 25000,
+      "exotic-matter": 10000, "organic-matter": 25000, "bio-compound": 25000,
+      "silicon-dust": 25000, "rare-earth": 25000, "salvage-parts": 50000,
+    };
+    for (const [type, floor] of Object.entries(floors)) {
+      if ((gameState.resources[type] ?? 0) < floor) gameState.resources[type] = floor;
+    }
+    return { ...gameState.resources };
+  },
+  mothership: () => mothership ? {
+    exists: true,
+    turretCount: mothership.turrets?.length ?? 0,
+    bayCount: mothership.bays?.length ?? 0,
+    shieldRadius: mothership.shieldRadius,
+    position: mothership.position ? { x: mothership.position.x, y: mothership.position.y, z: mothership.position.z } : null,
+    turrets: (mothership.turrets || []).map(t => {
+      // Compute the world position of the turret group + the muzzle so we can
+      // detect "lasers fire from far away" — they should be ON the ship,
+      // not 100 units off in space.
+      let groupWorld = null;
+      let groupSize = null;
+      let muzzleWorld = null;
+      if (t.group) {
+        t.group.updateMatrixWorld(true);
+        const wp = new THREE.Vector3();
+        t.group.getWorldPosition(wp);
+        groupWorld = { x: wp.x, y: wp.y, z: wp.z };
+        // World-space bbox of the entire turret group — catches cases where
+        // the rendered mesh is way bigger than its pivot point would suggest
+        // (e.g., wrapper scale double-applied to the baked vertices).
+        const box = new THREE.Box3().setFromObject(t.group);
+        const sz = box.getSize(new THREE.Vector3());
+        groupSize = { x: sz.x, y: sz.y, z: sz.z };
+      }
+      if (t.pitchPivot && t.muzzleLocal) {
+        t.pitchPivot.updateMatrixWorld(true);
+        const mp = t.muzzleLocal.clone();
+        t.pitchPivot.localToWorld(mp);
+        muzzleWorld = { x: mp.x, y: mp.y, z: mp.z };
+      }
+      return {
+        name: t.name,
+        type: t.type,
+        weaponType: t.weaponType,
+        attackId: t.attackId || null,
+        active: t.active !== false,
+        usedSourceMesh: !!t.usedSourceMesh,
+        groupVisible: t.group?.visible ?? null,
+        barrelYawOffsetDeg: t.barrelYawOffset != null ? +(t.barrelYawOffset * 180 / Math.PI).toFixed(1) : null,
+        barrelPitchOffsetDeg: t.barrelPitchOffset != null ? +(t.barrelPitchOffset * 180 / Math.PI).toFixed(1) : null,
+        muzzleLocalRaw: t.muzzleLocal ? { x: +t.muzzleLocal.x.toFixed(4), y: +t.muzzleLocal.y.toFixed(4), z: +t.muzzleLocal.z.toFixed(4) } : null,
+        hasYawPivot: !!t.yawPivot,
+        hasPitchPivot: !!t.pitchPivot,
+        hasGroup: !!t.group,
+        yawRotY: t.yawPivot?.rotation?.y ?? null,
+        pitchRotX: t.pitchPivot?.rotation?.x ?? null,
+        currentYaw: t.currentYaw,
+        currentPitch: t.currentPitch,
+        canFire: t.canFire,
+        fireCooldown: t.fireCooldown,
+        position: { x: t.position.x, y: t.position.y, z: t.position.z },
+        normal: { x: t.normal.x, y: t.normal.y, z: t.normal.z },
+        groupWorld,
+        groupSize,
+        muzzleWorld,
+        // Audit: skin map presence on the head + barrel materials.
+        // After loadActiveTurretSkins() runs, both should have a non-null
+        // texture map pointing at the saved (or default) skin file.
+        headHasMap: !!(t.group && (() => {
+          let found = false;
+          t.group.traverse(c => { if (c.isMesh && c.name === "turret_head" && c.material?.map) found = true; });
+          return found;
+        })()),
+        barrelHasMap: !!(t.group && (() => {
+          let found = false;
+          t.group.traverse(c => { if (c.isMesh && c.name === "turret_barrel" && c.material?.map) found = true; });
+          return found;
+        })()),
+        sourceVisibility: (t.sourceMeshes || []).map(m => ({ name: m.name, visible: m.visible })),
+      };
+    }),
+  } : { exists: false },
+  enemies: () => {
+    if (!enemySpawner) return [];
+    const alive = enemySpawner.getAlive();
+    return alive.map(e => ({
+      type: e.type,
+      hull: e.stats?.hull,
+      position: { x: e.position.x, y: e.position.y, z: e.position.z },
+    }));
+  },
+  // Toggle individual turret slots on/off (for testing the upgrade system).
+  setTurretActive: (index, active) => mothership?.setTurretActive(index, active),
+  // Position the camera at a specific world point looking at another point.
+  // Used by the QA harness to grab calibration screenshots from fixed angles.
+  setCameraAt: (posXYZ, lookXYZ) => {
+    if (!followCam || !mothership) return false;
+    // Force into free mode so the follow logic doesn't snap us back
+    if (!followCam.freeMode) followCam.toggleFreeMode();
+    // Position relative to the mothership so the camera stays useful as the
+    // ship moves around the test scene.
+    const m = mothership.position;
+    camera.position.set(m.x + posXYZ[0], m.y + posXYZ[1], m.z + posXYZ[2]);
+    const look = new THREE.Vector3(m.x + lookXYZ[0], m.y + lookXYZ[1], m.z + lookXYZ[2]);
+    camera.lookAt(look);
+    // Update freeYaw/freePitch so the next mouse move doesn't snap back
+    const dir = new THREE.Vector3().subVectors(look, camera.position).normalize();
+    followCam.freeYaw = Math.atan2(dir.x, dir.z);
+    followCam.freePitch = Math.asin(THREE.MathUtils.clamp(dir.y, -1, 1));
+    return true;
+  },
+  // Force-spawn a test enemy near the mothership so we can verify the
+  // turret system actually tracks/fires without waiting for natural spawns.
+  spawnTestEnemy: (offsetX = 80, offsetY = 30, offsetZ = 0) => {
+    if (!mothership || !enemySpawner) return false;
+    // Lazy-import createEnemy via the spawner module
+    return import("./combat/enemy.js").then(({ createEnemy }) => {
+      const pos = mothership.position;
+      const enemy = createEnemy("scout-fighter", {
+        x: pos.x + offsetX,
+        y: pos.y + offsetY,
+        z: pos.z + offsetZ,
+      });
+      enemySpawner.enemies.push(enemy);
+      return true;
+    });
+  },
+  // Spawn 8 invincible test enemies in a grid around the ship — for
+  // verifying turret aim/canFire across all hemispheres without enemies
+  // dying instantly. Hull is set to 999999 so turrets can shoot at them
+  // forever without removing them.
+  spawnCalibration: (radius = 120) => {
+    if (!mothership || !enemySpawner) return false;
+    return import("./combat/enemy.js").then(({ createEnemy }) => {
+      const pos = mothership.position;
+      const r = radius;
+      const positions = [
+        // 4 above, 4 below
+        { x: pos.x + r, y: pos.y + 40, z: pos.z },         // east-up
+        { x: pos.x - r, y: pos.y + 40, z: pos.z },         // west-up
+        { x: pos.x,     y: pos.y + 40, z: pos.z + r },     // north-up
+        { x: pos.x,     y: pos.y + 40, z: pos.z - r },     // south-up
+        { x: pos.x + r, y: pos.y - 40, z: pos.z },         // east-down
+        { x: pos.x - r, y: pos.y - 40, z: pos.z },         // west-down
+        { x: pos.x,     y: pos.y - 40, z: pos.z + r },     // north-down
+        { x: pos.x,     y: pos.y - 40, z: pos.z - r },     // south-down
+      ];
+      for (const p of positions) {
+        const enemy = createEnemy("scout-fighter", p);
+        if (enemy.stats) {
+          enemy.stats.hull = 999999;
+          enemy.stats.hullMax = 999999;
+        }
+        enemySpawner.enemies.push(enemy);
+      }
+      return positions.length;
+    });
+  },
+  // Clear ALL enemies (including the calibration ones)
+  clearEnemies: () => {
+    if (!enemySpawner) return 0;
+    const n = enemySpawner.enemies.length;
+    enemySpawner.enemies.length = 0;
+    return n;
+  },
+
+  // ── Repair bay inspection / drone damage (for QA) ──
+  repairBay: () => {
+    if (!mothership?.repairBay) return null;
+    return mothership.repairBay.getStatus();
+  },
+  routineMetrics: () => {
+    return fleetManager?.routineMetrics || { retreats: {} };
+  },
+  // Assign a retreat condition + damage a drone so we can drive the
+  // return-to-repair flow without waiting for enemies to attack.
+  setSwarmRetreat: (swarmIndex, retreatId) => {
+    const swarm = fleetManager?.swarms?.[swarmIndex];
+    if (!swarm) return false;
+    swarm.routine.retreat = retreatId;
+    return true;
+  },
+  // Force-unlock a retreat condition. Used by QA scenarios that need to
+  // exercise gated retreats (e.g. "damaged") without walking the full
+  // research-tree unlock path first.
+  unlockRetreat: (retreatId) => {
+    const def = RETREAT_TYPES[retreatId];
+    if (!def) return false;
+    def.unlocked = true;
+    return true;
+  },
+  // Seed the tesseract with raw materials + top up energy so a QA
+  // scenario can exercise the repair-bay hull-restoration path without
+  // first running a mining loop. Returns the new totals.
+  seedRepairStockpile: (ironOre = 500, energy = 100) => {
+    if (!mothership) return null;
+    mothership.tesseract.contents["iron-ore"] =
+      (mothership.tesseract.contents["iron-ore"] || 0) + ironOre;
+    mothership.systems.energy = Math.min(
+      mothership.systems.energyMax ?? energy,
+      (mothership.systems.energy || 0) + energy
+    );
+    return {
+      ironOre: mothership.tesseract.contents["iron-ore"],
+      energy: mothership.systems.energy,
+      energyMax: mothership.systems.energyMax,
+    };
+  },
+  damageDroneByIndex: (droneIndex, fraction = 0.4) => {
+    const drone = fleetManager?.drones?.[droneIndex];
+    if (!drone) return null;
+    drone.stats.hull = drone.stats.hullMax * fraction;
+    if (drone.stats.shieldsMax > 0) drone.stats.shields = 0;
+    return { id: drone.id, hull: drone.stats.hull, state: drone.state };
+  },
+  droneSummary: () => {
+    if (!fleetManager) return [];
+    return fleetManager.drones.map((d) => ({
+      id: d.id,
+      type: d.type,
+      state: d.state,
+      hull: d.stats.hull,
+      hullMax: d.stats.hullMax,
+      shields: d.stats.shields,
+      shieldsMax: d.stats.shieldsMax,
+      retreatReason: d._retreatReason || null,
+      position: { x: d.position.x, y: d.position.y, z: d.position.z },
+    }));
+  },
+  // Teleport a drone near the mothership so dock-flow tests don't wait
+  // for long-distance travel.
+  teleportDroneToShip: (droneIndex) => {
+    const drone = fleetManager?.drones?.[droneIndex];
+    if (!drone || !mothership) return false;
+    const p = mothership.position;
+    drone.position.x = p.x;
+    drone.position.y = p.y;
+    drone.position.z = p.z;
+    return true;
+  },
+  savedConfigPreview: () => {
+    try {
+      const raw = localStorage.getItem("ship-hp-star-destroyer");
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      return {
+        hardpointCount: data.hardpoints?.length ?? 0,
+        firstEntryKeys: data.hardpoints?.[0] ? Object.keys(data.hardpoints[0]) : [],
+        firstEntry: data.hardpoints?.[0] || null,
+      };
+    } catch (e) { return { error: String(e) }; }
+  },
+  // Walk the loaded mothership mesh and report visibility stats so we can
+  // confirm the hide-original-ball-meshes step actually fired.
+  meshVisibility: () => {
+    if (!mothership || !mothership.mesh) return null;
+    let total = 0, visible = 0, hidden = 0;
+    const hiddenNames = [];
+    mothership.mesh.traverse((c) => {
+      if (!c.isMesh) return;
+      total++;
+      if (c.visible) visible++;
+      else { hidden++; if (hiddenNames.length < 10) hiddenNames.push(c.name); }
+    });
+    return { total, visible, hidden, sampleHidden: hiddenNames };
+  },
+  // Walk the entire scene and report every visible top-level object plus
+  // any visible spheres/balls — used to track down "what is that blue
+  // floating thing" mysteries.
+  sceneAudit: () => {
+    if (!scene) return null;
+    const tempBox = new THREE.Box3();
+    const sz = new THREE.Vector3();
+    const c = new THREE.Vector3();
+    const items = [];
+    scene.traverse((o) => {
+      if (!o.isMesh && !o.isInstancedMesh) return;
+      if (!o.visible) return;
+      // Skip anything inside the mothership tree (we already audit that)
+      let p = o.parent;
+      let inMothership = false;
+      while (p) {
+        if (mothership && p === mothership.mesh) { inMothership = true; break; }
+        p = p.parent;
+      }
+      if (inMothership) return;
+      tempBox.setFromObject(o);
+      tempBox.getSize(sz);
+      tempBox.getCenter(c);
+      items.push({
+        name: o.name || o.type,
+        type: o.type,
+        instanced: !!o.isInstancedMesh,
+        instanceCount: o.count,
+        size: { x: +sz.x.toFixed(2), y: +sz.y.toFixed(2), z: +sz.z.toFixed(2) },
+        center: { x: +c.x.toFixed(2), y: +c.y.toFixed(2), z: +c.z.toFixed(2) },
+      });
+    });
+    return items;
+  },
+  // Find all currently-visible meshes that are roughly ball-turret-shaped:
+  // small cubic-aspect bboxes near the hull surface. Used to track down
+  // turret-shaped meshes that the auto-rig missed.
+  findVisibleBallShapes: () => {
+    if (!mothership || !mothership.mesh) return [];
+    const results = [];
+    const tempBox = new THREE.Box3();
+    const sz = new THREE.Vector3();
+    mothership.mesh.traverse((c) => {
+      if (!c.isMesh || !c.visible) return;
+      tempBox.setFromObject(c);
+      tempBox.getSize(sz);
+      const dims = [sz.x, sz.y, sz.z].sort((a, b) => b - a);
+      if (dims[2] < 1e-6) return;
+      const aspect = dims[0] / dims[2];
+      const longest = dims[0];
+      // Ball-turret heuristic: cubic-ish (aspect < 2.2) and small (under 8 m)
+      if (aspect < 2.2 && longest > 0.5 && longest < 8) {
+        const c2 = tempBox.getCenter(new THREE.Vector3());
+        results.push({
+          name: c.name,
+          size: { x: +sz.x.toFixed(2), y: +sz.y.toFixed(2), z: +sz.z.toFixed(2) },
+          center: { x: +c2.x.toFixed(2), y: +c2.y.toFixed(2), z: +c2.z.toFixed(2) },
+          aspect: +aspect.toFixed(2),
+          faces: (c.geometry?.index?.count || 0) / 3,
+        });
+      }
+    });
+    return results.sort((a, b) => b.faces - a.faces);
+  },
+};
+
 // ─── Mission Lifecycle ─────────────────────────────────────────
 
 async function startMission() {
@@ -216,11 +624,16 @@ async function startMission() {
 
   // ── Audio preload + mission music ──
   await audio.preload(SFX_MANIFEST);
-  audio.playMusic(MUSIC.mission, { fadeDuration: 2 });
+  refreshMusicConfig();
+  audio.playMusic(MUSIC_CONFIG.mission.track, { fadeDuration: MUSIC_CONFIG.mission.fadeDuration });
   currentMusicTrack = "mission";
 
   // ── Mothership ──
-  mothership = new Mothership();
+  // Async factory loads the SD Detailed glTF + applies the saved hardpoint
+  // config from localStorage if one exists. Falls back to the procedural
+  // octahedron mesh if there's no saved config or the load fails — the
+  // game still launches either way.
+  mothership = await Mothership.create();
 
   // Apply persistent stats from gameState
   const ms = gameState.mothership;
@@ -231,6 +644,12 @@ async function startMission() {
   mothership.systems.energy = ms.energyMax;
   mothership.systems.energyMax = ms.energyMax;
   mothership.tesseract.capacity = ms.tesseractCapacity;
+
+  // Repair bay: reset queue + rebuild config from unlocked research
+  if (mothership.repairBay) {
+    mothership.repairBay.reset();
+    mothership.repairBay.applyResearchModifiers(gameState.research);
+  }
 
   const startX = 0;
   const startZ = 0;
@@ -281,13 +700,26 @@ async function startMission() {
   enemySpawner = new EnemySpawner();
   enemyRenderer = new EnemyRenderer(scene);
   weaponSystem = new WeaponSystem();
+  // Per-slot turret system used when the mothership has configured turret
+  // slots. Falls through to the global weaponSystem when there are none.
+  turretSystem = new TurretSystem(scene, { audioManager: audio });
   combatEffects = new CombatEffects(scene);
   screenShake = new ScreenShake();
   attackSystem = new AttackSystem(scene, combatEffects, screenShake);
   attackSystem.audioManager = audio;
+  // Late-bind heavy-cannon dependencies on the turret system. We need
+  // combatEffects (for explosions/debris), screenShake (for the boom feel),
+  // and a getter for the live enemy list (for AOE damage).
+  turretSystem.setCombatHooks({
+    combatEffects,
+    screenShake,
+    getEnemies: () => (enemySpawner ? enemySpawner.getAlive() : []),
+  });
 
   // ── Shield Bubble ──
-  shieldBubble = createShieldBubble(14, 0x4488ff);
+  // Radius is pulled from the mothership so the bubble actually wraps the
+  // model. Procedural fallback uses 14; loaded glTF derives it from bbox.
+  shieldBubble = createShieldBubble(mothership.shieldRadius, 0x4488ff);
   mothership.mesh.add(shieldBubble.mesh);
   prevShields = mothership.systems.shields;
   prevHull = mothership.systems.hull;
@@ -401,7 +833,8 @@ function endMission() {
   setTimeout(() => {
     cleanupMission();
     station.show();
-    audio.playMusic(MUSIC.station, { fadeDuration: 2 });
+    refreshMusicConfig();
+    audio.playMusic(MUSIC_CONFIG.station.track, { fadeDuration: MUSIC_CONFIG.station.fadeDuration });
     currentMusicTrack = "station";
   }, 3000);
 }
@@ -470,7 +903,8 @@ function failMission(startSalvage = false) {
     setTimeout(() => {
       cleanupMission();
       station.show();
-      audio.playMusic(MUSIC.station, { fadeDuration: 2 });
+      refreshMusicConfig();
+      audio.playMusic(MUSIC_CONFIG.station.track, { fadeDuration: MUSIC_CONFIG.station.fadeDuration });
       currentMusicTrack = "station";
     }, 500);
   }
@@ -480,7 +914,8 @@ async function startSalvageMission() {
   const wreck = gameState.wreckData;
   if (!wreck) {
     station.show();
-    audio.playMusic(MUSIC.station, { fadeDuration: 2 });
+    refreshMusicConfig();
+    audio.playMusic(MUSIC_CONFIG.station.track, { fadeDuration: MUSIC_CONFIG.station.fadeDuration });
     currentMusicTrack = "station";
     return;
   }
@@ -588,20 +1023,49 @@ function gameLoop() {
   enemyRenderer.update(enemySpawner.enemies);
 
   // ── Mothership weapons (only when alive) ──
+  // Two paths:
+  //   - Per-slot TurretSystem when the mothership has configured turret
+  //     slots (loaded glTF + saved hardpoint config). Each turret picks its
+  //     own target and fires its own laser from its actual barrel tip.
+  //   - Global WeaponSystem fallback for the procedural mothership (no slots).
   if (shipAlive) {
-    const hits = weaponSystem.update(mothership.position, aliveEnemies, mothership.systems, dt);
-    for (const hit of hits) {
-      // Fire through attack system for consistent visuals + audio
-      const pulseLaser = getAttack("pulse-laser");
-      attackSystem.fire(mothership, hit.enemy, { ...pulseLaser, damage: 0 }, "player");
+    if (mothership.turrets && mothership.turrets.length > 0) {
+      // Snapshot enemy hull values before the turret update so we can detect
+      // kills and trigger the same death effects + audio the old WeaponSystem
+      // path used.
+      const hullBefore = new Map();
+      for (const e of aliveEnemies) hullBefore.set(e, e.stats?.hull ?? 0);
 
-      if (hit.enemy.state === "dead") {
-        combatEffects.addDeathEffect(hit.enemy.position, hit.enemy.type, hit.enemy.color);
-        // Audio: enemy explosion (large for cruisers, small for scouts)
-        const explosionType = hit.enemy.type === "patrol-cruiser" ? "explosion-large" : "explosion-small";
-        audio.playSFX(explosionType, hit.enemy.position);
+      turretSystem.update(dt, mothership, aliveEnemies);
+
+      for (const enemy of aliveEnemies) {
+        const before = hullBefore.get(enemy) ?? 0;
+        const after = enemy.stats?.hull ?? 0;
+        if (before > 0 && after <= 0 && enemy.state !== "dead") {
+          enemy.state = "dead";
+          combatEffects.addDeathEffect(enemy.position, enemy.type, enemy.color);
+          const explosionType = enemy.type === "patrol-cruiser" ? "explosion-large" : "explosion-small";
+          audio.playSFX(explosionType, enemy.position);
+        }
+      }
+    } else {
+      const hits = weaponSystem.update(mothership.position, aliveEnemies, mothership.systems, dt);
+      for (const hit of hits) {
+        // Fire through attack system for consistent visuals + audio
+        const pulseLaser = getAttack("pulse-laser");
+        attackSystem.fire(mothership, hit.enemy, { ...pulseLaser, damage: 0 }, "player");
+
+        if (hit.enemy.state === "dead") {
+          combatEffects.addDeathEffect(hit.enemy.position, hit.enemy.type, hit.enemy.color);
+          const explosionType = hit.enemy.type === "patrol-cruiser" ? "explosion-large" : "explosion-small";
+          audio.playSFX(explosionType, hit.enemy.position);
+        }
       }
     }
+  } else {
+    // Even when the ship is dead, keep the laser pool decaying so existing
+    // pulses don't get frozen mid-fade.
+    turretSystem.update(dt, null, []);
   }
 
   // Update attack system (projectiles + beams)
@@ -615,12 +1079,21 @@ function gameLoop() {
 
     const shieldDrop = prevShields - mothership.systems.shields;
     if (shieldDrop > 0) {
-      const hitAngle = Math.random() * Math.PI * 2;
-      const hitPos = {
-        x: mothership.position.x + Math.cos(hitAngle) * 12,
-        y: mothership.position.y + (Math.random() - 0.5) * 8,
-        z: mothership.position.z + Math.sin(hitAngle) * 12,
-      };
+      // Prefer the actual recorded impact position if takeDamage was called
+      // with one. Falls back to a random angle for legacy callers that don't
+      // pass an impact position.
+      let hitPos;
+      if (mothership.lastShieldImpact) {
+        hitPos = { ...mothership.lastShieldImpact };
+        mothership.lastShieldImpact = null;
+      } else {
+        const hitAngle = Math.random() * Math.PI * 2;
+        hitPos = {
+          x: mothership.position.x + Math.cos(hitAngle) * mothership.shieldRadius,
+          y: mothership.position.y + (Math.random() - 0.5) * mothership.shieldRadius * 0.6,
+          z: mothership.position.z + Math.sin(hitAngle) * mothership.shieldRadius,
+        };
+      }
       shieldBubble.hit(hitPos, elapsed);
       combatEffects.addHitFlash(hitPos);
       screenShake.addTrauma(damageToTrauma(shieldDrop));
@@ -747,6 +1220,14 @@ function gameLoop() {
     }
   }
 
+  // ── Audio: cargo deposit "ding" when miners offload at the mothership ──
+  for (const drone of fleetManager.drones) {
+    if (drone._pendingOffloadSound) {
+      audio.playSFX("cargo-deposit", drone.position);
+      drone._pendingOffloadSound = false;
+    }
+  }
+
   // ── Deposits ──
   depositManager.update();
 
@@ -813,19 +1294,20 @@ function gameLoop() {
     hud.updateDrones(fleetManager.getAliveCount(), fleetManager.drones.length);
     hud.updateCombat(aliveEnemies.length, enemySpawner.getThreatLevel());
     hud.updateExtraction(extraction.state, extraction.getProgress(), extraction.getTimeRemaining());
+    if (mothership.repairBay) hud.updateRepairBay(mothership.repairBay.getStatus());
 
     // ── Dynamic music ──
     const threatLevel = enemySpawner.getThreatLevel();
     const extracting = extraction.isActive();
 
     if (extracting && currentMusicTrack !== "extraction") {
-      audio.playMusic(MUSIC.extraction, { fadeDuration: 1.5 });
+      audio.playMusic(MUSIC_CONFIG.extraction.track, { fadeDuration: MUSIC_CONFIG.extraction.fadeDuration });
       currentMusicTrack = "extraction";
     } else if (!extracting && threatLevel > 0.4 && currentMusicTrack !== "combat") {
-      audio.playMusic(MUSIC.combat, { fadeDuration: 2 });
+      audio.playMusic(MUSIC_CONFIG.combat.track, { fadeDuration: MUSIC_CONFIG.combat.fadeDuration });
       currentMusicTrack = "combat";
     } else if (!extracting && threatLevel <= 0.4 && currentMusicTrack === "combat") {
-      audio.playMusic(MUSIC.mission, { fadeDuration: 3 });
+      audio.playMusic(MUSIC_CONFIG.mission.track, { fadeDuration: MUSIC_CONFIG.mission.fadeDuration });
       currentMusicTrack = "mission";
     }
   }

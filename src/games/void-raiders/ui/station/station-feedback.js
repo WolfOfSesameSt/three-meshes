@@ -5,6 +5,8 @@
  * Call these from any station screen to get consistent audio + visual feedback.
  */
 
+import { getMusicConfig } from "../../audio/music-config.js";
+
 // Audio manager reference — set by main.js
 let _audio = null;
 let _preloaded = false;
@@ -38,7 +40,8 @@ function playUI(name) {
   if (!_preloaded) {
     _preloaded = true;
     _audio.preload(UI_SOUNDS);
-    _audio.playMusic("/audio/music/station-theme.mp3", { fadeDuration: 1 });
+    const musicCfg = getMusicConfig();
+    _audio.playMusic(musicCfg.station.track, { fadeDuration: musicCfg.station.fadeDuration });
   }
   _audio.playUI(name);
 }

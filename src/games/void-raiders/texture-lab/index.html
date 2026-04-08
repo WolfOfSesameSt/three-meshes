@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Void Raiders — Turret Texture Lab</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #0a0a14; color: #c8d0e0; font-family: ui-monospace, "SF Mono", Menlo, monospace; overflow: hidden; }
+    #app { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr; height: 100vh; }
+    #sidebar { background: #11131c; border-right: 1px solid #1f2233; padding: 16px; overflow-y: auto; font-size: 12px; }
+    #sidebar h1 { font-size: 14px; margin-bottom: 12px; color: #88ccff; letter-spacing: 0.5px; }
+    #sidebar h2 { font-size: 11px; margin-top: 16px; margin-bottom: 8px; color: #ffaa55; text-transform: uppercase; letter-spacing: 0.8px; }
+    #sidebar p { line-height: 1.5; color: #8a92a6; margin-bottom: 8px; }
+    #sidebar code { background: #1c2030; padding: 1px 4px; border-radius: 2px; color: #b8c4dd; }
+    #stage { position: relative; }
+    #canvas { display: block; width: 100%; height: 100%; }
+    .texture-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+    .texture-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #1a1d2a; border-radius: 3px; cursor: pointer; transition: background 0.1s; }
+    .texture-item:hover { background: #232838; }
+    .texture-item.active { background: #2a4060; border: 1px solid #4488ff; }
+    .texture-item img { width: 32px; height: 32px; object-fit: cover; border-radius: 2px; background: #000; }
+    .texture-item .name { flex: 1; font-size: 11px; color: #b8c4dd; }
+    button { background: #1f2940; border: 1px solid #2c3a55; color: #b8c4dd; padding: 6px 10px; font-family: inherit; font-size: 11px; cursor: pointer; border-radius: 3px; margin-right: 4px; margin-bottom: 4px; }
+    button:hover { background: #2a3a58; border-color: #4488ff; }
+    .controls { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    #status { position: absolute; bottom: 12px; left: 12px; background: rgba(10,12,20,0.8); padding: 6px 12px; border-radius: 3px; font-size: 11px; color: #88ccff; }
+    .label { position: absolute; top: 12px; padding: 4px 10px; background: rgba(10,12,20,0.8); border-radius: 3px; font-size: 11px; }
+    #label-small { left: 18%; transform: translateX(-50%); color: #9b9bff; }
+    #label-heavy { left: 50%; transform: translateX(-50%); color: #ffaa55; }
+    #label-launcher { left: 82%; transform: translateX(-50%); color: #ff8844; }
+    .controls input[type=file] { display: none; }
+    .controls label { background: #1f2940; border: 1px solid #2c3a55; color: #b8c4dd; padding: 6px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; display: inline-block; }
+    .controls label:hover { background: #2a3a58; border-color: #4488ff; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <h1>TURRET TEXTURE LAB</h1>
+      <p><a href="/src/games/void-raiders/index.html" style="color:#88ccff;text-decoration:none;border:1px solid #2c3a55;background:#1f2940;padding:6px 10px;border-radius:3px;display:inline-block;font-size:11px;">← Back to Game</a></p>
+      <p>Wraps a texture around the procedural turret head spheres so we can iterate the look before committing.</p>
+
+      <h2>Generate via Gemini</h2>
+      <p>Run from terminal:</p>
+      <p><code>npm run texture -- "..." --name v1</code></p>
+      <p>New PNG appears in <code>public/textures/turrets/</code>. Click <strong>Refresh</strong> to load it.</p>
+
+      <h2>Available textures</h2>
+      <div id="texture-list" class="texture-list"></div>
+
+      <h2>Apply to</h2>
+      <div class="controls">
+        <button id="apply-small">Small only</button>
+        <button id="apply-heavy">Heavy only</button>
+        <button id="apply-both">Both</button>
+        <button id="clear-tex">Clear</button>
+      </div>
+
+      <h2>Save for the game</h2>
+      <p>Persists the currently-applied textures to localStorage. The mothership reads these on load and wraps them on every in-game turret.</p>
+      <div class="controls">
+        <button id="save-small">💾 Save as small</button>
+        <button id="save-heavy">💾 Save as heavy</button>
+        <button id="clear-saved">Clear saved</button>
+      </div>
+      <p id="saved-status" style="font-size:11px;color:#88ff99;margin-top:6px;"></p>
+
+      <h2>Actions</h2>
+      <div class="controls">
+        <button id="refresh">Refresh list</button>
+        <button id="toggle-rotate">Pause spin</button>
+        <label for="local-file">Load local PNG…</label>
+        <input id="local-file" type="file" accept="image/*" />
+      </div>
+
+      <h2>Tips</h2>
+      <p>Equirectangular sphere textures want a <strong>2:1 aspect</strong>. Gemini usually returns 1:1 — that still works but the poles will pinch. Add <em>"seamless equirectangular sphere texture, 2:1 layout, top half = top of sphere"</em> to the prompt.</p>
+    </aside>
+
+    <div id="stage">
+      <div id="label-small" class="label">SMALL LASER</div>
+      <div id="label-heavy" class="label">HEAVY CANNON</div>
+      <div id="label-launcher" class="label">MISSILE LAUNCHER</div>
+      <canvas id="canvas"></canvas>
+      <div id="status">Loading…</div>
+    </div>
+  </div>
+
+  <script type="module" src="./lab.js"></script>
+</body>
+</html>

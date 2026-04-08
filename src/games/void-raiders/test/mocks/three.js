@@ -80,6 +80,7 @@ export class Object3D {
     this.scale = new Vector3(1, 1, 1);
     this.children = [];
     this.parent = null;
+    this.visible = true;
   }
   add(child) { this.children.push(child); child.parent = this; }
   remove(child) {
@@ -87,6 +88,10 @@ export class Object3D {
     if (i >= 0) { this.children.splice(i, 1); child.parent = null; }
   }
   updateMatrix() {}
+  updateMatrixWorld() {}
+  lookAt() {}
+  localToWorld(v) { return v; }
+  worldToLocal(v) { return v; }
 }
 
 export class Group extends Object3D {
@@ -153,6 +158,53 @@ export class CircleGeometry {
   dispose() {}
 }
 
+export class CylinderGeometry {
+  constructor(rt = 1, rb = 1, h = 1, rs = 8) {
+    this.parameters = { radiusTop: rt, radiusBottom: rb, height: h, radialSegments: rs };
+  }
+  rotateX() { return this; }
+  dispose() {}
+}
+
+// Minimal stubs for math/transform classes used by ship rigging code paths.
+// The test runners don't exercise the actual matrix math; they just need
+// these to be importable + constructible without throwing.
+export class Matrix3 {
+  constructor() {}
+  getNormalMatrix() { return this; }
+}
+
+export class Matrix4 {
+  constructor() {}
+  copy() { return this; }
+  invert() { return this; }
+  clone() { return new Matrix4(); }
+  applyMatrix4() {}
+}
+
+export class Quaternion {
+  constructor(x = 0, y = 0, z = 0, w = 1) { this.x = x; this.y = y; this.z = z; this.w = w; }
+  setFromUnitVectors() { return this; }
+  clone() { return new Quaternion(this.x, this.y, this.z, this.w); }
+  invert() { return this; }
+  identity() { return this; }
+}
+
+export class Box3 {
+  constructor() { this.min = new Vector3(); this.max = new Vector3(); }
+  setFromObject() { return this; }
+  getCenter(target) { return target || new Vector3(); }
+  getSize(target) { return target || new Vector3(1, 1, 1); }
+  containsPoint() { return false; }
+}
+
+export const MathUtils = {
+  degToRad(d) { return d * Math.PI / 180; },
+  radToDeg(r) { return r * 180 / Math.PI; },
+  clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); },
+  lerp(a, b, t) { return a + (b - a) * t; },
+};
+
 export class BufferGeometry {
   constructor() { this.attributes = {}; this.index = null; }
   setAttribute(name, attr) { this.attributes[name] = attr; }
@@ -192,12 +244,58 @@ export class ShaderMaterial {
   dispose() {}
 }
 
+// RingGeometry / PlaneGeometry / IcosahedronGeometry stubs — used by the
+// shader pools in combat/weapon-shaders.js. None of the test suites
+// instantiate these directly, but the file imports them transitively if a
+// future test ever pulls turret-system in.
+export class RingGeometry {
+  constructor(inner = 0.5, outer = 1, segments = 16) {
+    this.parameters = { innerRadius: inner, outerRadius: outer, segments };
+  }
+  rotateX() { return this; }
+  dispose() {}
+}
+
+export class PlaneGeometry {
+  constructor(w = 1, h = 1) {
+    this.parameters = { width: w, height: h };
+  }
+  dispose() {}
+}
+
+export class IcosahedronGeometry {
+  constructor(r = 1, detail = 0) {
+    this.parameters = { radius: r, detail };
+  }
+  dispose() {}
+}
+
 export class AmbientLight extends Object3D {
   constructor(color, intensity) { super(); this.color = color; this.intensity = intensity; }
 }
 
 export class DirectionalLight extends Object3D {
   constructor(color, intensity) { super(); this.color = color; this.intensity = intensity; }
+}
+
+// TextureLoader stub — turret-rigger.js instantiates one at module load
+// time to support optional skin loading. Tests don't actually load
+// textures, so the load() method is a no-op (calls the error callback so
+// the surrounding promise resolves to null).
+export class TextureLoader {
+  constructor() {}
+  load(url, onLoad, onProgress, onError) {
+    if (onError) onError(new Error("test mock"));
+    return null;
+  }
+}
+
+export class ConeGeometry {
+  constructor(r = 1, h = 1, s = 8) {
+    this.parameters = { radius: r, height: h, radialSegments: s };
+  }
+  rotateX() { return this; }
+  dispose() {}
 }
 
 // Constants
@@ -207,3 +305,5 @@ export const FrontSide = 0;
 export const BackSide = 1;
 export const NormalBlending = 1;
 export const AdditiveBlending = 2;
+export const SRGBColorSpace = "srgb";
+export const RepeatWrapping = 1000;

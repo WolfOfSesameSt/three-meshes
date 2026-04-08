@@ -1,0 +1,6 @@
+{
+  "prompt": "Flat 2D tile, no 3D rendering, no perspective, no shading, no background. Heavy sci-fi armor plating pattern viewed completely flat from straight above. Burnt orange-brass and dark gunmetal heavy bolted plates with battle scars, carbon scoring streaks, glowing amber radiator lines, recessed targeting sensor circles, brutalist heavy industrial. Looks like a top-down screenshot of a flat armored panel, not a curved object. Even lighting, no highlights, no shadows. Texture should tile seamlessly left-right.",
+  "model": "gemini-2.5-flash-image",
+  "generated": "2026-04-07T23:47:04.180Z",
+  "bytes": 2013997
+}

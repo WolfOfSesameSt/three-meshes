@@ -44,6 +44,29 @@ export class HUD {
           <span class="resource-value" id="threat-level">LOW</span>
         </div>
       </div>
+      <div id="repair-bay-panel" style="display:none;">
+        <div class="repair-header">REPAIR BAY</div>
+        <div class="resource-row">
+          <span class="resource-name">SLOTS</span>
+          <span class="resource-value" id="repair-slots">0 / 0</span>
+        </div>
+        <div class="resource-row">
+          <span class="resource-name">QUEUED</span>
+          <span class="resource-value" id="repair-queued">0</span>
+        </div>
+        <div class="resource-row">
+          <span class="resource-name">REPAIRED</span>
+          <span class="resource-value" id="repair-completed">0</span>
+        </div>
+        <div class="resource-row">
+          <span class="resource-name">ENERGY</span>
+          <span class="resource-value" id="repair-energy">0</span>
+        </div>
+        <div class="resource-row">
+          <span class="resource-name">MATERIAL</span>
+          <span class="resource-value" id="repair-material">0</span>
+        </div>
+      </div>
       <div id="extraction-panel" style="display:none;">
         <div id="extraction-status">STARGATE SUMMONED</div>
         <div id="extraction-timer">60s</div>
@@ -62,6 +85,12 @@ export class HUD {
     this._droneCount = this.el.querySelector("#drone-count");
     this._enemyCount = this.el.querySelector("#enemy-count");
     this._threatLevel = this.el.querySelector("#threat-level");
+    this._repairPanel = this.el.querySelector("#repair-bay-panel");
+    this._repairSlots = this.el.querySelector("#repair-slots");
+    this._repairQueued = this.el.querySelector("#repair-queued");
+    this._repairCompleted = this.el.querySelector("#repair-completed");
+    this._repairEnergy = this.el.querySelector("#repair-energy");
+    this._repairMaterial = this.el.querySelector("#repair-material");
     this._extractionPanel = this.el.querySelector("#extraction-panel");
     this._extractionStatus = this.el.querySelector("#extraction-status");
     this._extractionTimer = this.el.querySelector("#extraction-timer");
@@ -170,6 +199,24 @@ export class HUD {
     this._threatLevel.textContent = labels[idx];
     this._threatLevel.style.color = threatLevel > 0.6 ? "var(--ui-danger)" :
                                      threatLevel > 0.3 ? "var(--ui-warning)" : "var(--ui-text-dim)";
+  }
+
+  /**
+   * Update the repair-bay widget.
+   * @param {object|null} status — { activeCount, queuedCount, slots, metrics }
+   *   from mothership.repairBay.getStatus(), or null to hide the panel.
+   */
+  updateRepairBay(status) {
+    if (!status || (status.activeCount === 0 && status.queuedCount === 0 && status.metrics.completed === 0)) {
+      this._repairPanel.style.display = "none";
+      return;
+    }
+    this._repairPanel.style.display = "";
+    this._repairSlots.textContent = `${status.activeCount} / ${status.slots}`;
+    this._repairQueued.textContent = status.queuedCount;
+    this._repairCompleted.textContent = status.metrics.completed;
+    this._repairEnergy.textContent = Math.round(status.metrics.totalEnergySpent);
+    this._repairMaterial.textContent = Math.round(status.metrics.totalMaterialsSpent);
   }
 
   /**

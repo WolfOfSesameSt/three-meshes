@@ -109,7 +109,7 @@ export class AttackSystem {
 
       if (Math.random() < effectiveAccuracy) {
         // Hit
-        this._applyDamage(target, attackDef);
+        this._applyDamage(target, attackDef, tp);
         this._playImpactSound(attackDef, tp);
         if (attackDef.impactEffect !== "none") {
           this.effects.addImpactFlash(tp, attackDef.damage);
@@ -190,7 +190,10 @@ export class AttackSystem {
       const hit = this._checkCollision(p, targets);
 
       if (hit) {
-        this._applyDamage(hit, p.attackDef);
+        // Use the projectile's current position as the impact point — that's
+        // where the visual flash appears, and where the shield should ripple.
+        const impactPos = { x: p.x, y: p.y, z: p.z };
+        this._applyDamage(hit, p.attackDef, impactPos);
         this._playImpactSound(p.attackDef, hit.position);
         if (p.attackDef.impactEffect !== "none") {
           this.effects.addImpactFlash(hit.position, p.attackDef.damage);
@@ -301,12 +304,16 @@ export class AttackSystem {
 
   /**
    * Apply damage to a target. Shields absorb first.
+   * @param {object} target
+   * @param {object} attackDef
+   * @param {{x,y,z}} [impactPos] - world-space hit point, forwarded to
+   *   target.takeDamage so the shield ripple starts at the right spot.
    */
-  _applyDamage(target, attackDef) {
+  _applyDamage(target, attackDef, impactPos) {
     if (attackDef.damage <= 0) return;
 
     if (target.takeDamage) {
-      target.takeDamage(attackDef.damage);
+      target.takeDamage(attackDef.damage, impactPos);
     } else if (target.stats) {
       let remaining = attackDef.damage;
       if (target.stats.shields > 0) {

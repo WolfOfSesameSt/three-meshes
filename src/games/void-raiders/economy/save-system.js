@@ -77,7 +77,21 @@ const SAVE_VERSION = 1;
  *   retreat         TEXT
  */
 
-import { gameState } from "./game-state.js";
+import { gameState, TEST_RESOURCE_FLOORS } from "./game-state.js";
+
+/**
+ * Top up every resource below the test-mode floor. Called from the
+ * production load path (main.js) so playtesters always have enough
+ * material to craft and buy. Tests don't call this so the strict
+ * serialize/deserialize round-trip stays exact.
+ */
+export function applyTestResourceFloors() {
+  for (const [type, floor] of Object.entries(TEST_RESOURCE_FLOORS)) {
+    if ((gameState.resources[type] ?? 0) < floor) {
+      gameState.resources[type] = floor;
+    }
+  }
+}
 
 /**
  * Serialize the current gameState into a save-ready object.

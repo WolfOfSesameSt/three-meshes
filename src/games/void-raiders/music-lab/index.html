@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Void Raiders — Music Laboratory</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: #0a0a14;
+      color: #c8c8e0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow: hidden;
+    }
+    button, input, textarea, select {
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+    }
+
+    /* ── Top bar ─────────────────────────── */
+    #topbar {
+      height: 44px;
+      background: #0e0e1a;
+      border-bottom: 1px solid #2a2a4a;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 18px;
+    }
+    #topbar h1 {
+      font-size: 13px;
+      color: #7b7bf7;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    #topbar .spacer { flex: 1; }
+    #topbar .budget {
+      font-size: 11px;
+      color: #6868a0;
+    }
+    #topbar .budget strong { color: #a0a0d0; }
+
+    .btn {
+      background: #1a1a50;
+      border: 1px solid #3a3a80;
+      color: #c8c8ff;
+      padding: 6px 14px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 11px;
+      transition: all 0.15s;
+    }
+    .btn:hover { background: #2a2a7a; border-color: #5a5ab0; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.primary { background: #1e3a5a; border-color: #3a6a9a; }
+    .btn.primary:hover { background: #2a5a8a; }
+    .btn.success { background: #1e5a3a; border-color: #3a9a6a; }
+    .btn.success:hover { background: #2a8a5a; }
+    .btn.danger { background: #5a1e1e; border-color: #9a3a3a; }
+    .btn.danger:hover { background: #8a2a2a; }
+
+    /* ── Main layout: 3 columns ──────────── */
+    #main {
+      display: grid;
+      grid-template-columns: 1fr 340px 380px;
+      height: calc(100vh - 44px);
+      overflow: hidden;
+    }
+
+    .col {
+      border-right: 1px solid #2a2a4a;
+      overflow-y: auto;
+      padding: 18px;
+    }
+    .col:last-child { border-right: none; }
+
+    .col h2 {
+      font-size: 11px;
+      color: #7b7bf7;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .col h3 {
+      font-size: 10px;
+      color: #6868a0;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin: 16px 0 8px 0;
+    }
+
+    /* ── Situation cards ─────────────────── */
+    .situation {
+      background: #11112a;
+      border: 1px solid #2a2a4a;
+      border-left: 4px solid #3a3a80;
+      padding: 14px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .situation:hover { background: #15153a; }
+    .situation.active {
+      background: #1a1a50;
+      border-left-color: #7b7bf7;
+    }
+    .situation.dirty {
+      border-right: 2px solid #e0a040;
+    }
+
+    .situation .label {
+      font-size: 13px;
+      color: #e0e0ff;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .situation .label .badge {
+      background: #e0a040;
+      color: #0a0a14;
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 2px;
+    }
+    .situation .description {
+      font-size: 11px;
+      color: #9090c0;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .situation .track {
+      font-size: 11px;
+      color: #60d0a0;
+      background: #0a1a14;
+      padding: 6px 10px;
+      border: 1px solid #1a3a2a;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .situation .track .play-btn {
+      background: none;
+      border: 1px solid #3a6a5a;
+      color: #60d0a0;
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .situation .track .play-btn:hover { background: #1a3a2a; }
+    .situation .track .file { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Editor (middle column) ───────────── */
+    .editor-field {
+      margin-bottom: 14px;
+    }
+    .editor-field label {
+      display: block;
+      font-size: 10px;
+      color: #6868a0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .editor-field input,
+    .editor-field textarea,
+    .editor-field select {
+      width: 100%;
+      background: #0a0a1a;
+      border: 1px solid #2a2a4a;
+      padding: 8px 10px;
+      color: #c8c8e0;
+    }
+    .editor-field textarea {
+      min-height: 80px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+    .editor-field input:focus,
+    .editor-field textarea:focus,
+    .editor-field select:focus {
+      outline: none;
+      border-color: #5a5ab0;
+    }
+
+    .file-list {
+      max-height: 260px;
+      overflow-y: auto;
+      border: 1px solid #2a2a4a;
+      background: #0a0a1a;
+    }
+    .file-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #1a1a30;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: #15153a; }
+    .file-item.current {
+      background: #0a1a14;
+      border-left: 3px solid #60d0a0;
+    }
+    .file-item .fname {
+      color: #c8c8ff;
+      font-size: 11px;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .file-item .fname .play-btn {
+      background: none;
+      border: 1px solid #3a3a80;
+      color: #9090c0;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      padding: 0;
+      font-size: 10px;
+    }
+    .file-item .fname .play-btn:hover { background: #1a1a50; color: #c8c8ff; }
+    .file-item .fname .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    .file-item .fmeta {
+      color: #6868a0;
+      font-size: 10px;
+      font-style: italic;
+      line-height: 1.4;
+    }
+
+    /* ── Composer (right column) ─────────── */
+    .composer-section {
+      background: #0e0e1e;
+      border: 1px solid #2a2a4a;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .quick-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .tag {
+      background: #1a1a3a;
+      border: 1px solid #2a2a5a;
+      color: #9090c0;
+      padding: 3px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      text-transform: lowercase;
+    }
+    .tag:hover { background: #2a2a5a; color: #c8c8ff; }
+    .tag.active { background: #3a3a80; color: #e0e0ff; border-color: #5a5ab0; }
+
+    .prompt-preview {
+      background: #0a0a1a;
+      border: 1px solid #2a2a4a;
+      padding: 10px;
+      font-size: 11px;
+      color: #a0a0d0;
+      min-height: 60px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-family: monospace;
+    }
+
+    .status-line {
+      font-size: 10px;
+      color: #6868a0;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .status-line.ok { color: #60d0a0; }
+    .status-line.err { color: #e06060; }
+    .status-line.info { color: #70a0e0; }
+
+    /* ── Player at bottom ────────────────── */
+    #player-bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: #11112a;
+      border-top: 1px solid #2a2a4a;
+      padding: 10px 18px;
+      display: none;
+      align-items: center;
+      gap: 14px;
+      z-index: 20;
+    }
+    #player-bar.visible { display: flex; }
+    #player-bar audio {
+      flex: 1;
+      height: 32px;
+    }
+    #player-bar .now-playing {
+      color: #60d0a0;
+      font-size: 11px;
+      min-width: 200px;
+    }
+    #player-bar .close-btn {
+      background: none;
+      border: 1px solid #5a5a80;
+      color: #9090c0;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+    }
+    #player-bar .close-btn:hover { background: #2a2a5a; color: #c8c8ff; }
+
+    /* ── Modal overlay during generation ─── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 5, 15, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #overlay.visible { display: flex; }
+    #overlay .box {
+      background: #11112a;
+      border: 1px solid #3a3a80;
+      padding: 30px 40px;
+      text-align: center;
+      max-width: 420px;
+    }
+    #overlay .box h3 {
+      color: #7b7bf7;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+    #overlay .box p {
+      color: #9090c0;
+      line-height: 1.6;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      margin: 14px auto;
+      border: 3px solid #2a2a5a;
+      border-top-color: #7b7bf7;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Scrollbars ─────────────────────── */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0a0a14; }
+    ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a6a; }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <h1>Music Laboratory</h1>
+    <span class="budget">
+      ElevenLabs:
+      <strong id="budget-used">—</strong> /
+      <strong id="budget-limit">—</strong> credits used
+      &nbsp;·&nbsp; <strong id="budget-remaining">—</strong> remaining
+    </span>
+    <div class="spacer"></div>
+    <button class="btn danger" id="reset-btn">Reset to Defaults</button>
+    <button class="btn success" id="save-btn">Save Configuration</button>
+  </div>
+
+  <div id="main">
+    <!-- Column 1: situations -->
+    <div class="col" id="col-situations">
+      <h2>Music Situations</h2>
+      <p style="color: #6868a0; font-size: 11px; line-height: 1.5; margin-bottom: 14px;">
+        Four situations drive the game's dynamic music. Click one to edit its description,
+        swap the track, or tune the crossfade. Unsaved changes are marked in orange.
+      </p>
+      <div id="situations"></div>
+    </div>
+
+    <!-- Column 2: editor for selected situation -->
+    <div class="col" id="col-editor">
+      <h2 id="editor-title">Select a situation</h2>
+      <div id="editor" style="display:none;">
+        <div class="editor-field">
+          <label>Description — when does this music play?</label>
+          <textarea id="edit-description" rows="5"></textarea>
+        </div>
+        <div class="editor-field">
+          <label>Crossfade duration (seconds)</label>
+          <input type="number" id="edit-fade" step="0.1" min="0" max="10" />
+        </div>
+        <h3>Assigned track</h3>
+        <div class="editor-field">
+          <div id="current-track-display" style="color: #60d0a0; font-size: 11px; padding: 8px 10px; background: #0a1a14; border: 1px solid #1a3a2a;">—</div>
+        </div>
+        <h3>Swap in a different track</h3>
+        <div class="file-list" id="file-list"></div>
+      </div>
+    </div>
+
+    <!-- Column 3: composer -->
+    <div class="col" id="col-composer">
+      <h2>Music Composer</h2>
+      <p style="color: #6868a0; font-size: 11px; line-height: 1.5; margin-bottom: 14px;">
+        Describe the music you want. Pick a mood tag or two, write a description,
+        then build a prompt and generate a new track via ElevenLabs.
+      </p>
+
+      <div class="composer-section">
+        <h3 style="margin-top:0;">1. Mood tags (optional)</h3>
+        <div class="quick-tags" id="mood-tags"></div>
+
+        <h3>2. Describe the music</h3>
+        <div class="editor-field">
+          <textarea id="composer-description" rows="4" placeholder="e.g. A hopeful synthwave theme that plays when the player returns to the station after a successful raid. Warm pads, a slow melody, and a sense of relief."></textarea>
+        </div>
+
+        <h3>3. Length &amp; filename</h3>
+        <div class="editor-field" style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label>Duration (s)</label>
+            <input type="number" id="composer-duration" value="60" min="10" max="300" step="10" />
+          </div>
+          <div style="flex: 2;">
+            <label>Output filename</label>
+            <input type="text" id="composer-name" placeholder="my-new-theme" />
+          </div>
+        </div>
+        <div class="status-line info" id="composer-cost">Est. cost: 500 credits (1 min × 500)</div>
+      </div>
+
+      <div class="composer-section">
+        <h3 style="margin-top:0;">4. Generated prompt</h3>
+        <div class="editor-field">
+          <button class="btn" id="build-prompt-btn">Build Prompt</button>
+          <button class="btn" id="plan-btn" style="margin-left: 6px;">Plan (free)</button>
+        </div>
+        <div class="prompt-preview" id="prompt-preview" contenteditable="true">Click "Build Prompt" to generate a prompt from your description.</div>
+
+        <h3>5. Generate</h3>
+        <button class="btn primary" id="generate-btn" style="width: 100%;">Generate Music</button>
+        <div class="status-line" id="composer-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio player -->
+  <div id="player-bar">
+    <span class="now-playing" id="now-playing">—</span>
+    <audio id="audio-player" controls></audio>
+    <button class="close-btn" id="player-close">×</button>
+  </div>
+
+  <!-- Generation overlay -->
+  <div id="overlay">
+    <div class="box">
+      <h3 id="overlay-title">Generating…</h3>
+      <div class="spinner"></div>
+      <p id="overlay-msg">Contacting ElevenLabs. This usually takes 20–40 seconds.</p>
+      <p style="color: #6868a0; font-size: 10px;">Do not close this tab.</p>
+    </div>
+  </div>
+
+  <script type="module" src="./music-lab.js"></script>
+</body>
+</html>

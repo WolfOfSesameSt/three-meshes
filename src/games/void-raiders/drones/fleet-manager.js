@@ -16,6 +16,13 @@ const ENGAGE_RANGE = 30;      // meters — close enough to execute action on ta
 const OFFLOAD_RANGE = 25;     // meters — close enough to mothership to dump cargo
 const RETREAT_SPEED_MULT = 1.3; // retreating drones move faster
 
+// Bay routing — drones approach the bay along its outward normal so they
+// don't clip through the hull. APPROACH_DISTANCE is how far outside the bay
+// the "corridor" waypoint sits. DOCK_DISTANCE is the radius around the bay
+// where a returning drone is considered docked (cargo offloaded, vanished).
+const BAY_APPROACH_DISTANCE = 50; // meters along bay normal
+const BAY_DOCK_DISTANCE = 3;      // meters from bay center = docked
+
 /**
  * Fleet manager owns all drones and swarms.
  */
@@ -52,8 +59,11 @@ export class FleetManager {
     const minerSwarm = createSwarm({
       routine: { anchor: "track-resource", range: 300, priority: "nearest", action: "mine", retreat: "cargo-full" },
     });
+    // Default fighter retreat is "damaged" while we playtest the repair bay
+    // — drop to health-low (or any other retreat) in the routine panel if
+    // you want the old behavior. See game-state.js research defaults.
     const fighterSwarm = createSwarm({
-      routine: { anchor: "follow-mothership", range: 400, priority: "weakest", action: "attack", retreat: "health-low" },
+      routine: { anchor: "follow-mothership", range: 400, priority: "weakest", action: "attack", retreat: "damaged" },
     });
 
     for (let i = 0; i < minerCount; i++) {
@@ -83,8 +93,11 @@ export class FleetManager {
    */
   update(dt, elapsed, mothershipPos) {
     this.context.mothershipPos = mothershipPos;
-    // Friendlies = alive drones + mothership (for repair targeting)
-    const aliveDrones = this.drones.filter((d) => isDroneAlive(d));
+    // Friendlies = alive drones + mothership (for repair targeting).
+    // Drones in "in-repair" are excluded so repair drones don't target them.
+    const aliveDrones = this.drones.filter(
+      (d) => isDroneAlive(d) && d.state !== "in-repair"
+    );
     this.context.friendlies = [...aliveDrones];
     // Add mothership as a repair target if it exists and is damaged
     if (this.mothership) {
@@ -96,6 +109,13 @@ export class FleetManager {
     this._regenDroneShields(dt);
     this._checkDroneDeaths();
 
+    // Repair bay tick — heals docked drones, drains mothership energy,
+    // and consumes raw materials from the tesseract. Ejects completed
+    // drones back to state="active" so they resume their routine.
+    if (this.mothership?.repairBay) {
+      this.mothership.repairBay.tick(dt);
+    }
+
     // Deploy drones sequentially from the mothership
     this._processDeployQueue(dt, mothershipPos);
 
@@ -106,22 +126,54 @@ export class FleetManager {
 
       for (const drone of swarm.drones) {
         if (!isDroneAlive(drone)) continue;
-        if (drone.state === "deploying") continue;
+
+        // Skip drones currently docked inside the repair bay — the bay
+        // owns their state until repair completes.
+        if (drone.state === "in-repair") continue;
+
+        // Drones in "deploying" state animate outward along the bay's
+        // approach corridor before joining their routine. Once they reach
+        // the corridor exit point, flip to "active".
+        if (drone.state === "deploying") {
+          if (drone._deployTarget) {
+            this._moveToward(drone, drone._deployTarget, dt, 1.0);
+            const distToTarget = dist3(drone.position, drone._deployTarget);
+            if (distToTarget <= 5) {
+              drone._deployTarget = null;
+              drone.state = "active";
+            }
+          } else {
+            drone.state = "active";
+          }
+          continue;
+        }
 
         // Evaluate AI routine
         const result = evaluateRoutine(drone, swarm.routine, anchorPos, this.context);
 
         if (result.retreating) {
-          // Return to mothership
-          const distToShip = dist3(drone.position, mothershipPos);
-          if (distToShip <= OFFLOAD_RANGE) {
-            // At mothership — offload cargo
-            this._offloadCargo(drone);
-            // After offloading, go back to active duty
-            drone.state = "active";
+          // Track the retreat reason so the dock handler can decide
+          // whether to admit the drone into the repair bay.
+          drone._retreatReason = result.reason;
+          this._countRetreatTrigger(swarm, result.reason);
+
+          // Two-phase return when bays exist: first head to a waypoint
+          // outside the bay along its outward normal (the "approach
+          // corridor"), THEN drop straight into the bay. This stops drones
+          // clipping through the hull when the bay is on the underside.
+          const bay = this._pickReturnBay(drone);
+          if (bay) {
+            this._returnViaBay(drone, bay, dt);
           } else {
-            this._moveToward(drone, mothershipPos, dt, RETREAT_SPEED_MULT);
-            drone.state = "returning";
+            // No bay configured — fall back to the old "fly directly to
+            // ship center" behavior so the procedural mothership still works.
+            const distToShip = dist3(drone.position, mothershipPos);
+            if (distToShip <= OFFLOAD_RANGE) {
+              this._handleDocked(drone);
+            } else {
+              this._moveToward(drone, mothershipPos, dt, RETREAT_SPEED_MULT);
+              drone.state = "returning";
+            }
           }
         } else if (result.target) {
           // Move toward target
@@ -154,6 +206,10 @@ export class FleetManager {
 
   /**
    * Process the deploy queue — launch drones one at a time from the mothership.
+   * If the mothership has a configured drone bay, drones spawn at the bay's
+   * world position and animate outward along its outward normal until they're
+   * clear of the hull. Otherwise they snap to a position behind the ship
+   * (the old procedural-mothership behavior).
    */
   _processDeployQueue(dt, mothershipPos) {
     if (this._deployQueue.length === 0) return;
@@ -163,11 +219,98 @@ export class FleetManager {
     this._deployTimer = 0;
 
     const drone = this._deployQueue.shift();
+
+    const bay = this._pickDeployBay();
+    if (bay) {
+      const bayPos = this.mothership.bayWorldPosition(bay);
+      const bayNormal = this.mothership.bayWorldNormal(bay);
+      // Spawn exactly at the bay
+      drone.position.x = bayPos.x;
+      drone.position.y = bayPos.y;
+      drone.position.z = bayPos.z;
+      // Animate outward along the bay normal — small per-drone offset so
+      // multiple drones don't pile up on a single corridor exit
+      const jitter = 0.6;
+      const ox = (Math.random() - 0.5) * jitter;
+      const oz = (Math.random() - 0.5) * jitter;
+      drone._deployTarget = {
+        x: bayPos.x + bayNormal.x * BAY_APPROACH_DISTANCE + ox,
+        y: bayPos.y + bayNormal.y * BAY_APPROACH_DISTANCE,
+        z: bayPos.z + bayNormal.z * BAY_APPROACH_DISTANCE + oz,
+      };
+      drone.state = "deploying";
+      return;
+    }
+
+    // Fallback: old procedural-mothership behavior
     const spread = (Math.random() - 0.5) * DEPLOY_SPREAD;
     drone.position.x = mothershipPos.x + spread;
     drone.position.y = mothershipPos.y - 5;
     drone.position.z = mothershipPos.z + 15;
     drone.state = "active";
+  }
+
+  /**
+   * Pick the bay a freshly-deployed drone should spawn from. Currently just
+   * the first one — extending this to balance drones across multiple bays
+   * is a future tweak.
+   */
+  _pickDeployBay() {
+    if (!this.mothership || !this.mothership.bays || this.mothership.bays.length === 0) return null;
+    return this.mothership.bays[0];
+  }
+
+  /**
+   * Pick the bay a returning drone should head toward. Closest in straight-
+   * line world distance to the drone's current position.
+   */
+  _pickReturnBay(drone) {
+    if (!this.mothership || !this.mothership.bays || this.mothership.bays.length === 0) return null;
+    let best = null;
+    let bestDist = Infinity;
+    for (const bay of this.mothership.bays) {
+      const bayPos = this.mothership.bayWorldPosition(bay);
+      const d = dist3(drone.position, bayPos);
+      if (d < bestDist) { bestDist = d; best = bay; }
+    }
+    return best;
+  }
+
+  /**
+   * Two-phase return: drone first heads to a waypoint outside the bay along
+   * the bay's outward normal, then heads straight into the bay center.
+   * Stops clipping through the hull on bottom-mounted bays.
+   */
+  _returnViaBay(drone, bay, dt) {
+    const bayPos = this.mothership.bayWorldPosition(bay);
+    const bayNormal = this.mothership.bayWorldNormal(bay);
+    const approachPos = {
+      x: bayPos.x + bayNormal.x * BAY_APPROACH_DISTANCE,
+      y: bayPos.y + bayNormal.y * BAY_APPROACH_DISTANCE,
+      z: bayPos.z + bayNormal.z * BAY_APPROACH_DISTANCE,
+    };
+
+    if (drone.state === "docking") {
+      // Phase 2: already past the corridor — go straight to the bay center
+      const distToBay = dist3(drone.position, bayPos);
+      if (distToBay <= BAY_DOCK_DISTANCE) {
+        this._handleDocked(drone);
+        return;
+      }
+      this._moveToward(drone, bayPos, dt, RETREAT_SPEED_MULT);
+      return;
+    }
+
+    // Phase 1: head to the corridor waypoint
+    const distToApproach = dist3(drone.position, approachPos);
+    if (distToApproach <= 5) {
+      // Reached the corridor — flip to docking phase
+      drone.state = "docking";
+      this._moveToward(drone, bayPos, dt, RETREAT_SPEED_MULT);
+      return;
+    }
+    this._moveToward(drone, approachPos, dt, RETREAT_SPEED_MULT);
+    drone.state = "returning";
   }
 
   /**
@@ -275,6 +418,8 @@ export class FleetManager {
     const regenRate = this.droneShieldRegenRate ?? 0.5; // shields per second per drone
     for (const drone of this.drones) {
       if (!isDroneAlive(drone)) continue;
+      // Repair bay handles shield restoration for docked drones
+      if (drone.state === "in-repair") continue;
       if (drone.stats.shieldsMax <= 0) continue;
       if (drone.stats.shields >= drone.stats.shieldsMax) continue;
       drone.stats.shields = Math.min(
@@ -282,6 +427,40 @@ export class FleetManager {
         drone.stats.shields + regenRate * dt
       );
     }
+  }
+
+  /**
+   * Called when a retreating drone reaches the dock point. Offloads cargo,
+   * then either hands the drone off to the repair bay (if the retreat was
+   * due to damage and the bay has capacity) or releases it back to "active"
+   * so it resumes its routine.
+   */
+  _handleDocked(drone) {
+    this._offloadCargo(drone);
+
+    const admitted =
+      drone._retreatReason === "damaged" &&
+      this.mothership?.repairBay &&
+      this.mothership.repairBay.admit(drone);
+
+    if (!admitted) {
+      drone._retreatReason = null;
+      drone.state = "active";
+    }
+  }
+
+  /**
+   * Increment per-routine retreat counters for telemetry / HUD / QA.
+   */
+  _countRetreatTrigger(swarm, reason) {
+    if (!reason) return;
+    if (!swarm._metrics) {
+      swarm._metrics = { retreats: {} };
+    }
+    swarm._metrics.retreats[reason] = (swarm._metrics.retreats[reason] || 0) + 1;
+    this.routineMetrics = this.routineMetrics || { retreats: {} };
+    this.routineMetrics.retreats[reason] =
+      (this.routineMetrics.retreats[reason] || 0) + 1;
   }
 
   /**
@@ -295,6 +474,10 @@ export class FleetManager {
     const resourceType = drone._lastMinedType || "iron-ore";
     const stored = this.mothership.storeResource(resourceType, drone.cargo);
     drone.cargo -= stored;
+
+    // Mark this drone for a cargo-deposit "ding" — main.js consumes the
+    // flag and plays the SFX at the drone's position next frame.
+    if (stored > 0) drone._pendingOffloadSound = true;
   }
 
   /**

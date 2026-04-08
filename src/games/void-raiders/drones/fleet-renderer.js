@@ -119,6 +119,8 @@ export class FleetRenderer {
 
     for (const drone of allDrones) {
       if (drone.state === "destroyed") continue;
+      // Drones inside the repair bay are hidden until ejected
+      if (drone.state === "in-repair") continue;
       const type = drone.type;
       const mesh = this.meshes[type];
       if (!mesh) continue;

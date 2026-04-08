@@ -163,9 +163,22 @@
       display: flex;
       gap: 6px;
       align-items: center;
+      flex-wrap: wrap;
     }
     #hp-toolbar .small-btn { padding: 4px 8px; font-size: 10px; }
     #hp-place-mode.active { background: #1a3a1a; border-color: #40a040; color: #7bf77b; }
+    #hp-rig-mode.active { background: #1a3a2a; border-color: #40a060; color: #7bf77b; }
+    #hp-auto-mode.active { background: #1a3a3a; border-color: #40a0a0; color: #7bf7f7; }
+    #hp-bay-mode.active { background: #2a3a1a; border-color: #60a040; color: #aaff7b; }
+    #rig-status {
+      padding: 6px 12px;
+      border-bottom: 1px solid #2a2a4a;
+      font-size: 10px;
+      color: #7bf77b;
+      background: #0e1a14;
+      display: none;
+    }
+    #rig-status.visible { display: block; }
 
     #hp-list { flex: 1; overflow-y: auto; }
 
@@ -181,6 +194,7 @@
     .hp-item .hp-name { flex: 1; font-size: 12px; color: #e0e0ff; font-weight: bold; }
     .hp-item .hp-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; }
     .hp-type-turret { background: #2a2a50; color: #7b7bf7; }
+    .hp-type-ball_turret { background: #2a2a60; color: #9b9bff; }
     .hp-type-missile_launcher { background: #502a2a; color: #f77b7b; }
     .hp-type-drone_bay { background: #2a502a; color: #7bf77b; }
     .hp-type-point_defense { background: #50502a; color: #f7f77b; }
@@ -289,19 +303,24 @@
     <!-- Hardpoints tab -->
     <div class="tab-content" id="tab-hardpoints">
       <div id="hp-toolbar">
-        <button id="hp-place-mode" class="small-btn" title="Click ship to place hardpoint">+ Place</button>
+        <button id="hp-detect" class="small-btn" title="Auto-detect and rig all ball turrets on this ship in one click">Detect</button>
+        <button id="hp-auto-mode" class="small-btn" title="Click any turret to rig it (one click = one turret)">Auto</button>
+        <button id="hp-rig-mode" class="small-btn" title="Click barrel mesh, then base mesh (single turret)">Rig</button>
+        <button id="hp-place-mode" class="small-btn" title="Click ship to place a procedural hardpoint">Place</button>
+        <button id="hp-bay-mode" class="small-btn" title="Click ship to place a drone bay (drones spawn from here)">Bay</button>
         <button id="hp-show-arcs" class="small-btn active" title="Show/hide firing arcs">Arcs</button>
-        <button id="hp-simulate" class="small-btn" title="Simulate turrets tracking a target">Simulate</button>
-        <button id="hp-auto-detect" class="small-btn" title="Auto-detect turrets from split meshes">Auto-detect</button>
+        <button id="hp-simulate" class="small-btn" title="Simulate turrets tracking a target">Sim</button>
         <span style="flex:1"></span>
-        <span id="hp-count" style="font-size:10px;color:#5858a0">0 hardpoints</span>
+        <span id="hp-count" style="font-size:10px;color:#5858a0">0</span>
       </div>
+      <div id="rig-status">Click the <b>barrel</b> mesh in the viewport. ESC to cancel.</div>
       <div id="hp-list"></div>
       <div id="hp-editor">
         <label>Name <input type="text" id="hp-name" /></label>
         <label>Type
           <select id="hp-type">
             <option value="turret">Turret</option>
+            <option value="ball_turret">Ball Turret</option>
             <option value="missile_launcher">Missile Launcher</option>
             <option value="drone_bay">Drone Bay</option>
             <option value="point_defense">Point Defense</option>
@@ -328,9 +347,10 @@
         <button id="hp-delete" class="small-btn danger" style="align-self:flex-end;margin-top:4px">Delete Hardpoint</button>
       </div>
       <div id="hp-actions">
-        <button id="hp-save" class="small-btn">Save JSON</button>
-        <button id="hp-load" class="small-btn">Load JSON</button>
-        <button id="hp-export" class="small-btn">Copy JSON</button>
+        <button id="hp-save" class="small-btn">Save</button>
+        <button id="hp-load" class="small-btn">Load</button>
+        <button id="hp-export" class="small-btn">Copy</button>
+        <button id="hp-clear-all" class="small-btn danger" title="Delete all hardpoints and reload the model">Clear</button>
       </div>
     </div>
   </div>

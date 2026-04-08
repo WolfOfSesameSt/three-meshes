@@ -14,6 +14,7 @@
     "music": "node src/games/void-raiders/audio/elevenlabs.js music",
     "music:plan": "node src/games/void-raiders/audio/elevenlabs.js plan",
     "audio:budget": "node src/games/void-raiders/audio/elevenlabs.js budget",
+    "texture": "node src/games/void-raiders/textures/gemini.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

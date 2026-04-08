@@ -32,6 +32,10 @@ Access at `http://localhost:5173/src/games/kaiju-city/index.html` when dev serve
 Access at `http://localhost:5173/src/games/void-raiders/index.html` when dev server is running.
 GDD at `src/games/void-raiders/GDD.md`. Agentic dev system in `.claude/agents/`.
 
+**Dev tools:**
+- Model Preview: `http://localhost:5173/src/games/void-raiders/model-preview/index.html`
+- Music Laboratory: `http://localhost:5173/src/games/void-raiders/music-lab/index.html` — swap tracks between the 4 gameplay situations (station/mission/combat/extraction), audition candidates, and generate new music via ElevenLabs. Saves to localStorage; `audio/music-config.js` is the shared config module the game reads at runtime.
+
 **Key commands:**
 | Command | Description |
 |---------|-------------|

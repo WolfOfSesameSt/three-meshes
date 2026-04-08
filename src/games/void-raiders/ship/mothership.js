@@ -1,14 +1,39 @@
 /**
  * Mothership — the player's deployable vessel.
  *
- * Low-poly geometric mesh with basic systems.
+ * Two render paths:
+ *   1. Loaded glTF (e.g. Star Destroyer Detailed) with procedural ball turret
+ *      slots applied from a saved hardpoint config — see Mothership.create().
+ *   2. Procedural fallback — a low-poly angular hull built from primitives.
+ *      Used when no hardpoint config is in localStorage or the glTF fails to
+ *      load. Tests use this path so they don't need a real glTF loader.
+ *
  * Follows a pre-planned route through the realm.
  */
 
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { applyMothershipConfig, loadActiveTurretSkins } from "./turret-rigger.js";
+import { RepairBay } from "./repair-bay.js";
+
+// In-game scale of the loaded glTF mothership relative to its source units.
+// The model preview auto-fits ships to ~5 world units across; we scale the
+// wrapper to make the in-game ship read at a sensible size next to terrain
+// and drones. Bump this if the ship feels too small.
+const MOTHERSHIP_SCALE = 8;
+// Y-axis rotation applied to the loaded model so its bow points along the
+// game's forward direction. The movement system uses
+// `rotation.y = atan2(nx, nz)`, which aligns the ship's LOCAL +Z with the
+// motion direction — so "forward in local space" = local +Z. The Star
+// Destroyer Detailed is authored with its bow along +X, so a -90° rotation
+// (-π/2) around Y maps the bow from +X to +Z. Flip the sign if you swap to
+// a model that faces the other way.
+const MOTHERSHIP_ROTATION_Y = -Math.PI / 2;
+const MOTHERSHIP_MODEL_PATH = "/models/star-destroyer/scene.gltf";
+const MOTHERSHIP_CONFIG_KEY = "ship-hp-star-destroyer";
 
 /**
- * Create the mothership mesh — a low-poly angular hull.
+ * Build the procedural fallback mesh — a low-poly angular hull.
  * @returns {THREE.Group}
  */
 function createMothershipMesh() {
@@ -85,11 +110,30 @@ function createMothershipMesh() {
 
 /**
  * Mothership entity with systems and state.
+ *
+ * Use `await Mothership.create()` to get one with the SD Detailed glTF +
+ * configured slots loaded. The bare constructor returns the procedural
+ * fallback only — kept exported because tests + helpers may want it.
  */
 export class Mothership {
   constructor() {
     this.mesh = createMothershipMesh();
     this.mesh.position.set(0, 30, 0);
+
+    // Configured slots (populated by Mothership.create() when a saved
+    // hardpoint config is available). Empty for the procedural fallback.
+    this.turrets = []; // ball turret slots — { yawPivot, pitchPivot, muzzleLocal, ... }
+    this.bays = [];    // drone bay slots — { position, normal, group }
+
+    // Shield bubble radius — main.js reads this when constructing the
+    // shield. Default fits the procedural octahedron mesh. Mothership.create()
+    // overrides it from the loaded model's bounding box.
+    this.shieldRadius = 14;
+
+    // Last impact position recorded by takeDamage — main.js consumes this
+    // each frame to ripple the shield bubble at the actual hit point instead
+    // of a random angle. Cleared after consumption.
+    this.lastShieldImpact = null;
 
     // Core systems
     this.systems = {
@@ -118,6 +162,191 @@ export class Mothership {
 
     // Death callback — set by main.js to trigger mission failure
     this.onDeath = null;
+
+    // Repair bay — heals drones that return with retreat="damaged".
+    // Config is rebuilt from research modifiers at mission start via
+    // applyResearchModifiers(gameState.research). See get position()
+    // below — the bay uses it to eject repaired drones near the hull.
+    this.repairBay = new RepairBay(this);
+  }
+
+  /**
+   * Async factory: load the SD Detailed glTF, look up a saved hardpoint
+   * config in localStorage, apply it (hide slot meshes + build procedural
+   * turrets + register bays), and return a fully-configured Mothership.
+   *
+   * Falls back to the bare procedural mesh if anything fails — the game
+   * still launches even without a configured ship.
+   *
+   * @returns {Promise<Mothership>}
+   */
+  static async create() {
+    const ship = new Mothership();
+
+    // Skip glTF loading entirely if there's no saved config — keep the
+    // procedural fallback that the constructor already built.
+    let savedConfig = null;
+    try {
+      const raw = typeof localStorage !== "undefined" ? localStorage.getItem(MOTHERSHIP_CONFIG_KEY) : null;
+      if (raw) savedConfig = JSON.parse(raw);
+    } catch {
+      savedConfig = null;
+    }
+    if (!savedConfig || !Array.isArray(savedConfig.hardpoints) || savedConfig.hardpoints.length === 0) {
+      console.log("[Mothership] No saved hardpoint config — using procedural fallback");
+      return ship;
+    }
+
+    try {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(MOTHERSHIP_MODEL_PATH);
+      const root = gltf.scene;
+
+      // Auto-fit the loaded model to the same ~5-unit space the model preview
+      // tool used when the hardpoints were saved, so the saved coordinates
+      // line up exactly with the model geometry.
+      const box = new THREE.Box3().setFromObject(root);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fitScale = 5 / maxDim;
+      root.scale.setScalar(fitScale);
+      root.position.sub(center.multiplyScalar(fitScale));
+
+      // Two-layer wrapping:
+      //   outer  ← what main.js / shield / movement attach to (UNSCALED, so
+      //            things added to it stay at world units — no shield blow-up)
+      //   wrapper ← carries the in-game scale + the static rotation that
+      //             aligns the model's bow with the game's forward (-Z).
+      //             Procedural turrets/bays are added HERE because the saved
+      //             positions are in 5-unit space — wrapper's local space
+      //             matches that 1:1 (only the in-game scale on top), so
+      //             attaching the procedural visuals here doesn't apply the
+      //             auto-fit transform a second time.
+      //   root    ← the loaded glTF, in its auto-fit-to-5-units local space
+      //             (the auto-fit lives on root, NOT on the procedural slots)
+      const wrapper = new THREE.Group();
+      wrapper.add(root);
+      wrapper.scale.setScalar(MOTHERSHIP_SCALE);
+      wrapper.rotation.y = MOTHERSHIP_ROTATION_Y;
+
+      const outer = new THREE.Group();
+      outer.add(wrapper);
+
+      // Load any saved turret skins from localStorage (texture lab writes
+      // them) before building the slots — applyMothershipConfig wraps each
+      // procedural turret head + barrel with the appropriate map.
+      const skins = await loadActiveTurretSkins();
+
+      // Apply the saved config — build procedural ball turrets / bays
+      // attached to wrapper, leaving the artist's original ball-turret
+      // meshes visible underneath. The procedural turrets sit at the same
+      // saved position so they overlay the artist art.
+      const { turrets, bays, skipped } = applyMothershipConfig(root, wrapper, savedConfig, { skins });
+
+      if (skipped > 0) {
+        console.warn(
+          `[Mothership] ${skipped}/${savedConfig.hardpoints.length} saved hardpoint(s) skipped — entries had neither modelSlot nor modelTurret. Re-run Detect in the model preview to refresh the format.`,
+        );
+      }
+      if (turrets.length === 0 && savedConfig.hardpoints.length > 0) {
+        console.warn(
+          `[Mothership] Saved config has ${savedConfig.hardpoints.length} hardpoint(s) but none became turret slots. Format keys per entry:`,
+          savedConfig.hardpoints.map(h => Object.keys(h).join(",")),
+        );
+      }
+
+      // Swap the procedural fallback for the configured glTF mesh
+      const oldMesh = ship.mesh;
+      outer.position.copy(oldMesh.position);
+      ship.mesh = outer;
+
+      // Dispose of the procedural fallback geometry/materials we just orphaned
+      oldMesh.traverse((c) => {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material?.dispose) c.material.dispose();
+      });
+
+      ship.turrets = turrets;
+      ship.bays = bays;
+
+      // Compute a shield radius that actually wraps this ship. Use the
+      // wrapper's world-space bounding box (which includes the in-game
+      // scale) and pad slightly so the bubble doesn't clip the hull.
+      wrapper.updateMatrixWorld(true);
+      const sizeBox = new THREE.Box3().setFromObject(wrapper);
+      const sizeVec = sizeBox.getSize(new THREE.Vector3());
+      const longest = Math.max(sizeVec.x, sizeVec.y, sizeVec.z);
+      ship.shieldRadius = longest * 0.6;
+
+      console.log(
+        `[Mothership] Loaded ${MOTHERSHIP_MODEL_PATH} with ${turrets.length} ball turret slot(s), ${bays.length} drone bay(s), shield radius ${ship.shieldRadius.toFixed(1)}`,
+      );
+    } catch (err) {
+      console.warn("[Mothership] Failed to load glTF, using procedural fallback:", err);
+    }
+
+    return ship;
+  }
+
+  /**
+   * Toggle a turret slot on or off. Inactive slots:
+   *   - skip the per-frame aim/fire loop (no rotation, no shots)
+   *   - hide the visible mesh (procedural sphere/barrel OR original artist
+   *     mesh, whichever was used to build the slot)
+   *
+   * Used by the progression / upgrade system: ship starts with most slots
+   * inactive, the player buys them on as upgrades.
+   *
+   * @param {number} index - turret index in this.turrets
+   * @param {boolean} active
+   */
+  setTurretActive(index, active) {
+    const t = this.turrets[index];
+    if (!t) return false;
+    t.active = !!active;
+    if (t.group) t.group.visible = t.active;
+    // Reset rotation when deactivating so the next activation starts neutral
+    if (!t.active) {
+      if (t.yawPivot) t.yawPivot.rotation.y = 0;
+      if (t.pitchPivot) t.pitchPivot.rotation.x = 0;
+      t.currentYaw = 0;
+      t.currentPitch = 0;
+    }
+    return true;
+  }
+
+  /**
+   * Get the world position of a drone bay's spawn/exit point. Drones spawn
+   * exactly at this point and travel along the bay's outward normal until
+   * they're clear of the hull.
+   *
+   * @param {object} bay - entry from this.bays
+   * @returns {THREE.Vector3} world-space position
+   */
+  bayWorldPosition(bay) {
+    const v = bay.position.clone();
+    bay.group.parent?.localToWorld(v); // walk up through wrapper(s) to world
+    return v;
+  }
+
+  /**
+   * Get the world-space outward normal of a drone bay. This is the direction
+   * drones move when exiting and approach from when returning.
+   *
+   * @param {object} bay
+   * @returns {THREE.Vector3}
+   */
+  bayWorldNormal(bay) {
+    // Transform a local-direction vector into world space using the parent's
+    // world matrix (rotation only — we don't want translation in a direction)
+    const dir = bay.normal.clone();
+    if (bay.group.parent) {
+      bay.group.parent.updateMatrixWorld(true);
+      const m = new THREE.Matrix3().getNormalMatrix(bay.group.parent.matrixWorld);
+      dir.applyMatrix3(m).normalize();
+    }
+    return dir;
   }
 
   /**
@@ -131,8 +360,14 @@ export class Mothership {
   /**
    * Apply damage (shields first, then hull).
    * @param {number} amount
+   * @param {{x:number,y:number,z:number}} [impactPos] - world-space position
+   *   of the hit, used to ripple the shield bubble at the right location.
    */
-  takeDamage(amount) {
+  takeDamage(amount, impactPos) {
+    if (this.systems.shields > 0 && impactPos) {
+      // Record the most recent shield impact so main.js can ripple from it
+      this.lastShieldImpact = { x: impactPos.x, y: impactPos.y, z: impactPos.z };
+    }
     if (this.systems.shields > 0) {
       const absorbed = Math.min(this.systems.shields, amount);
       this.systems.shields -= absorbed;

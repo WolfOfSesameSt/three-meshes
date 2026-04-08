@@ -5,22 +5,28 @@
  * Upgrades, drones, and research persist across raids.
  */
 
+// Test-mode resource floors. Both the in-memory default AND any loaded save
+// get topped up to at least these values so the player can always afford
+// every craftable / buyable in the game while we playtest the new weapons.
+// Drop these to release-tuned numbers when shipping.
+export const TEST_RESOURCE_FLOORS = {
+  "iron-ore": 50000,
+  "copper-ore": 50000,
+  "titanium-ore": 25000,
+  "crystal-shard": 25000,
+  "quartz-crystal": 25000,
+  "plasma-core": 25000,
+  "exotic-matter": 10000,
+  "organic-matter": 25000,
+  "bio-compound": 25000,
+  "silicon-dust": 25000,
+  "rare-earth": 25000,
+  "salvage-parts": 50000,
+};
+
 export const gameState = {
   // Starting resources for testing — remove or reduce for release
-  resources: {
-    "iron-ore": 5000,
-    "copper-ore": 3000,
-    "titanium-ore": 500,
-    "crystal-shard": 2000,
-    "quartz-crystal": 800,
-    "plasma-core": 1000,
-    "exotic-matter": 100,
-    "organic-matter": 1500,
-    "bio-compound": 400,
-    "silicon-dust": 1200,
-    "rare-earth": 300,
-    "salvage-parts": 2000,
-  },
+  resources: { ...TEST_RESOURCE_FLOORS },
   mothership: {
     hull: 1000,
     hullMax: 1000,
@@ -35,7 +41,16 @@ export const gameState = {
     { type: "worker-mining", count: 5, upgrades: [] },
     { type: "offensive", count: 3, upgrades: [] },
   ],
-  research: {},
+  research: {
+    // Repair bay — default-unlocked while we playtest the feature.
+    // Remove these five flags (or reset them to {}) when we want players
+    // to earn the repair bay via the research tree again.
+    "repair-bay-unlock": true,
+    "repair-bay-speed": true,
+    "repair-bay-efficiency": true,
+    "repair-bay-replicator": true,
+    "repair-bay-capacity": true,
+  },
   missionsCompleted: 0,
   shipsLost: 0,
   selectedRealm: null,

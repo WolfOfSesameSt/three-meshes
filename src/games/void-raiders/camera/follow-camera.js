@@ -35,8 +35,32 @@ export class FollowCamera {
     // Input state
     this._dragging = false;
     this._lastMouseX = 0;
+    this._lastMouseY = 0;
+
+    // Free-fly mode (toggle with F): WASD to move, right-mouse-drag to look,
+    // Q/E for vertical, Shift to sprint. Useful for inspecting the underside
+    // of the ship and verifying turret aim from any angle.
+    this.freeMode = false;
+    this.freeYaw = 0;     // radians around world +Y
+    this.freePitch = 0;   // radians around camera local X
+    this.freeMoveSpeed = 80; // m/s base speed
+    this._keys = { w: false, a: false, s: false, d: false, q: false, e: false, shift: false };
 
     this._bindEvents();
+  }
+
+  toggleFreeMode() {
+    this.freeMode = !this.freeMode;
+    if (this.freeMode) {
+      // Snap free-camera direction to wherever we were looking right now
+      const dir = new THREE.Vector3();
+      this.camera.getWorldDirection(dir);
+      this.freeYaw = Math.atan2(dir.x, dir.z);
+      this.freePitch = Math.asin(THREE.MathUtils.clamp(dir.y, -1, 1));
+      console.log("[FollowCamera] Free mode ON — WASD/QE to move, right-drag to look, Shift to sprint, F to exit");
+    } else {
+      console.log("[FollowCamera] Free mode OFF — back to ship follow");
+    }
   }
 
   _bindEvents() {
@@ -62,13 +86,47 @@ export class FollowCamera {
     this.domElement.addEventListener("mousemove", (e) => {
       if (!this._dragging) return;
       const dx = e.clientX - this._lastMouseX;
-      this.orbitAngle -= dx * 0.005;
+      const dy = e.clientY - this._lastMouseY;
+      if (this.freeMode) {
+        this.freeYaw -= dx * 0.005;
+        this.freePitch -= dy * 0.005;
+        const lim = Math.PI / 2 - 0.05;
+        this.freePitch = Math.max(-lim, Math.min(lim, this.freePitch));
+      } else {
+        this.orbitAngle -= dx * 0.005;
+      }
       this._lastMouseX = e.clientX;
+      this._lastMouseY = e.clientY;
     });
 
-    this.domElement.addEventListener("mouseup", (e) => {
+    // WASD / QE / Shift / F bindings for free-fly mode
+    window.addEventListener("keydown", (e) => {
+      // Don't intercept keys when the user is typing in an input element
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+      const k = e.key.toLowerCase();
+      if (k === "f" && !e.repeat) { this.toggleFreeMode(); e.preventDefault(); }
+      if (this.freeMode && this._keys[k] !== undefined) {
+        this._keys[k] = true;
+        e.preventDefault();
+      }
+      if (this.freeMode && (k === "shift" || e.shiftKey)) this._keys.shift = true;
+    });
+    window.addEventListener("keyup", (e) => {
+      const k = e.key.toLowerCase();
+      if (this._keys[k] !== undefined) this._keys[k] = false;
+      if (k === "shift") this._keys.shift = false;
+    });
+
+    // Listen on window, not the canvas — if the user right-click-drags and
+    // releases OUTSIDE the canvas, a domElement-only listener misses the
+    // mouseup and _dragging stays stuck true (camera then follows the
+    // mouse forever without any button held).
+    window.addEventListener("mouseup", (e) => {
       if (e.button === 2) this._dragging = false;
     });
+    // Also cancel drag if the mouse leaves the window entirely (e.g. switching
+    // tabs / dragging off-screen) — the next mouseup may never fire.
+    window.addEventListener("blur", () => { this._dragging = false; });
 
     // Prevent context menu on right click
     this.domElement.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -81,6 +139,10 @@ export class FollowCamera {
    * @param {number} dt — delta time
    */
   update(targetPos, targetRotY, dt) {
+    if (this.freeMode) {
+      this._updateFree(dt);
+      return;
+    }
     // Calculate desired camera position behind the ship
     const behindAngle = targetRotY + Math.PI + this.orbitAngle;
     this._targetPos.set(
@@ -111,6 +173,35 @@ export class FollowCamera {
     }
 
     this.camera.lookAt(this._currentLook);
+  }
+
+  /**
+   * Free-fly camera update — WASD/QE move, right-click drag rotates, Shift sprints.
+   * Active when toggleFreeMode() has been called (default key: F).
+   */
+  _updateFree(dt) {
+    const sprint = this._keys.shift ? 3 : 1;
+    const speed = this.freeMoveSpeed * sprint * dt;
+
+    // Forward + right vectors from yaw + pitch
+    const forward = new THREE.Vector3(
+      Math.sin(this.freeYaw) * Math.cos(this.freePitch),
+      Math.sin(this.freePitch),
+      Math.cos(this.freeYaw) * Math.cos(this.freePitch),
+    );
+    const right = new THREE.Vector3()
+      .crossVectors(forward, new THREE.Vector3(0, 1, 0))
+      .normalize();
+
+    if (this._keys.w) this.camera.position.addScaledVector(forward, speed);
+    if (this._keys.s) this.camera.position.addScaledVector(forward, -speed);
+    if (this._keys.d) this.camera.position.addScaledVector(right, speed);
+    if (this._keys.a) this.camera.position.addScaledVector(right, -speed);
+    if (this._keys.e) this.camera.position.y += speed;
+    if (this._keys.q) this.camera.position.y -= speed;
+
+    const lookAt = this.camera.position.clone().add(forward);
+    this.camera.lookAt(lookAt);
   }
 
   /**
