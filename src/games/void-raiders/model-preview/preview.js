@@ -1066,6 +1066,34 @@ function resolveAttackId(hp) {
   return hp.attackId || DEFAULT_ATTACK_BY_TYPE[hp.type] || "point-defense-pulse";
 }
 
+// Weapon families — hardware class rules.
+//   ball    → point-defense-pulse, arc-emitter
+//   heavy   → heavy-railgun, shield-breaker
+//   missile → guided-missile, flak-burst (flak missiles)
+// The arena weapon filter honors these: filtering to railgun only lets
+// heavy turret hps build, etc. Hps whose natural family doesn't match the
+// filter are skipped, so you don't morph a ball turret into a heavy
+// cannon silhouette just to test a railgun.
+const WEAPON_FAMILIES = {
+  "point-defense-pulse": "ball",
+  "arc-emitter": "ball",
+  "heavy-railgun": "heavy",
+  "shield-breaker": "heavy",
+  "guided-missile": "missile",
+  "flak-burst": "missile",
+};
+function hpNaturalFamily(hp) {
+  if (hp.type === "heavy_cannon") return "heavy";
+  if (hp.type === "missile_launcher") return "missile";
+  return "ball"; // ball_turret, turret, point_defense, etc
+}
+// Attacks whose damage must be DELAYED until the arena's visible bolt
+// arrives at the target. The real projectile pool's proximity check has a
+// hard-coded 8-unit minimum that fires damage instantly in the 5-unit
+// sandbox, so we zero the damage on these attacks in the sandbox, stash
+// the original value, and apply it via the arena bolt's impact handler.
+const SANDBOX_DELAYED_DAMAGE_ATTACKS = ["guided-missile", "flak-burst"];
+
 let hpIdCounter = 0;
 let simulating = false;
 let simTime = 0;
@@ -2404,11 +2432,20 @@ class ArenaEffects {
 
   /**
    * Spawn a travelling bolt — visible projectile for flak + guided missile.
-   * Moves from `from` toward `target` (dynamic target position each frame)
-   * at `speed` m/s until it passes the target or lifetime expires. Trail
-   * drawn by spawning faint dots every few frames along the path.
+   * Moves from `from` toward `target` (dynamic position each frame) at
+   * `speed` m/s until it passes the target or lifetime expires.
+   *
+   * @param {object} cfg extra fields:
+   *   damage      — damage to apply on visible impact (real projectile
+   *                 pool's damage is zeroed in sandbox so this is the
+   *                 only damage source)
+   *   attackId    — for stats tracking
+   *   onStats     — (attackId, dealt) => void, called on impact to update
+   *                 the arena HUD counters
+   *   onImpact    — (pos, color) => void, called on visible impact for
+   *                 per-weapon impact visuals (e.g. flak cluster)
    */
-  spawnProjectileBolt(from, target, color = 0xffaa44, speed = 120, isGuided = false) {
+  spawnProjectileBolt(from, target, color = 0xffaa44, speed = 120, isGuided = false, cfg = {}) {
     const geo = new THREE.SphereGeometry(0.07, 10, 8);
     const mat = new THREE.MeshBasicMaterial({
       color, transparent: true, opacity: 1,
@@ -2419,10 +2456,6 @@ class ArenaEffects {
     mesh.frustumCulled = false;
     mesh.renderOrder = 1700;
     this.scene.add(mesh);
-    // Initial velocity pointing at target. `speed` already arrives
-    // scaled by SANDBOX_WORLD_SCALE via applySandboxAttackOverrides so
-    // my visible bolt travels at the same pace as the real projectile
-    // pool's (invisible) hit-check projectile. No extra compression.
     const dx = target.position.x - from.x;
     const dy = target.position.y - from.y;
     const dz = target.position.z - from.z;
@@ -2436,8 +2469,48 @@ class ArenaEffects {
       target, color, isGuided,
       trailTimer: 0,
       t: 0, lifetime: 3.0,
+      damage: cfg.damage || 0,
+      attackId: cfg.attackId || null,
+      onStats: cfg.onStats || null,
+      onImpact: cfg.onImpact || null,
+      hasImpacted: false,
     };
     this.fallbackBeams.push(boltEntry);
+  }
+
+  /**
+   * FLAK MISSILE cluster detonation — many small explosions going off
+   * in a spread around the impact point, suggesting fragmentation
+   * munitions. Good visual feedback for the "lots of AOE, low single
+   * target" weapon role.
+   *
+   * Spawns 8 mini explosions at random offsets within a ~0.4u sphere,
+   * staggered across 0.3s so they POP POP POP instead of one flash.
+   */
+  spawnClusterDetonation(pos, color = 0xff8844) {
+    const count = 8;
+    const spreadRadius = 0.4;
+    for (let i = 0; i < count; i++) {
+      // Random offset within a sphere
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = Math.random() * spreadRadius;
+      const ox = Math.sin(phi) * Math.cos(theta) * r;
+      const oy = Math.sin(phi) * Math.sin(theta) * r;
+      const oz = Math.cos(phi) * r;
+      const subPos = { x: pos.x + ox, y: pos.y + oy, z: pos.z + oz };
+      // Stagger each sub-explosion so they pop in sequence
+      const delay = i * 0.035;
+      setTimeout(() => {
+        if (!arena.running) return;
+        // Bright white flash core
+        this.addImpactFlash(subPos, 20, 0xffffff);
+        // Orange/yellow burst
+        this.addImpactFlash(subPos, 25, color);
+        // Small debris
+        this.addDebris(subPos, "small", color);
+      }, delay * 1000);
+    }
   }
   addImpactFlash(pos, size = 15, color = 0xffffff) {
     const radius = Math.max(0.08, size * this.sizeScale);
@@ -2578,13 +2651,31 @@ class ArenaEffects {
           b.trailTimer = 0.05;
           this.addImpactFlash(b.mesh.position, 6, b.color);
         }
-        // Impact check against target
-        if (b.target?.position) {
+        // Impact check against target (proximity, ~0.15u scale)
+        if (!b.hasImpacted && b.target?.position) {
           const ddx = b.target.position.x - b.mesh.position.x;
           const ddy = b.target.position.y - b.mesh.position.y;
           const ddz = b.target.position.z - b.mesh.position.z;
           const d = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
-          if (d < 0.15) b.t = b.lifetime; // force dispose this frame
+          if (d < 0.15) {
+            b.hasImpacted = true;
+            // Apply the real damage at visible impact time — this is the
+            // sync fix for projectile weapons. Real projectile pool fires
+            // with damage=0 (via sandbox override) so the only damage is
+            // this one, landing exactly when the bolt arrives.
+            if (b.damage > 0 && b.target?.takeDamage && b.target.alive) {
+              b.target.takeDamage(b.damage, b.mesh.position);
+              // Record the hit + damage in arena stats
+              if (b.onStats && b.attackId) {
+                b.onStats(b.attackId, b.damage);
+              }
+            }
+            // Per-weapon impact visual (flak cluster, missile burst, etc)
+            if (b.onImpact) {
+              b.onImpact(b.mesh.position, b.color);
+            }
+            b.t = b.lifetime; // force dispose this frame
+          }
         }
       } else if (b.startScale !== undefined) {
         // Burst sphere — interpolate scale + fade opacity
@@ -2668,15 +2759,18 @@ function applySandboxAttackOverrides() {
     // doesn't one-shot every nearby enemy. Direct hits still land.
     if (def.aoeDamage != null) def.aoeDamage = 0;
   }
-  // Projectile weapons — scale speed DOWN so the real projectile pool
-  // takes roughly the same time to arrive as my visible arena bolt does.
-  // Without this scaling, real speeds (80-260 m/s) cross the 5-unit
-  // sandbox in ~0.02s and the impact fires before the visual gets there.
+  // Projectile weapons — zero the damage so the real projectile pool's
+  // instant proximity impact doesn't kill the target before the arena's
+  // visible bolt arrives. The ORIGINAL damage is stashed under
+  // arena.originalProjectileDamage so the arena bolt can apply it on
+  // visible impact for correct timing. Same treatment for aoeDamage
+  // (zero to prevent stray AOE hits during the fake real-pool fire).
   for (const id of SANDBOX_PROJECTILE_WEAPONS) {
     const def = ATTACKS[id];
     if (!def) continue;
     saved.set(id, {
       speed: def.speed,
+      damage: def.damage,
       aoeRadius: def.aoeRadius,
       aoeDamage: def.aoeDamage,
       flakDetonationRange: def.flakDetonationRange,
@@ -2685,6 +2779,14 @@ function applySandboxAttackOverrides() {
     if (def.aoeRadius != null) def.aoeRadius = def.aoeRadius * SANDBOX_WORLD_SCALE;
     if (def.aoeDamage != null) def.aoeDamage = 0;
     if (def.flakDetonationRange != null) def.flakDetonationRange = def.flakDetonationRange * SANDBOX_WORLD_SCALE;
+  }
+  // Zero damage on the delayed-damage attacks so the real projectile
+  // pool's instant impact does nothing. Arena bolt reads the original
+  // from the saved map.
+  for (const id of SANDBOX_DELAYED_DAMAGE_ATTACKS) {
+    const def = ATTACKS[id];
+    if (!def || !saved.has(id)) continue;
+    def.damage = 0;
   }
   return saved;
 }
@@ -2696,6 +2798,7 @@ function restoreSandboxAttackOverrides(saved) {
     if (orig.beamDuration !== undefined) def.beamDuration = orig.beamDuration;
     if (orig.projectileSize !== undefined) def.projectileSize = orig.projectileSize;
     if (orig.speed !== undefined) def.speed = orig.speed;
+    if (orig.damage !== undefined) def.damage = orig.damage;
     if (orig.aoeRadius !== undefined) def.aoeRadius = orig.aoeRadius;
     if (orig.aoeDamage !== undefined) def.aoeDamage = orig.aoeDamage;
     if (orig.flakDetonationRange !== undefined) def.flakDetonationRange = orig.flakDetonationRange;
@@ -2810,15 +2913,11 @@ function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
 
   // When a filter override is active, force weaponType to "laser" so
   // the TurretSystem routes every shot through _fireOnce regardless of
-  // hardware. _fireOnce is the simplest fire path — it works for any
-  // turret that has muzzleLocal + pitchPivot, which all three hardware
-  // types do. The real projectile/revolver paths would otherwise trip
-  // on state they don't have (e.g. missile launcher fire path expects
-  // tubes, heavy cannon fire path expects projectile speed > 0).
-  //
-  // My arena onFire hook dispatches per-attackId to fallback visuals,
-  // so the user still sees the RIGHT visual per weapon regardless of
-  // which hardware is firing it.
+  // hardware. _fireOnce is the simplest fire path and works for any
+  // turret that has muzzleLocal + pitchPivot. This keeps the damage
+  // path consistent: hitscan damage + immediate applyDamage (which for
+  // delayed-damage attacks gets zeroed in the sandbox overrides, so
+  // my arena bolt applies the real damage on visible impact).
   const effectiveWeaponType = overrideAttackId ? "laser" : weaponType;
 
   // Construct the turret object TurretSystem expects
@@ -2874,16 +2973,24 @@ async function arenaStart() {
   // time they've clicked Run) so the audio context can resume.
   const audio = await ensureArenaAudio();
 
-  // Build real turrets for each hp. The weapon filter is now a REBUILD
-  // override — every hp gets its turret hardware rebuilt to match the
-  // filtered weapon instead of being dropped from the build. So picking
-  // "arc-emitter" in the Fire: dropdown gives you 9 ball turrets all
-  // firing arc-emitter, regardless of what attackId each hp has saved.
+  // Build real turrets for each hp. The weapon filter is FAMILY-based:
+  //   ball    family → ball_turret hps
+  //   heavy   family → heavy_cannon hps
+  //   missile family → missile_launcher hps
+  // Hps whose natural family doesn't match the filtered weapon are
+  // skipped entirely (not rebuilt). That way picking rail gun only lets
+  // heavy turrets fire, flak only lets missile launchers fire, etc.
   const filter = arena.weaponFilter !== "all" ? arena.weaponFilter : null;
+  const filterFamily = filter ? WEAPON_FAMILIES[filter] : null;
   arena.builtTurrets = [];
+  let filterCompatibleCount = 0;
   for (const hp of hardpoints) {
     if (hp.turretGroup) hp.turretGroup.visible = false;
     if (hp.type === "drone_bay") continue;
+    // Family filter — skip hps whose hardware doesn't match the
+    // filtered weapon's family so we don't morph silhouettes.
+    if (filterFamily && hpNaturalFamily(hp) !== filterFamily) continue;
+    filterCompatibleCount++;
     const entry = arenaBuildFakeTurretFromHp(hp, filter);
     if (!entry) continue;
     arena.sceneGroup.add(entry.built.group);
@@ -2892,6 +2999,14 @@ async function arenaStart() {
       entry.turretObj.attackId === "flak-burst";
     applyTurretSkin(entry.built, isHeavySkin ? skins.heavy : skins.small);
     arena.builtTurrets.push(entry);
+  }
+  if (filter && filterCompatibleCount === 0) {
+    const fname = filterFamily === "heavy" ? "heavy turret"
+      : filterFamily === "missile" ? "missile launcher"
+      : "ball turret";
+    arena.warning = `No ${filterFamily} hardpoints placed. Place a ${fname} and try again.`;
+  } else {
+    arena.warning = null;
   }
 
   // Fake mothership: TurretSystem calls mothership.mesh.updateMatrixWorld
@@ -2951,17 +3066,49 @@ async function arenaStart() {
           arena.effects.spawnShieldBreakerBurst(_fbMuzzle, _fbTargetPos, color);
           break;
         case "heavy-railgun":
-          // Thin tracer + big impact flash
+          // Blue pixelated ionization trail + big impact flash
           arena.effects.spawnRailgunStrike(_fbMuzzle, _fbTargetPos, color);
           break;
-        case "flak-burst":
-          // Slow travelling bolt — detonation burst rendered by onHit
-          arena.effects.spawnProjectileBolt(_fbMuzzle, target, color, attackDef.speed || 80, false);
+        case "flak-burst": {
+          // Flak MISSILE — slow travelling bolt that bursts into many
+          // small explosions on impact (cluster detonation). Real
+          // damage is delayed until visible impact.
+          const origDamage = arena.beamOverrides?.get("flak-burst")?.damage || attackDef.damage || 20;
+          arena.effects.spawnProjectileBolt(_fbMuzzle, target, color, attackDef.speed || 6, false, {
+            damage: origDamage,
+            attackId: "flak-burst",
+            onStats: (id, dealt) => {
+              const s = getStats(id);
+              s.hits++;
+              s.damage += dealt;
+            },
+            onImpact: (pos, clr) => {
+              arena.effects.spawnClusterDetonation(pos, clr);
+            },
+          });
           break;
-        case "guided-missile":
-          // Fast homing bolt that curves toward the target
-          arena.effects.spawnProjectileBolt(_fbMuzzle, target, color, attackDef.speed || 120, true);
+        }
+        case "guided-missile": {
+          // Homing bolt that curves toward the target. Real damage is
+          // delayed until visible impact so the explosion+death syncs
+          // exactly when the bolt arrives.
+          const origDamage = arena.beamOverrides?.get("guided-missile")?.damage || attackDef.damage || 35;
+          arena.effects.spawnProjectileBolt(_fbMuzzle, target, color, attackDef.speed || 10, true, {
+            damage: origDamage,
+            attackId: "guided-missile",
+            onStats: (id, dealt) => {
+              const s = getStats(id);
+              s.hits++;
+              s.damage += dealt;
+            },
+            onImpact: (pos, clr) => {
+              arena.effects.addImpactFlash(pos, 40, 0xffffff);
+              arena.effects.addImpactFlash(pos, 30, clr);
+              arena.effects.addDebris(pos, "medium", clr);
+            },
+          });
           break;
+        }
         default:
           // Unknown attack id — show a generic pulse burst
           arena.effects.spawnPulseBurst(_fbMuzzle, _fbTargetPos, color);
@@ -2995,6 +3142,7 @@ async function arenaStart() {
 function arenaStop() {
   if (!arena.running) return;
   arena.running = false;
+  arena.warning = null;
 
   // Restore the attack defs' original values so the main game isn't
   // left with the sandbox-bumped numbers if you navigate between pages.
@@ -3228,6 +3376,12 @@ function arenaRenderHud() {
   if (!hud) return;
   const elapsed = (performance.now() - arena.startTime) / 1000;
   const parts = [];
+  // Show any warning set during arenaStart (e.g. "No heavy turrets
+  // placed") above the normal HUD so the user understands why nothing
+  // is firing.
+  if (arena.warning) {
+    parts.push(`<div class="arena-hud-section" style="color:#ff6666">${arena.warning}</div>`);
+  }
   parts.push(`<div class="arena-hud-section">Elapsed ${elapsed.toFixed(1)}s · Enemies ${arena.enemies.filter(e => e.alive).length}/${arena.enemies.length}</div>`);
 
   // Enemy rows
