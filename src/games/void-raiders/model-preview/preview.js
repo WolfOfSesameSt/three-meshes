@@ -2739,23 +2739,27 @@ function arenaResolveMothershipCenter() {
 }
 
 function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
-  // Pick the matching real builder based on the hp's resolved attackId.
-  // When overrideAttackId is set (weapon filter mode), we rebuild the
-  // turret HARDWARE to match the filtered weapon — a missile launcher
-  // slot becomes a ball turret when filtering to a beam weapon, etc.
-  // This lets the user test ANY weapon on ANY slot without first having
-  // to manually reassign attackIds across the whole ship.
-  const attackId = overrideAttackId || resolveAttackId(hp);
-  const attackDef = getAttack(attackId);
-  if (!attackDef) return null;
+  // Hardware is picked from the hp's NATURAL attackId (derived from
+  // hp.type / hp.attackId) — NOT the override. That way clicking a
+  // weapon filter doesn't morph a ball turret into a chunky heavy
+  // cannon housing just to fire a railgun shot through it.
+  //
+  // The override affects ONLY the runtime attackId on the turret obj,
+  // so the TurretSystem's fire path and the arena onFire hook both see
+  // the filtered weapon, but the visible hardware stays whatever the
+  // hp was placed as.
+  const hardwareAttackId = resolveAttackId(hp);
+  const runtimeAttackId = overrideAttackId || hardwareAttackId;
+  // Validate both
+  if (!getAttack(runtimeAttackId)) return null;
 
   let built;
   let weaponType;
-  // Route by attack def's shape, mirroring turret-rigger.js applyMothershipConfig.
-  // Guided missile + flak-burst-missile use the revolver launcher. Flak burst
-  // (slow projectile) and heavy railgun (hitscan) use the ball-turret shape.
-  const isMissile = attackDef.shaderStyle === undefined && attackId === "guided-missile";
-  if (isMissile) {
+  // HARDWARE selection — purely visual. Driven by hardwareAttackId, not
+  // the runtime override. The four branches cover the three physical
+  // turret types that exist in the game (missile launcher revolver,
+  // heavy cannon chunk, and two ball-turret sizes).
+  if (hardwareAttackId === "guided-missile") {
     built = buildMissileLauncher(hp.position, hp.normal, {
       baseR: 0.10, baseH: 0.04,
       revolverR: 0.16, revolverL: 0.30,
@@ -2763,7 +2767,7 @@ function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
       color: 0x556677, accentColor: 0xff8844,
     });
     weaponType = "missile_launcher";
-  } else if (attackId === "heavy-railgun") {
+  } else if (hardwareAttackId === "heavy-railgun") {
     built = buildBallTurret(hp.position, hp.normal, {
       baseR: 0.18, baseH: 0.07,
       barrelR: 0.06, barrelL: 0.55,
@@ -2771,7 +2775,7 @@ function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
       color: 0xddddee,
     });
     weaponType = "laser";
-  } else if (attackId === "flak-burst") {
+  } else if (hardwareAttackId === "flak-burst") {
     built = buildBallTurret(hp.position, hp.normal, {
       baseR: 0.06, baseH: 0.020,
       barrelR: 0.018, barrelL: 0.18,
@@ -2779,24 +2783,10 @@ function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
       color: 0xffbb33,
     });
     weaponType = "heavy_cannon";
-  } else if (attackId === "shield-breaker") {
-    built = buildBallTurret(hp.position, hp.normal, {
-      baseR: 0.06, baseH: 0.020,
-      barrelR: 0.018, barrelL: 0.18,
-      headR: 0.06,
-      color: 0x66ffff,
-    });
-    weaponType = "laser";
-  } else if (attackId === "arc-emitter") {
-    built = buildBallTurret(hp.position, hp.normal, {
-      baseR: 0.040, baseH: 0.016,
-      barrelR: 0.012, barrelL: 0.12,
-      headR: 0.040,
-      color: 0xcc66ff,
-    });
-    weaponType = "laser";
   } else {
-    // Default PD pulse ball
+    // Default ball turret for everything else (PD pulse / arc / shield
+    // breaker / generic turret / ball_turret type). Small ball head —
+    // size + color set by the hp's own geometry, not the filter.
     built = buildBallTurret(hp.position, hp.normal, {
       baseR: 0.035, baseH: 0.014,
       barrelR: 0.010, barrelL: 0.10,
@@ -2809,9 +2799,7 @@ function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
   built.barrelYawOffset = 0;
   built.barrelPitchOffset = 0;
 
-  // Apply per-hp overrides via the adjuster group wrapper — same trick
-  // as applyMothershipConfig so the overrides match between sandbox
-  // preview, arena, and in-game.
+  // Apply per-hp overrides via the adjuster group wrapper.
   const adjuster = new THREE.Group();
   adjuster.scale.setScalar(hp.scale ?? 1);
   adjuster.position.set(hp.offsetX ?? 0, hp.offsetY ?? 0, hp.offsetZ ?? 0);
@@ -2820,12 +2808,25 @@ function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
   for (const c of rootChildren) adjuster.add(c);
   built.group.add(adjuster);
 
+  // When a filter override is active, force weaponType to "laser" so
+  // the TurretSystem routes every shot through _fireOnce regardless of
+  // hardware. _fireOnce is the simplest fire path — it works for any
+  // turret that has muzzleLocal + pitchPivot, which all three hardware
+  // types do. The real projectile/revolver paths would otherwise trip
+  // on state they don't have (e.g. missile launcher fire path expects
+  // tubes, heavy cannon fire path expects projectile speed > 0).
+  //
+  // My arena onFire hook dispatches per-attackId to fallback visuals,
+  // so the user still sees the RIGHT visual per weapon regardless of
+  // which hardware is firing it.
+  const effectiveWeaponType = overrideAttackId ? "laser" : weaponType;
+
   // Construct the turret object TurretSystem expects
   const turretObj = {
     name: hp.name,
     type: hp.type,
-    weaponType,
-    attackId,
+    weaponType: effectiveWeaponType,
+    attackId: runtimeAttackId,
     position: hp.position.clone(),
     normal: hp.normal.clone(),
     yawArc: [hp.yawMin, hp.yawMax],
