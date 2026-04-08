@@ -2196,10 +2196,52 @@ class ArenaEffects {
     this.scene = scene;
     this.flashes = [];
     this.debris = [];
+    // Fallback beam tubes — guaranteed-visible CylinderGeometry tracers
+    // for hitscan weapons. These run ALONGSIDE the shader pool beam; if
+    // the shader beam renders, the user sees both; if the shader beam
+    // is invisible for any reason, the fallback still makes the fire
+    // obvious so we can validate the rest of the combat loop.
+    this.fallbackBeams = [];
     // Size scale: converts in-game "flashSize" (0..80ish) to sandbox
     // world units. 0.015 puts a flashSize=80 explosion at ~1.2 units,
     // roughly the size of a small turret head.
     this.sizeScale = 0.015;
+  }
+  /**
+   * Spawn a fallback beam — bright additive cylinder from `from` to `to`.
+   * Uses MeshBasicMaterial (no custom shader) so it's immune to any
+   * ShaderMaterial + tone mapping issues. Lifetime ~0.6s with fade.
+   */
+  spawnFallbackBeam(from, to, color = 0xffffff, width = 0.12) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dz = to.z - from.z;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (length < 0.001) return;
+    const geo = new THREE.CylinderGeometry(width, width, length, 8, 1, false);
+    // CylinderGeometry defaults to Y axis; rotate to Z so we can orient
+    // by lookAt (which aligns local +Z to the target by default).
+    geo.rotateX(Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    // Position at midpoint, orient toward `to` so the cylinder spans from/to
+    mesh.position.set(
+      (from.x + to.x) * 0.5,
+      (from.y + to.y) * 0.5,
+      (from.z + to.z) * 0.5,
+    );
+    mesh.lookAt(to.x, to.y, to.z);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 1700;
+    this.scene.add(mesh);
+    this.fallbackBeams.push({ mesh, t: 0, lifetime: 0.6 });
   }
   addImpactFlash(pos, size = 15, color = 0xffffff) {
     const radius = Math.max(0.08, size * this.sizeScale);
@@ -2287,6 +2329,20 @@ class ArenaEffects {
       }
       return true;
     });
+    // Fallback beam tubes — fade opacity over lifetime, remove on expiry
+    for (const b of this.fallbackBeams) {
+      b.t += dt;
+      b.mesh.material.opacity = Math.max(0, 1 - b.t / b.lifetime);
+    }
+    this.fallbackBeams = this.fallbackBeams.filter((b) => {
+      if (b.t >= b.lifetime) {
+        this.scene.remove(b.mesh);
+        b.mesh.geometry.dispose();
+        b.mesh.material.dispose();
+        return false;
+      }
+      return true;
+    });
   }
   dispose() {
     for (const f of this.flashes) {
@@ -2299,8 +2355,14 @@ class ArenaEffects {
       d.mesh.geometry.dispose();
       d.mesh.material.dispose();
     }
+    for (const b of this.fallbackBeams) {
+      this.scene.remove(b.mesh);
+      b.mesh.geometry.dispose();
+      b.mesh.material.dispose();
+    }
     this.flashes = [];
     this.debris = [];
+    this.fallbackBeams = [];
   }
 }
 
@@ -2551,13 +2613,34 @@ async function arenaStart() {
   // Sandbox-scaled effects — hit flashes, debris, death explosions.
   arena.effects = new ArenaEffects(scene);
 
+  // Vectors for the fallback beam fire path, hoisted so we don't allocate
+  // every frame.
+  const _fbMuzzle = new THREE.Vector3();
+  const _fbTargetPos = new THREE.Vector3();
+
   arena.turretSystem = new TurretSystem(scene, {
     audioManager: audio, // plays weapon fire/impact SFX in the sandbox
     combatEffects: arena.effects, // renders impact flashes + debris
     getEnemies: () => arena.enemies.filter(e => e.alive),
     screenShake: null,
-    onFire: (_turret, attackDef) => {
+    onFire: (turret, attackDef, target) => {
       if (attackDef?.id) getStats(attackDef.id).fires++;
+      // Fallback visible beam for hitscan weapons (speed 0). Runs ALONGSIDE
+      // the shader beam pool — if the shader pool renders, the user sees
+      // both; if it doesn't, this cylinder is still obvious. Uses the
+      // turret's actual muzzle position + the target's world position so
+      // the beam visibly connects from gun to hit.
+      if (arena.effects && attackDef && attackDef.speed === 0 && turret?.pitchPivot && turret?.muzzleLocal && target?.position) {
+        _fbMuzzle.copy(turret.muzzleLocal);
+        turret.pitchPivot.localToWorld(_fbMuzzle);
+        _fbTargetPos.set(target.position.x, target.position.y, target.position.z);
+        arena.effects.spawnFallbackBeam(
+          _fbMuzzle,
+          _fbTargetPos,
+          attackDef.projectileColor ?? 0xffffff,
+          0.08, // cylinder radius — thin enough to not dominate, thick enough to see
+        );
+      }
     },
     onHit: (turret, attackDef, target, dealt) => {
       if (attackDef?.id && dealt > 0) {
@@ -2727,9 +2810,14 @@ function arenaSpawnCluster() {
 
 function arenaUpdate(dt) {
   if (!arena.running) return;
+  // Skip ticks while arena is still initialising (async skin + audio load).
+  // arenaStart sets running=true early but awaits several async steps
+  // before effects + turretSystem exist — animate() can race in during
+  // those awaits, so we null-guard every pool we touch.
+  if (!arena.effects || !arena.turretSystem) return;
 
   // Tick the effects animator (flash decay, debris physics)
-  if (arena.effects) arena.effects.update(dt);
+  arena.effects.update(dt);
 
   // Fade per-enemy hit flashes (emissive red pulse from the onHit hook)
   for (const e of arena.enemies) {

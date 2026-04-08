@@ -246,6 +246,13 @@ export function createBeamShaderPool(scene, opts = {}) {
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      // toneMapped: false is CRITICAL for additive VFX. With the main game
+      // renderer using ACESFilmicToneMapping, the tone mapper compresses
+      // bright linear shader outputs before they hit the framebuffer,
+      // making thin additive beams nearly invisible. Disabling toneMapping
+      // on these materials lets the additive blend accumulate raw linear
+      // color, which then composes correctly on the tone-mapped scene.
+      toneMapped: false,
       uniforms: {
         uTime: { value: 0 },
         uAge: { value: 0 },
@@ -498,6 +505,7 @@ export function createTrailedProjectilePool(scene, opts = {}) {
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      toneMapped: false, // bright additive VFX — bypass ACES compression
       uniforms: {
         uColor: { value: new THREE.Color(COLOR) },
         uTime: { value: 0 },
@@ -545,6 +553,7 @@ export function createTrailedProjectilePool(scene, opts = {}) {
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      toneMapped: false, // bright additive VFX — bypass ACES compression
       uniforms: {
         uColor: { value: new THREE.Color(COLOR) },
         uTime: { value: 0 },
@@ -905,6 +914,7 @@ export function createShockwavePool(scene, opts = {}) {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
+      toneMapped: false, // bright additive VFX — bypass ACES compression
       uniforms: {
         uColor: { value: new THREE.Color(0xffaa44) },
         uRadius: { value: 0 },
@@ -1038,6 +1048,7 @@ export function createChargeUpPool(scene, opts = {}) {
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      toneMapped: false, // bright additive VFX — bypass ACES compression
       uniforms: {
         uTime: { value: 0 },
         uColor: { value: new THREE.Color(0xeeeeff) },
@@ -1168,6 +1179,7 @@ export function createMuzzleFlashPool(scene, opts = {}) {
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      toneMapped: false, // bright additive VFX — bypass ACES compression
       uniforms: {
         uColor: { value: new THREE.Color(0xffffff) },
         uTime: { value: 0 },
