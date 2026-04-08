@@ -2232,40 +2232,140 @@ class ArenaEffects {
     this.sizeScale = 0.015;
   }
   /**
-   * Spawn a fallback beam — bright additive cylinder from `from` to `to`.
-   * Uses MeshBasicMaterial (no custom shader) so it's immune to any
-   * ShaderMaterial + tone mapping issues. Lifetime ~0.6s with fade.
+   * PD PULSE — burst. Small bright sphere at the muzzle + small bright
+   * sphere at the target. No line between them. The two flashes together
+   * read as "discrete pulse fired, discrete pulse hit" — the signature
+   * look of a fast pulse cannon. Lifetime ~0.14s per flash.
    */
-  spawnFallbackBeam(from, to, color = 0xffffff, width = 0.12) {
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const dz = to.z - from.z;
-    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (length < 0.001) return;
-    const geo = new THREE.CylinderGeometry(width, width, length, 8, 1, false);
-    // CylinderGeometry defaults to Y axis; rotate to Z so we can orient
-    // by lookAt (which aligns local +Z to the target by default).
-    geo.rotateX(Math.PI / 2);
+  spawnPulseBurst(from, to, color = 0xffffff) {
+    const mkBurst = (pos, size) => {
+      const geo = new THREE.SphereGeometry(size, 10, 8);
+      const mat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 1,
+        blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(pos.x, pos.y, pos.z);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 1700;
+      this.scene.add(mesh);
+      this.fallbackBeams.push({ mesh, t: 0, lifetime: 0.14, startScale: 0.6, endScale: 1.8 });
+    };
+    mkBurst(from, 0.06);
+    mkBurst(to, 0.08);
+  }
+
+  /**
+   * ARC EMITTER — jagged lightning. Builds a BufferGeometry Line with
+   * 8 noisy segments between muzzle and target, drawn as LineBasicMaterial
+   * so it's guaranteed to render. Lives ~0.3s with opacity decay.
+   */
+  spawnArcLightning(from, to, color = 0xcc66ff) {
+    const segs = 8;
+    const points = [];
+    const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      // anchor endpoints, jitter middle segments perpendicular
+      const anchor = Math.sin(t * Math.PI);
+      const jx = (Math.random() - 0.5) * 0.25 * anchor;
+      const jy = (Math.random() - 0.5) * 0.25 * anchor;
+      const jz = (Math.random() - 0.5) * 0.25 * anchor;
+      points.push(new THREE.Vector3(
+        from.x + dx * t + jx,
+        from.y + dy * t + jy,
+        from.z + dz * t + jz,
+      ));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({
+      color, transparent: true, opacity: 1,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+    });
+    const line = new THREE.Line(geo, mat);
+    line.frustumCulled = false;
+    line.renderOrder = 1700;
+    this.scene.add(line);
+    this.fallbackBeams.push({ mesh: line, t: 0, lifetime: 0.3, startScale: 1, endScale: 1 });
+    // Add muzzle + impact pops for extra readability
+    this.addHitFlash(from, color);
+    this.addHitFlash(to, color);
+  }
+
+  /**
+   * SHIELD BREAKER — 3 quick bright bursts along the muzzle-to-target line.
+   * Schedules them via delayed spawning so the burst actually looks like 3
+   * successive pulses rather than one big flash.
+   */
+  spawnShieldBreakerBurst(from, to, color = 0xff66ff) {
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        if (!arena.running) return;
+        this.spawnPulseBurst(from, to, color);
+      }, i * 60);
+    }
+  }
+
+  /**
+   * HEAVY RAILGUN — thin bright tracer + dramatic muzzle/impact flashes.
+   * The line itself is a single-pixel LineBasicMaterial; the big read
+   * comes from the muzzle and impact bursts at either end.
+   */
+  spawnRailgunStrike(from, to, color = 0xaaccff) {
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(from.x, from.y, from.z),
+      new THREE.Vector3(to.x, to.y, to.z),
+    ]);
+    const mat = new THREE.LineBasicMaterial({
+      color, transparent: true, opacity: 1,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+    });
+    const line = new THREE.Line(geo, mat);
+    line.frustumCulled = false;
+    line.renderOrder = 1700;
+    this.scene.add(line);
+    this.fallbackBeams.push({ mesh: line, t: 0, lifetime: 0.35, startScale: 1, endScale: 1 });
+    // Big muzzle flash + even bigger impact flash
+    this.addImpactFlash(from, 40, color);
+    this.addImpactFlash(to, 70, 0xffffff);
+  }
+
+  /**
+   * Spawn a travelling bolt — visible projectile for flak + guided missile.
+   * Moves from `from` toward `target` (dynamic target position each frame)
+   * at `speed` m/s until it passes the target or lifetime expires. Trail
+   * drawn by spawning faint dots every few frames along the path.
+   */
+  spawnProjectileBolt(from, target, color = 0xffaa44, speed = 120, isGuided = false) {
+    const geo = new THREE.SphereGeometry(0.07, 10, 8);
     const mat = new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 1,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      toneMapped: false,
+      color, transparent: true, opacity: 1,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
     });
     const mesh = new THREE.Mesh(geo, mat);
-    // Position at midpoint, orient toward `to` so the cylinder spans from/to
-    mesh.position.set(
-      (from.x + to.x) * 0.5,
-      (from.y + to.y) * 0.5,
-      (from.z + to.z) * 0.5,
-    );
-    mesh.lookAt(to.x, to.y, to.z);
+    mesh.position.set(from.x, from.y, from.z);
     mesh.frustumCulled = false;
     mesh.renderOrder = 1700;
     this.scene.add(mesh);
-    this.fallbackBeams.push({ mesh, t: 0, lifetime: 0.6 });
+    // Initial velocity pointing at target
+    const dx = target.position.x - from.x;
+    const dy = target.position.y - from.y;
+    const dz = target.position.z - from.z;
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    // Sandbox scale: real projectile speed values (120-260 m/s) are huge
+    // in 5-unit space. Compress to something reasonable.
+    const scaleSpeed = speed * 0.04;
+    const boltEntry = {
+      mesh, isBolt: true,
+      vx: (dx / len) * scaleSpeed,
+      vy: (dy / len) * scaleSpeed,
+      vz: (dz / len) * scaleSpeed,
+      speed: scaleSpeed,
+      target, color, isGuided,
+      trailTimer: 0,
+      t: 0, lifetime: 3.0,
+    };
+    this.fallbackBeams.push(boltEntry);
   }
   addImpactFlash(pos, size = 15, color = 0xffffff) {
     const radius = Math.max(0.08, size * this.sizeScale);
@@ -2353,16 +2453,58 @@ class ArenaEffects {
       }
       return true;
     });
-    // Fallback beam tubes — fade opacity over lifetime, remove on expiry
+    // Fallback beam / bolt / burst tick — unified update for every
+    // arena-owned ad-hoc weapon visual. Entries carry their own type hint
+    // (isBolt for traveling projectiles; startScale/endScale for growing
+    // bursts) so one loop handles all of them.
     for (const b of this.fallbackBeams) {
       b.t += dt;
-      b.mesh.material.opacity = Math.max(0, 1 - b.t / b.lifetime);
+      if (b.isBolt) {
+        // Guided homing — steer toward the (still alive) target each frame
+        if (b.isGuided && b.target?.alive && b.target?.position) {
+          const dx = b.target.position.x - b.mesh.position.x;
+          const dy = b.target.position.y - b.mesh.position.y;
+          const dz = b.target.position.z - b.mesh.position.z;
+          const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+          // Blend current velocity toward target direction
+          const mix = 0.15;
+          b.vx = b.vx * (1 - mix) + (dx / len) * b.speed * mix;
+          b.vy = b.vy * (1 - mix) + (dy / len) * b.speed * mix;
+          b.vz = b.vz * (1 - mix) + (dz / len) * b.speed * mix;
+        }
+        b.mesh.position.x += b.vx * dt;
+        b.mesh.position.y += b.vy * dt;
+        b.mesh.position.z += b.vz * dt;
+        // Spawn a fading trail dot every ~50ms
+        b.trailTimer -= dt;
+        if (b.trailTimer <= 0) {
+          b.trailTimer = 0.05;
+          this.addImpactFlash(b.mesh.position, 6, b.color);
+        }
+        // Impact check against target
+        if (b.target?.position) {
+          const ddx = b.target.position.x - b.mesh.position.x;
+          const ddy = b.target.position.y - b.mesh.position.y;
+          const ddz = b.target.position.z - b.mesh.position.z;
+          const d = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+          if (d < 0.15) b.t = b.lifetime; // force dispose this frame
+        }
+      } else if (b.startScale !== undefined) {
+        // Burst sphere — interpolate scale + fade opacity
+        const k = b.t / b.lifetime;
+        const s = b.startScale + (b.endScale - b.startScale) * k;
+        b.mesh.scale.setScalar(s);
+        b.mesh.material.opacity = Math.max(0, 1 - k);
+      } else {
+        // Plain fade (line segments, etc.)
+        b.mesh.material.opacity = Math.max(0, 1 - b.t / b.lifetime);
+      }
     }
     this.fallbackBeams = this.fallbackBeams.filter((b) => {
       if (b.t >= b.lifetime) {
         this.scene.remove(b.mesh);
-        b.mesh.geometry.dispose();
-        b.mesh.material.dispose();
+        b.mesh.geometry?.dispose?.();
+        b.mesh.material?.dispose?.();
         return false;
       }
       return true;
@@ -2400,7 +2542,11 @@ const SANDBOX_BEAM_WEAPONS = [
   "point-defense-pulse", "arc-emitter", "shield-breaker", "heavy-railgun",
 ];
 const SANDBOX_BEAM_LIFETIME = 0.8;   // 8x typical
-const SANDBOX_BEAM_SIZE_MULT = 2.5;  // 2.5x wider than default
+// 0.5x — 80% thinner than the 2.5x we started with. The original bump
+// was there to compensate for the invisible-beam bug; now that the
+// shader materials have toneMapped: false, beams render properly and
+// don't need the extra width.
+const SANDBOX_BEAM_SIZE_MULT = 0.5;
 function applySandboxBeamOverrides() {
   const saved = new Map();
   for (const id of SANDBOX_BEAM_WEAPONS) {
@@ -2649,21 +2795,44 @@ async function arenaStart() {
     screenShake: null,
     onFire: (turret, attackDef, target) => {
       if (attackDef?.id) getStats(attackDef.id).fires++;
-      // Fallback visible beam for hitscan weapons (speed 0). Runs ALONGSIDE
-      // the shader beam pool — if the shader pool renders, the user sees
-      // both; if it doesn't, this cylinder is still obvious. Uses the
-      // turret's actual muzzle position + the target's world position so
-      // the beam visibly connects from gun to hit.
-      if (arena.effects && attackDef && attackDef.speed === 0 && turret?.pitchPivot && turret?.muzzleLocal && target?.position) {
-        _fbMuzzle.copy(turret.muzzleLocal);
-        turret.pitchPivot.localToWorld(_fbMuzzle);
-        _fbTargetPos.set(target.position.x, target.position.y, target.position.z);
-        arena.effects.spawnFallbackBeam(
-          _fbMuzzle,
-          _fbTargetPos,
-          attackDef.projectileColor ?? 0xffffff,
-          0.08, // cylinder radius — thin enough to not dominate, thick enough to see
-        );
+      // Dispatch per-weapon sandbox visuals. All use MeshBasicMaterial +
+      // LineBasicMaterial so they're immune to any ShaderMaterial + tone
+      // mapping issues. They run ALONGSIDE the shader pool — when the
+      // shader fx work, the user sees both; when they don't, these still
+      // make each weapon visually distinct.
+      if (!arena.effects || !attackDef || !turret?.pitchPivot || !turret?.muzzleLocal || !target?.position) return;
+      _fbMuzzle.copy(turret.muzzleLocal);
+      turret.pitchPivot.localToWorld(_fbMuzzle);
+      _fbTargetPos.set(target.position.x, target.position.y, target.position.z);
+      const color = attackDef.projectileColor ?? 0xffffff;
+      switch (attackDef.id) {
+        case "point-defense-pulse":
+          // Discrete pulse cannon burst — no line, two small dots
+          arena.effects.spawnPulseBurst(_fbMuzzle, _fbTargetPos, color);
+          break;
+        case "arc-emitter":
+          // Chain lightning — jagged multi-segment line
+          arena.effects.spawnArcLightning(_fbMuzzle, _fbTargetPos, color);
+          break;
+        case "shield-breaker":
+          // 3-pulse rapid burst in magenta
+          arena.effects.spawnShieldBreakerBurst(_fbMuzzle, _fbTargetPos, color);
+          break;
+        case "heavy-railgun":
+          // Thin tracer + big impact flash
+          arena.effects.spawnRailgunStrike(_fbMuzzle, _fbTargetPos, color);
+          break;
+        case "flak-burst":
+          // Slow travelling bolt — detonation burst rendered by onHit
+          arena.effects.spawnProjectileBolt(_fbMuzzle, target, color, attackDef.speed || 80, false);
+          break;
+        case "guided-missile":
+          // Fast homing bolt that curves toward the target
+          arena.effects.spawnProjectileBolt(_fbMuzzle, target, color, attackDef.speed || 120, true);
+          break;
+        default:
+          // Unknown attack id — show a generic pulse burst
+          arena.effects.spawnPulseBurst(_fbMuzzle, _fbTargetPos, color);
       }
     },
     onHit: (turret, attackDef, target, dealt) => {
