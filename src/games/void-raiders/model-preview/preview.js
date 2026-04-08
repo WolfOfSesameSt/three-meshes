@@ -2183,9 +2183,131 @@ const clock = new THREE.Clock();
 // test enemies from the real ENEMY_TYPES catalog.
 // ============================================================
 
+// ── Arena effects — CombatEffects-shaped but scaled for the 5-unit sandbox ──
+//
+// The real CombatEffects class targets the in-game ~40-unit ship, so its
+// addImpactFlash(size=80) would fill the sandbox entirely. This mini
+// version exposes the same surface (addImpactFlash, addDebris,
+// addHitFlash, addDeathEffect, addBeam, update) but works at sandbox
+// scale and renders simple additive geometry that's clearly visible
+// against the dark preview background.
+class ArenaEffects {
+  constructor(scene) {
+    this.scene = scene;
+    this.flashes = [];
+    this.debris = [];
+    // Size scale: converts in-game "flashSize" (0..80ish) to sandbox
+    // world units. 0.015 puts a flashSize=80 explosion at ~1.2 units,
+    // roughly the size of a small turret head.
+    this.sizeScale = 0.015;
+  }
+  addImpactFlash(pos, size = 15, color = 0xffffff) {
+    const radius = Math.max(0.08, size * this.sizeScale);
+    const geo = new THREE.SphereGeometry(radius, 10, 8);
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 1,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(pos.x, pos.y, pos.z);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 1600;
+    this.scene.add(mesh);
+    this.flashes.push({ mesh, t: 0, lifetime: 0.35, startScale: 0.5, endScale: 2.2 });
+  }
+  addHitFlash(pos, color = 0xffaaaa) {
+    this.addImpactFlash(pos, 18, color);
+  }
+  addDebris(pos, sizeKey = "small", color = 0xcc6644) {
+    const counts = { small: 6, medium: 12, large: 18 };
+    const count = counts[sizeKey] || counts.small;
+    const speedScale = sizeKey === "large" ? 1.8 : sizeKey === "medium" ? 1.2 : 0.8;
+    for (let i = 0; i < count; i++) {
+      const geo = new THREE.BoxGeometry(0.03, 0.03, 0.03);
+      const mat = new THREE.MeshStandardMaterial({
+        color,
+        emissive: new THREE.Color(color).multiplyScalar(0.5),
+        roughness: 0.6,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(pos.x, pos.y, pos.z);
+      mesh.frustumCulled = false;
+      this.scene.add(mesh);
+      this.debris.push({
+        mesh, t: 0, lifetime: 1.2,
+        vx: (Math.random() - 0.5) * speedScale,
+        vy: Math.random() * speedScale,
+        vz: (Math.random() - 0.5) * speedScale,
+        rotSpeed: (Math.random() - 0.5) * 6,
+      });
+    }
+  }
+  addDeathEffect(pos, _type, color = 0xff6622) {
+    // Big flash + large debris burst
+    this.addImpactFlash(pos, 50, 0xffffff);
+    this.addImpactFlash(pos, 35, color);
+    this.addDebris(pos, "large", color);
+  }
+  // No-op stubs so the TurretSystem + impact-path callers don't trip on
+  // missing methods
+  addBeam() {}
+  update(dt) {
+    for (const f of this.flashes) {
+      f.t += dt;
+      const k = f.t / f.lifetime;
+      const life = 1 - k;
+      f.mesh.material.opacity = Math.max(0, life);
+      const scale = f.startScale + (f.endScale - f.startScale) * k;
+      f.mesh.scale.setScalar(scale);
+    }
+    this.flashes = this.flashes.filter((f) => {
+      if (f.t >= f.lifetime) {
+        this.scene.remove(f.mesh);
+        f.mesh.geometry.dispose();
+        f.mesh.material.dispose();
+        return false;
+      }
+      return true;
+    });
+    for (const d of this.debris) {
+      d.t += dt;
+      d.mesh.position.x += d.vx * dt;
+      d.mesh.position.y += d.vy * dt;
+      d.mesh.position.z += d.vz * dt;
+      d.vy -= 1.5 * dt;
+      d.mesh.rotation.x += d.rotSpeed * dt;
+      d.mesh.rotation.y += d.rotSpeed * 0.7 * dt;
+    }
+    this.debris = this.debris.filter((d) => {
+      if (d.t >= d.lifetime) {
+        this.scene.remove(d.mesh);
+        d.mesh.geometry.dispose();
+        d.mesh.material.dispose();
+        return false;
+      }
+      return true;
+    });
+  }
+  dispose() {
+    for (const f of this.flashes) {
+      this.scene.remove(f.mesh);
+      f.mesh.geometry.dispose();
+      f.mesh.material.dispose();
+    }
+    for (const d of this.debris) {
+      this.scene.remove(d.mesh);
+      d.mesh.geometry.dispose();
+      d.mesh.material.dispose();
+    }
+    this.flashes = [];
+    this.debris = [];
+  }
+}
+
 const arena = {
   running: false,
   turretSystem: null,
+  effects: null, // ArenaEffects instance, created in arenaStart
   // Fake mothership object shaped like the real one so TurretSystem can
   // consume it. mesh is an Object3D we create when arena starts; turrets
   // is the adapter list built from hardpoints[].
@@ -2386,19 +2508,34 @@ async function arenaStart() {
     return s;
   };
 
+  // Sandbox-scaled effects — hit flashes, debris, death explosions.
+  arena.effects = new ArenaEffects(scene);
+
   arena.turretSystem = new TurretSystem(scene, {
     audioManager: audio, // plays weapon fire/impact SFX in the sandbox
-    combatEffects: null,
+    combatEffects: arena.effects, // renders impact flashes + debris
     getEnemies: () => arena.enemies.filter(e => e.alive),
     screenShake: null,
     onFire: (_turret, attackDef) => {
       if (attackDef?.id) getStats(attackDef.id).fires++;
     },
-    onHit: (_turret, attackDef, _target, dealt) => {
+    onHit: (turret, attackDef, target, dealt) => {
       if (attackDef?.id && dealt > 0) {
         const s = getStats(attackDef.id);
         s.hits++;
         s.damage += dealt;
+      }
+      // Visual hit feedback on the enemy mesh — brief red pulse via its
+      // emissive channel. Clears over ~0.3s via arenaUpdate.
+      if (target && target.mesh && target.mesh.material) {
+        target.mesh.material.emissive = target.mesh.material.emissive || new THREE.Color();
+        target.mesh.material.emissive.setRGB(1, 0.3, 0.3);
+        target._hitFlashT = 0.3;
+      }
+      // Tiny impact flash at the hit position so it's obvious the beam
+      // connected, even when combatEffects.addImpactFlash is also firing.
+      if (target && arena.effects) {
+        arena.effects.addHitFlash(target.position, attackDef?.impactColor || 0xffffff);
       }
     },
   });
@@ -2414,6 +2551,10 @@ function arenaStop() {
   if (arena.turretSystem) {
     arena.turretSystem.dispose();
     arena.turretSystem = null;
+  }
+  if (arena.effects) {
+    arena.effects.dispose();
+    arena.effects = null;
   }
   // Remove arena-built turrets + enemy meshes from the scene
   if (arena.sceneGroup) {
@@ -2542,6 +2683,38 @@ function arenaSpawnCluster() {
 function arenaUpdate(dt) {
   if (!arena.running) return;
 
+  // Tick the effects animator (flash decay, debris physics)
+  if (arena.effects) arena.effects.update(dt);
+
+  // Fade per-enemy hit flashes (emissive red pulse from the onHit hook)
+  for (const e of arena.enemies) {
+    if (e._hitFlashT > 0 && e.mesh?.material?.emissive) {
+      e._hitFlashT -= dt;
+      if (e._hitFlashT <= 0) {
+        // Restore a dim emissive matching the enemy color so meshes still
+        // read against the dark background between hits
+        const c = new THREE.Color(e.color || 0xffffff);
+        e.mesh.material.emissive.copy(c).multiplyScalar(0.3);
+      } else {
+        // Lerp from the red pulse back toward the baseline emissive
+        const k = e._hitFlashT / 0.3;
+        const base = new THREE.Color(e.color || 0xffffff).multiplyScalar(0.3);
+        e.mesh.material.emissive.setRGB(
+          base.r + (1 - base.r) * k,
+          base.g + (0.3 - base.g) * k,
+          base.b + (0.3 - base.b) * k,
+        );
+      }
+    }
+  }
+
+  // Death detection — compare alive-before to alive-after and trigger a
+  // death explosion for anything that died this tick. Runs BEFORE the
+  // turret update so we can snapshot, then runs again AFTER to detect
+  // kills. We only need the after-delta.
+  const wasAlive = new Map();
+  for (const e of arena.enemies) wasAlive.set(e, e.alive);
+
   // Update enemy positions (orbit mode moves them around the ship)
   if (arena.motionMode === "orbit") {
     const center = arenaResolveMothershipCenter();
@@ -2570,6 +2743,19 @@ function arenaUpdate(dt) {
 
   // Run the real TurretSystem
   arena.turretSystem.update(dt, arena.fakeMothership, arena.enemies);
+
+  // Death detection — any enemy that was alive before but is dead now
+  // gets a death explosion + the "hit sound" via the audio manager.
+  for (const e of arena.enemies) {
+    if (wasAlive.get(e) && !e.alive) {
+      if (arena.effects) {
+        arena.effects.addDeathEffect(e.position, e.type, e.color || 0xff6622);
+      }
+      if (arenaAudio) {
+        arenaAudio.playSFX("explosion-small", e.position);
+      }
+    }
+  }
 
   // Update HUD (throttled to ~10 Hz)
   arena._hudTimer = (arena._hudTimer ?? 0) + dt;
