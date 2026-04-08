@@ -1,0 +1,385 @@
+{
+  "modelId": "star-destroyer",
+  "splitThreshold": 20,
+  "hardpoints": [
+    {
+      "name": "Ball Turret 1",
+      "type": "ball_turret",
+      "position": {
+        "x": -0.06547275576509168,
+        "y": 0.033579834007113785,
+        "z": -0.00010392883052238316
+      },
+      "normal": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_126_island0",
+          "Object_126_island1",
+          "Object_126_island2",
+          "Object_126_island3",
+          "Object_126_island4",
+          "Object_126_island5",
+          "Object_126_island6",
+          "Object_126_island7",
+          "Object_126_island8"
+        ]
+      }
+    },
+    {
+      "name": "Ball Turret 2",
+      "type": "ball_turret",
+      "position": {
+        "x": 0.021626227998208288,
+        "y": 0.024918765683748678,
+        "z": -0.00008839788677218047
+      },
+      "normal": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_128_island0",
+          "Object_128_island1",
+          "Object_128_island2",
+          "Object_128_island3",
+          "Object_128_island4",
+          "Object_128_island5",
+          "Object_128_island6",
+          "Object_128_island7",
+          "Object_128_island8"
+        ]
+      }
+    },
+    {
+      "name": "Ball Turret 3",
+      "type": "ball_turret",
+      "position": {
+        "x": -0.15088464484459732,
+        "y": 0.04035027759106618,
+        "z": -0.00017477117879721553
+      },
+      "normal": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_130_island0",
+          "Object_130_island1",
+          "Object_130_island2",
+          "Object_130_island3",
+          "Object_130_island4",
+          "Object_130_island5",
+          "Object_130_island6",
+          "Object_130_island7",
+          "Object_130_island8"
+        ]
+      }
+    },
+    {
+      "name": "Ball Turret 4",
+      "type": "ball_turret",
+      "position": {
+        "x": 0.6154629959268335,
+        "y": -0.4878368843128167,
+        "z": -0.099882414303924
+      },
+      "normal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_132_island0",
+          "Object_132_island2",
+          "Object_132_island3",
+          "Object_132_island4",
+          "Object_132_island5",
+          "Object_132_island6",
+          "Object_132_island7",
+          "Object_132_island14",
+          "Object_132_island15"
+        ]
+      }
+    },
+    {
+      "name": "Ball Turret 5",
+      "type": "ball_turret",
+      "position": {
+        "x": 0.6154639103729662,
+        "y": -0.48758048417423394,
+        "z": 0.0999522223154597
+      },
+      "normal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_132_island1",
+          "Object_132_island8",
+          "Object_132_island9",
+          "Object_132_island10",
+          "Object_132_island11",
+          "Object_132_island12",
+          "Object_132_island13",
+          "Object_132_island16",
+          "Object_132_island17"
+        ]
+      }
+    },
+    {
+      "name": "Ball Turret 6",
+      "type": "ball_turret",
+      "position": {
+        "x": -0.416270807786023,
+        "y": -0.5228539542810816,
+        "z": -0.2697977828059477
+      },
+      "normal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_134_island0",
+          "Object_134_island2",
+          "Object_134_island3",
+          "Object_134_island4",
+          "Object_134_island5",
+          "Object_134_island6",
+          "Object_134_island7",
+          "Object_134_island14",
+          "Object_134_island15"
+        ]
+      }
+    },
+    {
+      "name": "Ball Turret 7",
+      "type": "ball_turret",
+      "position": {
+        "x": -0.4162039829967462,
+        "y": -0.5228592679514847,
+        "z": 0.269787989234718
+      },
+      "normal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_134_island1",
+          "Object_134_island8",
+          "Object_134_island9",
+          "Object_134_island10",
+          "Object_134_island11",
+          "Object_134_island12",
+          "Object_134_island13",
+          "Object_134_island16",
+          "Object_134_island17"
+        ]
+      }
+    },
+    {
+      "name": "Ball Turret 8",
+      "type": "ball_turret",
+      "position": {
+        "x": -1.582738245540821,
+        "y": -0.4212300691033135,
+        "z": -1.1193791270223015
+      },
+      "normal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "modelSlot": {
+        "hiddenMeshNames": [
+          "Object_136_island0",
+          "Object_136_island2",
+          "Object_136_island3",
+          "Object_136_island4",
+          "Object_136_island5",
+          "Object_136_island6",
+          "Object_136_island7",
+          "Object_136_island14",
+          "Object_136_island15"
+        ]
+      }
+    },
+    {
+      "name": "Hardpoint 9",
+      "type": "turret",
+      "position": {
+        "x": -1.5827769726792222,
+        "y": -0.4215108332053469,
+        "z": 1.1194706888675563
+      },
+      "normal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60
+    },
+    {
+      "name": "Hardpoint 10",
+      "type": "drone_bay",
+      "position": {
+        "x": 0.030295900511653595,
+        "y": -0.40726845783092813,
+        "z": -0.048803049880898765
+      },
+      "normal": {
+        "x": 0.08233781408799896,
+        "y": -0.9966044773987192,
+        "z": 1.903504598690028e-7
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60
+    },
+    {
+      "name": "Hardpoint 12",
+      "type": "heavy_cannon",
+      "position": {
+        "x": -0.6301604165270475,
+        "y": -0.40673852143752565,
+        "z": -0.8059813894057318
+      },
+      "normal": {
+        "x": 0.07146134155427222,
+        "y": -0.9749807103973228,
+        "z": -0.21048964586505284
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "scale": 0.35
+    },
+    {
+      "name": "Hardpoint 13",
+      "type": "heavy_cannon",
+      "position": {
+        "x": -0.3670588393336891,
+        "y": -0.41804631706792905,
+        "z": 0.6419939257706092
+      },
+      "normal": {
+        "x": 0.07406614515351578,
+        "y": -0.9672054014826199,
+        "z": 0.24295661646668992
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "scale": 0.35
+    },
+    {
+      "name": "Hardpoint 13",
+      "type": "missile_launcher",
+      "position": {
+        "x": 2.3808847817259537,
+        "y": -0.20406826581331158,
+        "z": 0.006925545377167758
+      },
+      "normal": {
+        "x": 0.05745976746324645,
+        "y": 0.9744889323989389,
+        "z": 0.2169555156133303
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "scale": 0.3
+    },
+    {
+      "name": "Hardpoint 14",
+      "type": "missile_launcher",
+      "position": {
+        "x": -1.8758216412090973,
+        "y": -0.23276702289899637,
+        "z": -1.542532802717042
+      },
+      "normal": {
+        "x": 0.0695128516500118,
+        "y": 0.9718523922879979,
+        "z": -0.22510195703187266
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "scale": 0.3
+    },
+    {
+      "name": "Hardpoint 15",
+      "type": "missile_launcher",
+      "position": {
+        "x": -1.857848177264261,
+        "y": -0.22568982879429972,
+        "z": 1.5064274979860877
+      },
+      "normal": {
+        "x": 0.0695128516500118,
+        "y": 0.9718523922879979,
+        "z": 0.22510195703187266
+      },
+      "yawMin": -180,
+      "yawMax": 180,
+      "pitchMin": -10,
+      "pitchMax": 60,
+      "scale": 0.3
+    }
+  ]
+}
