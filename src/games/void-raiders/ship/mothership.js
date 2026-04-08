@@ -185,12 +185,34 @@ export class Mothership {
 
     // Skip glTF loading entirely if there's no saved config — keep the
     // procedural fallback that the constructor already built.
+    //
+    // Resolution order:
+    //   1. localStorage (model preview saves here after each edit)
+    //   2. Committed repo file at /ships/star-destroyer.json
+    //      (written by the "Commit to repo" button in the model preview)
+    //   3. None → procedural fallback
     let savedConfig = null;
     try {
       const raw = typeof localStorage !== "undefined" ? localStorage.getItem(MOTHERSHIP_CONFIG_KEY) : null;
       if (raw) savedConfig = JSON.parse(raw);
     } catch {
       savedConfig = null;
+    }
+    if (!savedConfig || !Array.isArray(savedConfig.hardpoints) || savedConfig.hardpoints.length === 0) {
+      // Fall back to the committed repo file. This is how a fresh browser
+      // with no localStorage still loads the full turret loadout.
+      try {
+        const res = await fetch("/ships/star-destroyer.json");
+        if (res.ok) {
+          const body = await res.json();
+          if (body && Array.isArray(body.hardpoints) && body.hardpoints.length > 0) {
+            savedConfig = body;
+            console.log("[Mothership] Loaded committed hardpoint config from /ships/star-destroyer.json");
+          }
+        }
+      } catch (err) {
+        // File not present yet — expected before the first commit
+      }
     }
     if (!savedConfig || !Array.isArray(savedConfig.hardpoints) || savedConfig.hardpoints.length === 0) {
       console.log("[Mothership] No saved hardpoint config — using procedural fallback");

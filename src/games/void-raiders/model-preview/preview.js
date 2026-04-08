@@ -7,8 +7,41 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // of these come from the live game code so there's no drift.
 import { TurretSystem } from '../ship/turret-system.js';
 import { buildBallTurret, buildMissileLauncher, applyTurretSkin, loadActiveTurretSkins } from '../ship/turret-rigger.js';
-import { getAttack } from '../combat/attack-defs.js';
+import { getAttack, ATTACKS } from '../combat/attack-defs.js';
 import { ENEMY_TYPES } from '../combat/enemy.js';
+import { AudioManager } from '../audio/audio-manager.js';
+
+// Arena audio — created lazily because AudioContext needs a user gesture
+// before it can resume. The first canvas click inside the preview will
+// trigger initFromUserGesture(), then the arena can playSFX safely.
+let arenaAudio = null;
+const ARENA_SFX_MANIFEST = {
+  "weapon-pd-pulse": "/audio/sfx/weapon-pd-pulse.mp3",
+  "weapon-arc-emitter": "/audio/sfx/weapon-arc-emitter.mp3",
+  "weapon-shield-breaker": "/audio/sfx/weapon-shield-breaker.mp3",
+  "weapon-flak-launch": "/audio/sfx/weapon-flak-launch.mp3",
+  "weapon-flak-detonate": "/audio/sfx/weapon-flak-detonate.mp3",
+  "weapon-missile-launch": "/audio/sfx/weapon-missile-launch.mp3",
+  "weapon-railgun-charge": "/audio/sfx/weapon-railgun-charge.mp3",
+  "weapon-railgun-fire": "/audio/sfx/weapon-railgun-fire.mp3",
+  "weapon-railgun-impact": "/audio/sfx/weapon-railgun-impact.mp3",
+  "shield-hit": "/audio/sfx/shield-hit.mp3",
+  "hull-hit": "/audio/sfx/hull-hit.mp3",
+  "explosion-small": "/audio/sfx/explosion-small.mp3",
+  "explosion-large": "/audio/sfx/explosion-large.mp3",
+  "weapon-pulse": "/audio/sfx/weapon-pulse.mp3",
+  "weapon-heavy-cannon": "/audio/sfx/weapon-heavy-cannon.mp3",
+};
+async function ensureArenaAudio() {
+  if (arenaAudio) return arenaAudio;
+  arenaAudio = new AudioManager();
+  // Try to resume immediately — AudioManager listens for click/keydown
+  // so a click on Run would have already primed the context, but this
+  // is defensive.
+  try { arenaAudio.initFromUserGesture(); } catch {}
+  await arenaAudio.preload(ARENA_SFX_MANIFEST);
+  return arenaAudio;
+}
 
 // One-shot escape hatch: visit ?reset=1 to wipe all saved hardpoints before
 // the page touches them. Recovers from bad localStorage state without devtools.
@@ -1973,6 +2006,37 @@ document.getElementById('hp-export').addEventListener('click', () => {
   });
 });
 
+// Commit to repo — POSTs the serialized config to the vite dev plugin
+// which writes it to public/ships/<modelId>.json. The in-game loader
+// falls back to that file when localStorage is empty, so committing
+// makes the hardpoint setup permanent + shareable across browsers.
+document.getElementById('hp-commit').addEventListener('click', async () => {
+  const status = document.getElementById('hp-commit-status');
+  if (!currentModelId) {
+    status.textContent = "No model loaded.";
+    return;
+  }
+  status.textContent = "Committing...";
+  try {
+    const res = await fetch("/__hardpoint/commit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        modelId: currentModelId,
+        config: serializeHardpoints(),
+      }),
+    });
+    const body = await res.json();
+    if (res.ok && body.ok) {
+      status.textContent = `✓ Wrote ${body.path} (${body.bytes} bytes)`;
+    } else {
+      status.textContent = `Failed: ${body.error || res.status}`;
+    }
+  } catch (e) {
+    status.textContent = `Failed: ${e.message}`;
+  }
+});
+
 // Clear all hardpoints + wipe localStorage + reload current model
 document.getElementById('hp-clear-all').addEventListener('click', () => {
   if (hardpoints.length > 0 && !confirm(`Delete all ${hardpoints.length} hardpoint(s) and reload the model?`)) return;
@@ -2135,6 +2199,10 @@ const arena = {
   // objects. TurretSystem's _pickTarget + applyDamage consume this shape.
   enemies: [],
   motionMode: "static",
+  // Weapon isolation filter. "all" = build every hp; otherwise only hps
+  // whose resolved attackId matches the selected weapon get built. Lets
+  // you test one weapon at a time without visual or audio cross-talk.
+  weaponFilter: "all",
   // Stats keyed by attackId — populated by the TurretSystem hooks
   stats: new Map(),
   startTime: 0,
@@ -2268,23 +2336,31 @@ async function arenaStart() {
 
   // Load the saved turret skins so the arena turrets wear the same
   // textures the in-game mothership does. Baked defaults are used when
-  // the lab hasn't saved a custom skin. loadActiveTurretSkins returns
-  // { small, heavy } Three textures (or null per slot).
+  // the lab hasn't saved a custom skin.
   const skins = await loadActiveTurretSkins();
 
-  // Build real turrets for each hp. Hide the sandbox editor preview
-  // turrets while the arena is live so we're not showing two turrets
-  // per hardpoint.
+  // Ensure audio is ready so the arena plays the real SFX. The user must
+  // have clicked at least once already (which is almost certain by the
+  // time they've clicked Run) so the audio context can resume.
+  const audio = await ensureArenaAudio();
+
+  // Build real turrets for each hp, honoring the weapon isolation filter.
+  // When weaponFilter is "all", every hp gets a turret; otherwise only
+  // hps whose resolved attackId matches the filter.
   arena.builtTurrets = [];
   for (const hp of hardpoints) {
     if (hp.turretGroup) hp.turretGroup.visible = false;
     if (hp.type === "drone_bay") continue;
+    // Weapon filter — skip hps that don't match the selected weapon. The
+    // editor preview for skipped hps stays hidden either way so the view
+    // doesn't fill with idle placeholder turrets.
+    if (arena.weaponFilter !== "all") {
+      const resolved = resolveAttackId(hp);
+      if (resolved !== arena.weaponFilter) continue;
+    }
     const entry = arenaBuildFakeTurretFromHp(hp);
     if (!entry) continue;
     arena.sceneGroup.add(entry.built.group);
-    // Apply the skin — missile launchers and heavy cannons wear the heavy
-    // skin, lighter weapons wear the small skin. Mirrors the in-game
-    // applyMothershipConfig branching.
     const isHeavySkin = entry.turretObj.weaponType === "missile_launcher" ||
       entry.turretObj.attackId === "heavy-railgun" ||
       entry.turretObj.attackId === "flak-burst";
@@ -2311,7 +2387,7 @@ async function arenaStart() {
   };
 
   arena.turretSystem = new TurretSystem(scene, {
-    audioManager: null,
+    audioManager: audio, // plays weapon fire/impact SFX in the sandbox
     combatEffects: null,
     getEnemies: () => arena.enemies.filter(e => e.alive),
     screenShake: null,
@@ -2565,6 +2641,14 @@ for (const input of document.querySelectorAll('input[name="arena-motion"]')) {
     arena.motionMode = e.target.value;
   });
 }
+document.getElementById("arena-weapon-filter").addEventListener("change", (e) => {
+  arena.weaponFilter = e.target.value;
+  // If arena is running, restart it so the new filter takes effect
+  if (arena.running) {
+    arenaStop();
+    arenaStart();
+  }
+});
 
 function animate() {
   requestAnimationFrame(animate);

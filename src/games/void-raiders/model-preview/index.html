@@ -455,11 +455,13 @@
         <button id="hp-delete" class="small-btn danger" style="align-self:flex-end;margin-top:4px">Delete Hardpoint</button>
       </div>
       <div id="hp-actions">
-        <button id="hp-save" class="small-btn">Save</button>
+        <button id="hp-save" class="small-btn" title="Download the config as a JSON file">Save</button>
         <button id="hp-load" class="small-btn">Load</button>
         <button id="hp-export" class="small-btn">Copy</button>
+        <button id="hp-commit" class="small-btn" title="Write the config to public/ships/<modelId>.json so the game loads it by default for all browsers">💾 Commit</button>
         <button id="hp-clear-all" class="small-btn danger" title="Delete all hardpoints and reload the model">Clear</button>
       </div>
+      <div id="hp-commit-status" style="font-size:10px;color:#88ff99;margin-top:2px"></div>
       <div id="arena-panel">
         <div class="arena-title">Test Arena</div>
         <div class="arena-row">
@@ -471,6 +473,19 @@
           </label>
           <label style="font-size:10px;color:#8a92a6;">
             <input type="radio" name="arena-motion" value="orbit" /> Orbit
+          </label>
+        </div>
+        <div class="arena-row">
+          <label style="font-size:10px;color:#8a92a6;flex:1">
+            Fire: <select id="arena-weapon-filter" style="font-size:10px;margin-left:4px">
+              <option value="all">All weapons</option>
+              <option value="point-defense-pulse">Point-Defense Pulse</option>
+              <option value="arc-emitter">Arc Emitter</option>
+              <option value="shield-breaker">Shield Breaker</option>
+              <option value="flak-burst">Flak Burst</option>
+              <option value="guided-missile">Guided Missile</option>
+              <option value="heavy-railgun">Heavy Railgun</option>
+            </select>
           </label>
         </div>
         <div class="arena-row">
