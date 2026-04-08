@@ -2307,39 +2307,99 @@ class ArenaEffects {
   }
 
   /**
-   * HEAVY RAILGUN — a visible thick tracer cylinder + dramatic
-   * muzzle / impact flashes. The cylinder gives the beam enough volume
-   * to read even under bright bloom; the flashes sell the kinetic
-   * impact. Lifetime bumped to 0.8s so you see it fire clearly.
+   * HEAVY RAILGUN — kinetic penetrator ionizes the air it passes through,
+   * leaving a trail of blue pixelated plasma particles that fade away.
+   * The ionization IS the beam visual; plus a big white kinetic slam
+   * flash at both endpoints.
    */
-  spawnRailgunStrike(from, to, color = 0xaaccff) {
+  spawnRailgunStrike(from, to, _color = 0xaaccff) {
+    this.spawnRailgunIonization(from, to);
+    // Muzzle flash + huge white impact flash for the kinetic slam
+    this.addImpactFlash(from, 55, 0xaaccff);
+    this.addImpactFlash(to, 100, 0xffffff);
+    this.addImpactFlash(to, 75, 0x88ccff);
+  }
+
+  /**
+   * Blue pixelated plasma trail along a hitscan beam. Spawns small
+   * BoxGeometry voxels at regular intervals between `from` and `to`
+   * with perpendicular jitter so they read as a plasma CLOUD not a
+   * straight line. Each particle has a staggered appearance (so the
+   * trail sweeps from muzzle to impact like the projectile is
+   * actually passing through), random rotation tumble, and a fade +
+   * shrink lifecycle. Pure MeshBasicMaterial so it's immune to the
+   * tone mapping and ShaderMaterial issues the shader pool had.
+   */
+  spawnRailgunIonization(from, to) {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const dz = to.z - from.z;
     const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (length > 0.001) {
-      const geo = new THREE.CylinderGeometry(0.025, 0.025, length, 8, 1, false);
-      geo.rotateX(Math.PI / 2);
+    if (length < 0.001) return;
+    // Particle density: ~20 particles per sandbox unit of beam, capped so
+    // very long beams don't blow the pool. Railgun range 550 scaled down
+    // by SANDBOX_WORLD_SCALE (0.08) = 44 effective units max.
+    const density = 20;
+    const count = Math.min(80, Math.max(15, Math.floor(length * density)));
+    // Sweep time — how long for the ionization trail to fully appear
+    // from muzzle to impact. 0.08s feels like a very fast projectile.
+    const sweepTime = 0.08;
+    for (let i = 0; i < count; i++) {
+      const t = i / count;
+      // Position along the beam with perpendicular jitter
+      const jx = (Math.random() - 0.5) * 0.12;
+      const jy = (Math.random() - 0.5) * 0.12;
+      const jz = (Math.random() - 0.5) * 0.12;
+      const px = from.x + dx * t + jx;
+      const py = from.y + dy * t + jy;
+      const pz = from.z + dz * t + jz;
+
+      // Small cube — pixelated aesthetic. Randomized size for variety.
+      const size = 0.018 + Math.random() * 0.028;
+      const geo = new THREE.BoxGeometry(size, size, size);
+
+      // Blue-white spectrum: cool blue core, whiter highlights
+      const shade = Math.random();
+      const r = 0.35 + shade * 0.35;
+      const g = 0.70 + shade * 0.25;
+      const b = 1.0;
+      const color = new THREE.Color(r, g, b);
+
       const mat = new THREE.MeshBasicMaterial({
-        color, transparent: true, opacity: 1,
-        blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+        color,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
       });
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(
-        (from.x + to.x) * 0.5,
-        (from.y + to.y) * 0.5,
-        (from.z + to.z) * 0.5,
+      mesh.position.set(px, py, pz);
+      mesh.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
       );
-      mesh.lookAt(to.x, to.y, to.z);
       mesh.frustumCulled = false;
       mesh.renderOrder = 1700;
+      mesh.visible = false; // flicker on when the sweep reaches this point
       this.scene.add(mesh);
-      this.fallbackBeams.push({ mesh, t: 0, lifetime: 0.8 });
+
+      // Stagger the appearance along the beam sweep, plus a random fade
+      // duration so the trail dissolves unevenly (each particle cooks
+      // down at its own pace).
+      const spawnDelay = t * sweepTime;
+      const fadeTime = 0.7 + Math.random() * 0.5;
+      this.fallbackBeams.push({
+        mesh,
+        t: 0,
+        lifetime: spawnDelay + fadeTime,
+        isIonization: true,
+        spawnDelay,
+        fadeTime,
+        rotSpeed: (Math.random() - 0.5) * 3,
+      });
     }
-    // Muzzle flash + huge white impact flash for the kinetic slam
-    this.addImpactFlash(from, 50, color);
-    this.addImpactFlash(to, 90, 0xffffff);
-    this.addImpactFlash(to, 70, color);
   }
 
   /**
@@ -2465,12 +2525,37 @@ class ArenaEffects {
       }
       return true;
     });
-    // Fallback beam / bolt / burst tick — unified update for every
-    // arena-owned ad-hoc weapon visual. Entries carry their own type hint
-    // (isBolt for traveling projectiles; startScale/endScale for growing
-    // bursts) so one loop handles all of them.
+    // Fallback beam / bolt / burst / ionization tick — unified update
+    // for every arena-owned ad-hoc weapon visual. Entries carry their
+    // own type hint (isBolt for traveling projectiles, isIonization for
+    // railgun plasma particles, startScale/endScale for growing bursts)
+    // so one loop handles all of them.
     for (const b of this.fallbackBeams) {
       b.t += dt;
+      if (b.isIonization) {
+        // Wait out the per-particle spawn delay (sweep from muzzle to
+        // impact) then fade + shrink + tumble over fadeTime.
+        if (b.t < b.spawnDelay) {
+          b.mesh.visible = false;
+          continue;
+        }
+        if (!b.mesh.visible) b.mesh.visible = true;
+        const age = b.t - b.spawnDelay;
+        const k = age / b.fadeTime;
+        if (k >= 1) {
+          b.t = b.lifetime; // mark for removal
+          continue;
+        }
+        // Fade opacity linearly
+        b.mesh.material.opacity = 1 - k;
+        // Shrink over the second half of the life
+        const scale = 1 - k * 0.5;
+        b.mesh.scale.setScalar(scale);
+        // Slow tumble
+        b.mesh.rotation.x += b.rotSpeed * dt;
+        b.mesh.rotation.y += b.rotSpeed * 0.7 * dt;
+        continue;
+      }
       if (b.isBolt) {
         // Guided homing — steer toward the (still alive) target each frame
         if (b.isGuided && b.target?.alive && b.target?.position) {
