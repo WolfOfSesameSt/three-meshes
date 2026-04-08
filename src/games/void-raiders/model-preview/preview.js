@@ -2307,27 +2307,39 @@ class ArenaEffects {
   }
 
   /**
-   * HEAVY RAILGUN — thin bright tracer + dramatic muzzle/impact flashes.
-   * The line itself is a single-pixel LineBasicMaterial; the big read
-   * comes from the muzzle and impact bursts at either end.
+   * HEAVY RAILGUN — a visible thick tracer cylinder + dramatic
+   * muzzle / impact flashes. The cylinder gives the beam enough volume
+   * to read even under bright bloom; the flashes sell the kinetic
+   * impact. Lifetime bumped to 0.8s so you see it fire clearly.
    */
   spawnRailgunStrike(from, to, color = 0xaaccff) {
-    const geo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(from.x, from.y, from.z),
-      new THREE.Vector3(to.x, to.y, to.z),
-    ]);
-    const mat = new THREE.LineBasicMaterial({
-      color, transparent: true, opacity: 1,
-      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
-    });
-    const line = new THREE.Line(geo, mat);
-    line.frustumCulled = false;
-    line.renderOrder = 1700;
-    this.scene.add(line);
-    this.fallbackBeams.push({ mesh: line, t: 0, lifetime: 0.35, startScale: 1, endScale: 1 });
-    // Big muzzle flash + even bigger impact flash
-    this.addImpactFlash(from, 40, color);
-    this.addImpactFlash(to, 70, 0xffffff);
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dz = to.z - from.z;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (length > 0.001) {
+      const geo = new THREE.CylinderGeometry(0.025, 0.025, length, 8, 1, false);
+      geo.rotateX(Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 1,
+        blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        (from.x + to.x) * 0.5,
+        (from.y + to.y) * 0.5,
+        (from.z + to.z) * 0.5,
+      );
+      mesh.lookAt(to.x, to.y, to.z);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 1700;
+      this.scene.add(mesh);
+      this.fallbackBeams.push({ mesh, t: 0, lifetime: 0.8 });
+    }
+    // Muzzle flash + huge white impact flash for the kinetic slam
+    this.addImpactFlash(from, 50, color);
+    this.addImpactFlash(to, 90, 0xffffff);
+    this.addImpactFlash(to, 70, color);
   }
 
   /**
@@ -2347,20 +2359,20 @@ class ArenaEffects {
     mesh.frustumCulled = false;
     mesh.renderOrder = 1700;
     this.scene.add(mesh);
-    // Initial velocity pointing at target
+    // Initial velocity pointing at target. `speed` already arrives
+    // scaled by SANDBOX_WORLD_SCALE via applySandboxAttackOverrides so
+    // my visible bolt travels at the same pace as the real projectile
+    // pool's (invisible) hit-check projectile. No extra compression.
     const dx = target.position.x - from.x;
     const dy = target.position.y - from.y;
     const dz = target.position.z - from.z;
     const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-    // Sandbox scale: real projectile speed values (120-260 m/s) are huge
-    // in 5-unit space. Compress to something reasonable.
-    const scaleSpeed = speed * 0.04;
     const boltEntry = {
       mesh, isBolt: true,
-      vx: (dx / len) * scaleSpeed,
-      vy: (dy / len) * scaleSpeed,
-      vz: (dz / len) * scaleSpeed,
-      speed: scaleSpeed,
+      vx: (dx / len) * speed,
+      vy: (dy / len) * speed,
+      vz: (dz / len) * speed,
+      speed,
       target, color, isGuided,
       trailTimer: 0,
       t: 0, lifetime: 3.0,
@@ -2532,42 +2544,76 @@ class ArenaEffects {
   }
 }
 
-// Sandbox beam tuning — the shared attack defs use beamDuration 0.15-0.32s
-// and projectileSize 0.25-0.8 so beams are brief tracers at in-game scale.
-// At the 5-unit sandbox scale those same values render as ~11-frame flicks
-// that are easy to miss, especially for point-defense-pulse. We temporarily
-// overwrite those fields on arenaStart and restore them on arenaStop so
-// live testing has obvious visible beams without affecting the main game.
+// Sandbox attack overrides — the shared attack defs are tuned for the
+// 40-unit in-game scale. At 5-unit sandbox scale we need to compress
+// AOE radii, projectile speeds, and beam widths so weapons behave
+// visibly without nuking the whole test arena in one shot.
+//
+// All mutations are saved to a Map and restored on arenaStop so the
+// real game keeps its original numbers.
 const SANDBOX_BEAM_WEAPONS = [
   "point-defense-pulse", "arc-emitter", "shield-breaker", "heavy-railgun",
 ];
-const SANDBOX_BEAM_LIFETIME = 0.8;   // 8x typical
-// 0.5x — 80% thinner than the 2.5x we started with. The original bump
-// was there to compensate for the invisible-beam bug; now that the
-// shader materials have toneMapped: false, beams render properly and
-// don't need the extra width.
-const SANDBOX_BEAM_SIZE_MULT = 0.5;
-function applySandboxBeamOverrides() {
+const SANDBOX_PROJECTILE_WEAPONS = [
+  "flak-burst", "guided-missile",
+];
+const SANDBOX_BEAM_LIFETIME = 0.8;
+const SANDBOX_BEAM_SIZE_MULT = 0.5;    // 80% thinner than the default bump
+// Sandbox is ~1/8 the scale of the in-game ship. Scale AOE radii and
+// projectile speeds by the same factor so they move + explode at the
+// right apparent size for the 5-unit world.
+const SANDBOX_WORLD_SCALE = 0.08;
+function applySandboxAttackOverrides() {
   const saved = new Map();
+  // Beam weapons — width + lifetime bumps so the shader tracers read
+  // clearly against dark space.
   for (const id of SANDBOX_BEAM_WEAPONS) {
     const def = ATTACKS[id];
     if (!def) continue;
     saved.set(id, {
       beamDuration: def.beamDuration,
       projectileSize: def.projectileSize,
+      aoeRadius: def.aoeRadius,
+      aoeDamage: def.aoeDamage,
     });
     def.beamDuration = Math.max(def.beamDuration ?? 0.18, SANDBOX_BEAM_LIFETIME);
     def.projectileSize = (def.projectileSize ?? 0.3) * SANDBOX_BEAM_SIZE_MULT;
+    if (def.aoeRadius != null) def.aoeRadius = def.aoeRadius * SANDBOX_WORLD_SCALE;
+    // Optional: zero AOE damage in sandbox so a single railgun shot
+    // doesn't one-shot every nearby enemy. Direct hits still land.
+    if (def.aoeDamage != null) def.aoeDamage = 0;
+  }
+  // Projectile weapons — scale speed DOWN so the real projectile pool
+  // takes roughly the same time to arrive as my visible arena bolt does.
+  // Without this scaling, real speeds (80-260 m/s) cross the 5-unit
+  // sandbox in ~0.02s and the impact fires before the visual gets there.
+  for (const id of SANDBOX_PROJECTILE_WEAPONS) {
+    const def = ATTACKS[id];
+    if (!def) continue;
+    saved.set(id, {
+      speed: def.speed,
+      aoeRadius: def.aoeRadius,
+      aoeDamage: def.aoeDamage,
+      flakDetonationRange: def.flakDetonationRange,
+    });
+    if (def.speed != null) def.speed = def.speed * SANDBOX_WORLD_SCALE;
+    if (def.aoeRadius != null) def.aoeRadius = def.aoeRadius * SANDBOX_WORLD_SCALE;
+    if (def.aoeDamage != null) def.aoeDamage = 0;
+    if (def.flakDetonationRange != null) def.flakDetonationRange = def.flakDetonationRange * SANDBOX_WORLD_SCALE;
   }
   return saved;
 }
-function restoreSandboxBeamOverrides(saved) {
+function restoreSandboxAttackOverrides(saved) {
   if (!saved) return;
   for (const [id, orig] of saved) {
     const def = ATTACKS[id];
     if (!def) continue;
-    def.beamDuration = orig.beamDuration;
-    def.projectileSize = orig.projectileSize;
+    if (orig.beamDuration !== undefined) def.beamDuration = orig.beamDuration;
+    if (orig.projectileSize !== undefined) def.projectileSize = orig.projectileSize;
+    if (orig.speed !== undefined) def.speed = orig.speed;
+    if (orig.aoeRadius !== undefined) def.aoeRadius = orig.aoeRadius;
+    if (orig.aoeDamage !== undefined) def.aoeDamage = orig.aoeDamage;
+    if (orig.flakDetonationRange !== undefined) def.flakDetonationRange = orig.flakDetonationRange;
   }
 }
 
@@ -2607,11 +2653,14 @@ function arenaResolveMothershipCenter() {
   return box.getCenter(new THREE.Vector3());
 }
 
-function arenaBuildFakeTurretFromHp(hp) {
+function arenaBuildFakeTurretFromHp(hp, overrideAttackId = null) {
   // Pick the matching real builder based on the hp's resolved attackId.
-  // Missile launchers use buildMissileLauncher; everything else uses
-  // buildBallTurret with cfg matching the in-game tier assignment.
-  const attackId = resolveAttackId(hp);
+  // When overrideAttackId is set (weapon filter mode), we rebuild the
+  // turret HARDWARE to match the filtered weapon — a missile launcher
+  // slot becomes a ball turret when filtering to a beam weapon, etc.
+  // This lets the user test ANY weapon on ANY slot without first having
+  // to manually reassign attackIds across the whole ship.
+  const attackId = overrideAttackId || resolveAttackId(hp);
   const attackDef = getAttack(attackId);
   if (!attackDef) return null;
 
@@ -2717,9 +2766,10 @@ async function arenaStart() {
   arena.startTime = performance.now();
   arena.stats.clear();
 
-  // Apply sandbox beam duration + width overrides so hitscan weapons
-  // render as clearly visible tracers instead of 11-frame flicks.
-  arena.beamOverrides = applySandboxBeamOverrides();
+  // Apply sandbox attack overrides (beam width/lifetime, projectile
+  // speed scale, AOE radius scale) so weapons behave + render correctly
+  // in the 5-unit preview space.
+  arena.beamOverrides = applySandboxAttackOverrides();
 
   // Scene container for everything the arena owns (turrets + enemies +
   // shader pool meshes all live in scene, but we need a way to know what
@@ -2738,21 +2788,17 @@ async function arenaStart() {
   // time they've clicked Run) so the audio context can resume.
   const audio = await ensureArenaAudio();
 
-  // Build real turrets for each hp, honoring the weapon isolation filter.
-  // When weaponFilter is "all", every hp gets a turret; otherwise only
-  // hps whose resolved attackId matches the filter.
+  // Build real turrets for each hp. The weapon filter is now a REBUILD
+  // override — every hp gets its turret hardware rebuilt to match the
+  // filtered weapon instead of being dropped from the build. So picking
+  // "arc-emitter" in the Fire: dropdown gives you 9 ball turrets all
+  // firing arc-emitter, regardless of what attackId each hp has saved.
+  const filter = arena.weaponFilter !== "all" ? arena.weaponFilter : null;
   arena.builtTurrets = [];
   for (const hp of hardpoints) {
     if (hp.turretGroup) hp.turretGroup.visible = false;
     if (hp.type === "drone_bay") continue;
-    // Weapon filter — skip hps that don't match the selected weapon. The
-    // editor preview for skipped hps stays hidden either way so the view
-    // doesn't fill with idle placeholder turrets.
-    if (arena.weaponFilter !== "all") {
-      const resolved = resolveAttackId(hp);
-      if (resolved !== arena.weaponFilter) continue;
-    }
-    const entry = arenaBuildFakeTurretFromHp(hp);
+    const entry = arenaBuildFakeTurretFromHp(hp, filter);
     if (!entry) continue;
     arena.sceneGroup.add(entry.built.group);
     const isHeavySkin = entry.turretObj.weaponType === "missile_launcher" ||
@@ -2864,9 +2910,9 @@ function arenaStop() {
   if (!arena.running) return;
   arena.running = false;
 
-  // Restore the attack defs' original beam values so the main game isn't
-  // left with the sandbox-bumped durations if you navigate between pages.
-  restoreSandboxBeamOverrides(arena.beamOverrides);
+  // Restore the attack defs' original values so the main game isn't
+  // left with the sandbox-bumped numbers if you navigate between pages.
+  restoreSandboxAttackOverrides(arena.beamOverrides);
   arena.beamOverrides = null;
 
   if (arena.turretSystem) {
