@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fx_fairy_sparkle"]
+
+[ext_resource type="Script" path="res://scripts/fx/fairy_sparkle.gd" id="1_fxs"]
+
+[node name="FairySparkle" type="Node3D"]
+script = ExtResource("1_fxs")

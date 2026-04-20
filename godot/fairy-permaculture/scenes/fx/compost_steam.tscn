@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fx_compost_steam"]
+
+[ext_resource type="Script" path="res://scripts/fx/compost_steam.gd" id="1_fxc"]
+
+[node name="CompostSteam" type="Node3D"]
+script = ExtResource("1_fxc")

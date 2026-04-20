@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://decor_item_scene"]
+
+[ext_resource type="Script" path="res://scripts/decor_item.gd" id="1_decor_item"]
+
+[node name="DecorItem" type="Node3D"]
+script = ExtResource("1_decor_item")

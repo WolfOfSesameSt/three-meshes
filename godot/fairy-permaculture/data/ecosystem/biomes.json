@@ -1,0 +1,215 @@
+[
+  {
+    "id": "bc-coastal",
+    "name": "BC Coastal Temperate Rainforest",
+    "tagline": "Mild, misty, moss-thick forest edge.",
+    "status": "shipped",
+    "lat_lon": [49.2, -123.1],
+    "climate": {
+      "temperature_range_c": [-5, 28],
+      "annual_rainfall_mm": 1400,
+      "seasons": ["spring", "summer", "autumn", "winter"],
+      "days_per_year": 120,
+      "days_per_season": 30,
+      "rainfall_chance_per_season": { "spring": 0.50, "summer": 0.15, "autumn": 0.50, "winter": 0.80 },
+      "frost_chance_per_season": { "spring": 0.05, "summer": 0.0, "autumn": 0.10, "winter": 0.60 },
+      "prevailing_wind": "SW"
+    },
+    "soil_base": "sandy-loam",
+    "hardiness_zones": [6, 8],
+    "hero_species": [
+      "salmonberry", "thimbleberry", "comfrey-bocking14", "apple",
+      "blueberry-highbush", "honeybee", "mason-bee", "chicken-layer",
+      "dairy-goat-nigerian", "dexter-cow", "sword-fern", "mycorrhizae-native"
+    ],
+    "pois": [
+      {
+        "id": "poi-forest-edge",
+        "kind": "old-growth-forest-edge",
+        "placement_rule": "edge-N-or-E-or-W-never-S; depth 60-100 tiles",
+        "footprint_tiles_range": [6000, 20000]
+      },
+      {
+        "id": "poi-stream",
+        "kind": "freshwater-stream",
+        "placement_rule": "trace from forest edge through central third",
+        "footprint_tiles_range": [500, 2000]
+      },
+      {
+        "id": "poi-outcrop",
+        "kind": "rocky-outcrop",
+        "placement_rule": "single outcrop on higher ground",
+        "footprint_tiles_range": [8, 15]
+      },
+      {
+        "id": "poi-ruin",
+        "kind": "abandoned-farmstead-ruin",
+        "placement_rule": "4-6 collapsed structures with overgrown kitchen garden",
+        "footprint_tiles_range": [25, 60]
+      }
+    ],
+    "microclimates": [
+      { "id": "south-facing-slope", "modifier": { "effective_zone": 1, "season_length_days": 10 } },
+      { "id": "north-facing-slope", "modifier": { "effective_zone": -1, "season_length_days": -10 } },
+      { "id": "frost-pocket", "modifier": { "late_frost_risk_multiplier": 2.0 } },
+      { "id": "near-stream", "modifier": { "moisture_bonus": 20, "drought_risk_multiplier": 0.3, "frost_buffer": 1 } },
+      { "id": "rocky-outcrop-shadow", "modifier": { "frost_buffer": 2, "thermal_mass_bonus": 1 } },
+      { "id": "forest-edge-shade", "modifier": { "light_fraction": 0.55, "fungi_friendly": 1 } }
+    ],
+    "ambient_palette": {
+      "sky_dawn": "#c7c3cf",
+      "sky_day": "#aed0da",
+      "sky_dusk": "#d6a572",
+      "sky_night": "#1d2b3a",
+      "fog": "#d9e4e8",
+      "mood": "misty-rich-green"
+    },
+    "starting_homestead": {
+      "size_tiles": 20,
+      "starting_om_pct": 1.5,
+      "near_water": true
+    },
+    "notes": "Lush default — mild winters, no hard freeze, huge biomass, generous rain but dry summers reward swales + mulch."
+  },
+  {
+    "id": "boreal",
+    "name": "Boreal Forest (Future)",
+    "tagline": "Short summer, birch-fir, deep snow.",
+    "status": "skeleton",
+    "lat_lon": [55.0, -120.0],
+    "climate": {
+      "temperature_range_c": [-35, 25],
+      "annual_rainfall_mm": 500,
+      "seasons": ["spring", "summer", "autumn", "winter"],
+      "days_per_year": 120,
+      "days_per_season": 30,
+      "rainfall_chance_per_season": { "spring": 0.30, "summer": 0.35, "autumn": 0.35, "winter": 0.60 },
+      "frost_chance_per_season": { "spring": 0.50, "summer": 0.02, "autumn": 0.60, "winter": 1.0 },
+      "prevailing_wind": "NW"
+    },
+    "soil_base": "podsol",
+    "hardiness_zones": [1, 4],
+    "hero_species": [
+      "saskatoon", "chokecherry", "hazelnut", "birch-paper",
+      "chaga", "morel-black", "chicken-layer", "goose-embden",
+      "rabbit-californian", "llama-guardian"
+    ],
+    "pois": [
+      { "id": "poi-birch-stand", "kind": "paper-birch-stand", "placement_rule": "NE quadrant", "footprint_tiles_range": [1000, 4000] },
+      { "id": "poi-muskeg", "kind": "peat-bog-muskeg", "placement_rule": "low point", "footprint_tiles_range": [200, 800] },
+      { "id": "poi-glacial-erratic", "kind": "glacial-boulder", "placement_rule": "scatter", "footprint_tiles_range": [1, 4] }
+    ],
+    "microclimates": [
+      { "id": "south-cleared-slope", "modifier": { "effective_zone": 1, "season_length_days": 20 } },
+      { "id": "frost-pocket", "modifier": { "late_frost_risk_multiplier": 3.0 } }
+    ],
+    "ambient_palette": {
+      "sky_dawn": "#dcd0c0",
+      "sky_day": "#bdd0cf",
+      "sky_dusk": "#c87945",
+      "sky_night": "#0c1a2d",
+      "fog": "#e8ecea",
+      "mood": "cold-clear-pine"
+    },
+    "starting_homestead": {
+      "size_tiles": 20,
+      "starting_om_pct": 1.0,
+      "near_water": false
+    },
+    "notes": "Design stub. Short-season strategies + greenhouse + hardy perennials."
+  },
+  {
+    "id": "tropical",
+    "name": "Tropical Food Forest (Future)",
+    "tagline": "7-layer food forest, year-round growth.",
+    "status": "skeleton",
+    "lat_lon": [13.5, -85.0],
+    "climate": {
+      "temperature_range_c": [18, 35],
+      "annual_rainfall_mm": 2500,
+      "seasons": ["wet", "dry"],
+      "days_per_year": 120,
+      "days_per_season": 60,
+      "rainfall_chance_per_season": { "wet": 0.70, "dry": 0.10 },
+      "frost_chance_per_season": { "wet": 0.0, "dry": 0.0 },
+      "prevailing_wind": "E"
+    },
+    "soil_base": "tropical-clay",
+    "hardiness_zones": [10, 12],
+    "hero_species": [
+      "banana-plantain", "cacao", "moringa", "papaya",
+      "pigeon-pea", "vetiver", "oyster-mushroom",
+      "chicken-layer", "dairy-goat-nigerian", "pig-silvopasture",
+      "duck-runner"
+    ],
+    "pois": [
+      { "id": "poi-rainforest-edge", "kind": "secondary-rainforest", "placement_rule": "perimeter", "footprint_tiles_range": [8000, 25000] },
+      { "id": "poi-seasonal-creek", "kind": "dry-season-creek", "placement_rule": "central valley", "footprint_tiles_range": [500, 1500] }
+    ],
+    "microclimates": [
+      { "id": "shaded-understory", "modifier": { "light_fraction": 0.4, "fungi_friendly": 1 } },
+      { "id": "hurricane-corridor", "modifier": { "wind_damage_risk": 2.0 } }
+    ],
+    "ambient_palette": {
+      "sky_dawn": "#f6c5a0",
+      "sky_day": "#7fc1e0",
+      "sky_dusk": "#ef6a3c",
+      "sky_night": "#140c28",
+      "fog": "#f5ede2",
+      "mood": "lush-hot-humid"
+    },
+    "starting_homestead": {
+      "size_tiles": 15,
+      "starting_om_pct": 2.0,
+      "near_water": true
+    },
+    "notes": "Design stub. 7-layer food forest + cover-crop tropical annuals."
+  },
+  {
+    "id": "temperate-inland",
+    "name": "Temperate Inland (Future)",
+    "tagline": "Continental swing, cold winters, hot summers.",
+    "status": "skeleton",
+    "lat_lon": [44.0, -97.0],
+    "climate": {
+      "temperature_range_c": [-25, 35],
+      "annual_rainfall_mm": 700,
+      "seasons": ["spring", "summer", "autumn", "winter"],
+      "days_per_year": 120,
+      "days_per_season": 30,
+      "rainfall_chance_per_season": { "spring": 0.45, "summer": 0.25, "autumn": 0.30, "winter": 0.40 },
+      "frost_chance_per_season": { "spring": 0.25, "summer": 0.0, "autumn": 0.35, "winter": 0.95 },
+      "prevailing_wind": "W"
+    },
+    "soil_base": "prairie-mollisol",
+    "hardiness_zones": [3, 6],
+    "hero_species": [
+      "apple", "plum-italian", "hazelnut", "winter-rye",
+      "vetch-hairy", "corn-flint", "winter-squash",
+      "chicken-layer", "duck-runner", "dexter-cow",
+      "pig-silvopasture"
+    ],
+    "pois": [
+      { "id": "poi-shelterbelt", "kind": "shelterbelt-windbreak", "placement_rule": "N + W edges", "footprint_tiles_range": [500, 2000] },
+      { "id": "poi-seasonal-pond", "kind": "seasonal-pond", "placement_rule": "low point", "footprint_tiles_range": [100, 400] }
+    ],
+    "microclimates": [
+      { "id": "shelterbelt-lee", "modifier": { "wind_damage_risk": 0.2 } },
+      { "id": "open-prairie", "modifier": { "evap_rate_multiplier": 1.4 } }
+    ],
+    "ambient_palette": {
+      "sky_dawn": "#edd4b3",
+      "sky_day": "#9cb8de",
+      "sky_dusk": "#d68f59",
+      "sky_night": "#081322",
+      "fog": "#f1ead9",
+      "mood": "wide-dry-bright"
+    },
+    "starting_homestead": {
+      "size_tiles": 25,
+      "starting_om_pct": 2.5,
+      "near_water": false
+    },
+    "notes": "Design stub. Shelterbelts + keyline + continental-climate staples."
+  }
+]

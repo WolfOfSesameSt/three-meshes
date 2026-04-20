@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fx_pond_ripple"]
+
+[ext_resource type="Script" path="res://scripts/fx/pond_ripple.gd" id="1_fxpr"]
+
+[node name="PondRipple" type="Node3D"]
+script = ExtResource("1_fxpr")

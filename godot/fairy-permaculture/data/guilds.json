@@ -1,0 +1,25 @@
+[
+  {
+    "id": "apple-guild-classic",
+    "name": "Classic Apple Guild",
+    "central_species": "apple",
+    "members": [
+      { "species": "comfrey-bocking14", "role": "dynamic-accumulator", "placement": "drip-line" },
+      { "species": "yarrow-common", "role": "insectary", "placement": "outside-drip" },
+      { "species": "clover-white", "role": "n-fixer-matrix", "placement": "matrix" },
+      { "species": "strawberry", "role": "ground-cover", "placement": "matrix" }
+    ],
+    "biomes": ["bc-coastal"]
+  },
+  {
+    "id": "berry-patch-bc",
+    "name": "BC Berry Patch",
+    "central_species": "salmonberry",
+    "members": [
+      { "species": "saskatoon", "role": "co-canopy", "placement": "border" },
+      { "species": "strawberry", "role": "ground-cover", "placement": "matrix" },
+      { "species": "yarrow-common", "role": "insectary", "placement": "border" }
+    ],
+    "biomes": ["bc-coastal"]
+  }
+]

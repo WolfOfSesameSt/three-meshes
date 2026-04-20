@@ -6,7 +6,13 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [debugLogPlugin(), musicLabPlugin(), hardpointPlugin()],
   test: {
-    include: ["src/games/void-raiders/**/*.test.js"],
-    setupFiles: ["src/games/void-raiders/test/setup.js"],
+    include: [
+      "src/games/void-raiders/**/*.test.js",
+      "src/games/fairy-permaculture/**/*.test.js",
+    ],
+    setupFiles: [
+      "src/games/void-raiders/test/setup.js",
+      "src/games/fairy-permaculture/test/setup.js",
+    ],
   },
 });

@@ -1,0 +1,89 @@
+[gd_scene load_steps=3 format=3 uid="uid://nursery_panel_scene"]
+
+[ext_resource type="Script" path="res://scripts/nursery_panel.gd" id="1_np"]
+
+[sub_resource type="StyleBoxFlat" id="parchment_style"]
+bg_color = Color(0.95, 0.9, 0.79, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.79, 0.72, 0.54, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
+
+[node name="NurseryPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_np")
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.3
+anchor_bottom = 0.3
+offset_left = -190.0
+offset_right = 190.0
+offset_top = -30.0
+offset_bottom = 240.0
+grow_horizontal = 2
+mouse_filter = 0
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🌱 Sprouting Bed"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="Close" type="Button" parent="Panel/VBox/Header"]
+layout_mode = 2
+text = "✕"
+
+[node name="Slots" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "[1] empty
+[2] empty
+[3] empty
+[4] empty"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+
+[node name="Actions" type="GridContainer" parent="Panel/VBox"]
+layout_mode = 2
+columns = 2
+
+[node name="SowBerry" type="Button" parent="Panel/VBox/Actions"]
+layout_mode = 2
+text = "Sow Salmonberry"
+
+[node name="SowComfrey" type="Button" parent="Panel/VBox/Actions"]
+layout_mode = 2
+text = "Sow Comfrey"
+
+[node name="Transplant" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Transplant (nothing ready)"
+disabled = true
+
+[node name="Hint" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Sow seeds; they sprout ~10× faster here than in the wild."
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2

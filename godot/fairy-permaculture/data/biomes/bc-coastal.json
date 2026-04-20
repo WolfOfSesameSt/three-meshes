@@ -1,0 +1,114 @@
+{
+  "id": "bc-coastal",
+  "name": "British Columbia Coastal",
+  "map_tiles": 500,
+  "tile_meters": 3,
+  "default_seed": 42,
+  "climate": {
+    "days_per_year": 120,
+    "days_per_season": 30,
+    "rainfall_chance_per_season": {
+      "spring": 0.50,
+      "summer": 0.15,
+      "autumn": 0.50,
+      "winter": 0.80
+    },
+    "frost_chance_per_season": {
+      "spring": 0.05,
+      "summer": 0.0,
+      "autumn": 0.10,
+      "winter": 0.60
+    }
+  },
+  "pois": [
+    {
+      "id": "poi-forest-edge",
+      "kind": "old-growth-forest-edge",
+      "placement_rule": "edge-N-or-E-or-W-never-S; depth 60-100 tiles",
+      "footprint_tiles_range": [6000, 20000]
+    },
+    {
+      "id": "poi-stream",
+      "kind": "freshwater-stream",
+      "placement_rule": "trace from forest edge through central third; width 2-4 tiles; at least one inner loop",
+      "footprint_tiles_range": [500, 2000]
+    },
+    {
+      "id": "poi-outcrop",
+      "kind": "rocky-outcrop",
+      "placement_rule": "single outcrop on higher ground; cave entrance teased",
+      "footprint_tiles_range": [8, 15]
+    },
+    {
+      "id": "poi-ruin",
+      "kind": "abandoned-farmstead-ruin",
+      "placement_rule": "4-6 collapsed structures with overgrown kitchen garden; distinct from starting homestead",
+      "footprint_tiles_range": [25, 60]
+    }
+  ],
+  "species_pool": {
+    "plants": [
+      "clover-white",
+      "comfrey-bocking14",
+      "yarrow-common",
+      "nettle-stinging",
+      "dandelion",
+      "salmonberry",
+      "thimbleberry",
+      "saskatoon",
+      "strawberry",
+      "blueberry",
+      "raspberry",
+      "blackberry",
+      "pacific-crabapple",
+      "cherry",
+      "plum",
+      "apple",
+      "pear",
+      "hazelnut",
+      "chestnut",
+      "walnut",
+      "quinoa",
+      "pole-bean",
+      "winter-squash",
+      "potato",
+      "carrot",
+      "crimson-clover",
+      "vetch",
+      "tillage-radish",
+      "winter-rye",
+      "buckwheat",
+      "hulless-barley",
+      "watercress",
+      "wine-cap-mushroom",
+      "oyster-mushroom",
+      "shiitake-mushroom"
+    ],
+    "animals": [
+      "mason-bee",
+      "bumblebee",
+      "honeybee",
+      "chicken-layer",
+      "duck",
+      "dairy-goat",
+      "dexter-cow",
+      "pig-silvopasture",
+      "rainbow-trout",
+      "crayfish",
+      "coho-salmon"
+    ]
+  },
+  "microclimates": [
+    { "id": "south-facing-slope", "modifier": { "effective_zone": 1, "season_length_days": 10 } },
+    { "id": "north-facing-slope", "modifier": { "effective_zone": -1, "season_length_days": -10 } },
+    { "id": "frost-pocket", "modifier": { "late_frost_risk_multiplier": 2.0 } },
+    { "id": "near-stream", "modifier": { "moisture_bonus": 20, "drought_risk_multiplier": 0.3, "frost_buffer": 1 } },
+    { "id": "rocky-outcrop-shadow", "modifier": { "frost_buffer": 2, "thermal_mass_bonus": 1 } },
+    { "id": "forest-edge-shade", "modifier": { "light_fraction": 0.55, "fungi_friendly": 1 } }
+  ],
+  "starting_homestead": {
+    "size_tiles": 20,
+    "starting_om_pct": 1.5,
+    "near_water": true
+  }
+}

@@ -1,0 +1,247 @@
+[gd_scene load_steps=7 format=3 uid="uid://lab_scene"]
+
+[ext_resource type="Script" path="res://scripts/lab.gd" id="1_lab"]
+
+[sub_resource type="StyleBoxFlat" id="parchment_style"]
+bg_color = Color(0.95, 0.9, 0.79, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.79, 0.72, 0.54, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxFlat" id="panel_dark"]
+bg_color = Color(0.72, 0.65, 0.48, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.44, 0.28, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="Environment" id="lab_env"]
+background_mode = 1
+background_color = Color(0.86, 0.92, 0.94, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.82, 0.87, 0.92, 1)
+ambient_light_energy = 0.5
+
+[sub_resource type="PlaneMesh" id="ground_plane"]
+size = Vector2(20, 20)
+
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.62, 0.72, 0.48, 1)
+
+[node name="Lab" type="Node3D"]
+script = ExtResource("1_lab")
+
+[node name="Ui" type="CanvasLayer" parent="."]
+
+[node name="Root" type="Control" parent="Ui"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="Background" type="ColorRect" parent="Ui/Root"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.85, 0.80, 0.66, 1)
+mouse_filter = 2
+
+[node name="Header" type="HBoxContainer" parent="Ui/Root"]
+offset_left = 14.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = 58.0
+anchor_right = 1.0
+grow_horizontal = 2
+
+[node name="BackBtn" type="Button" parent="Ui/Root/Header"]
+text = "← Back to Farm"
+theme_override_styles/normal = SubResource("parchment_style")
+theme_override_styles/hover = SubResource("parchment_style")
+theme_override_styles/pressed = SubResource("parchment_style")
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+
+[node name="Title" type="Label" parent="Ui/Root/Header"]
+text = "Fairy Permaculture — Dev Lab"
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="Ui/Root/Header"]
+custom_minimum_size = Vector2(120, 0)
+
+[node name="Main" type="HBoxContainer" parent="Ui/Root"]
+offset_left = 14.0
+offset_top = 70.0
+offset_right = -14.0
+offset_bottom = -14.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LeftPanel" type="PanelContainer" parent="Ui/Root/Main"]
+custom_minimum_size = Vector2(260, 0)
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="LeftVBox" type="VBoxContainer" parent="Ui/Root/Main/LeftPanel"]
+
+[node name="TabHeader" type="Label" parent="Ui/Root/Main/LeftPanel/LeftVBox"]
+text = "CATEGORIES"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="TabScroll" type="ScrollContainer" parent="Ui/Root/Main/LeftPanel/LeftVBox"]
+custom_minimum_size = Vector2(0, 180)
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+
+[node name="TabList" type="VBoxContainer" parent="Ui/Root/Main/LeftPanel/LeftVBox/TabScroll"]
+size_flags_horizontal = 3
+
+[node name="EntityHeader" type="Label" parent="Ui/Root/Main/LeftPanel/LeftVBox"]
+text = "—"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="EntityScroll" type="ScrollContainer" parent="Ui/Root/Main/LeftPanel/LeftVBox"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="EntityList" type="VBoxContainer" parent="Ui/Root/Main/LeftPanel/LeftVBox/EntityScroll"]
+size_flags_horizontal = 3
+
+[node name="RightPanel" type="VBoxContainer" parent="Ui/Root/Main"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Viewport" type="SubViewportContainer" parent="Ui/Root/Main/RightPanel"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch = true
+custom_minimum_size = Vector2(0, 420)
+
+[node name="SubViewport" type="SubViewport" parent="Ui/Root/Main/RightPanel/Viewport"]
+handle_input_locally = false
+size = Vector2i(1200, 420)
+render_target_update_mode = 4
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Ui/Root/Main/RightPanel/Viewport/SubViewport"]
+environment = SubResource("lab_env")
+
+[node name="Sun" type="DirectionalLight3D" parent="Ui/Root/Main/RightPanel/Viewport/SubViewport"]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 8, 12, 8)
+light_color = Color(1, 0.96, 0.87, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Ground" type="MeshInstance3D" parent="Ui/Root/Main/RightPanel/Viewport/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+mesh = SubResource("ground_plane")
+material_override = SubResource("ground_mat")
+
+[node name="Rig" type="Node3D" parent="Ui/Root/Main/RightPanel/Viewport/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 3.5, 0)
+
+[node name="Camera" type="Camera3D" parent="Ui/Root/Main/RightPanel/Viewport/SubViewport/Rig"]
+
+[node name="PreviewRoot" type="Node3D" parent="Ui/Root/Main/RightPanel/Viewport/SubViewport"]
+
+[node name="Controls" type="PanelContainer" parent="Ui/Root/Main/RightPanel"]
+theme_override_styles/panel = SubResource("panel_dark")
+
+[node name="ControlsVBox" type="VBoxContainer" parent="Ui/Root/Main/RightPanel/Controls"]
+
+[node name="StateRow" type="HBoxContainer" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox"]
+
+[node name="StateLabel" type="Label" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/StateRow"]
+text = "State"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+custom_minimum_size = Vector2(90, 0)
+
+[node name="StateOption" type="OptionButton" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/StateRow"]
+size_flags_horizontal = 3
+
+[node name="AnimRow" type="HBoxContainer" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox"]
+
+[node name="AnimLabel" type="Label" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/AnimRow"]
+text = "Animation"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+custom_minimum_size = Vector2(90, 0)
+
+[node name="AnimOption" type="OptionButton" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/AnimRow"]
+size_flags_horizontal = 3
+
+[node name="SeasonRow" type="HBoxContainer" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox"]
+
+[node name="SeasonLabel" type="Label" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/SeasonRow"]
+text = "Season"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+custom_minimum_size = Vector2(90, 0)
+
+[node name="SeasonOption" type="OptionButton" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/SeasonRow"]
+size_flags_horizontal = 3
+
+[node name="TimeRow" type="HBoxContainer" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox"]
+
+[node name="TimeLabel" type="Label" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/TimeRow"]
+text = "Time of Day"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+custom_minimum_size = Vector2(90, 0)
+
+[node name="TimeOption" type="OptionButton" parent="Ui/Root/Main/RightPanel/Controls/ControlsVBox/TimeRow"]
+size_flags_horizontal = 3
+
+[node name="Inspector" type="PanelContainer" parent="Ui/Root/Main/RightPanel"]
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="InspectorVBox" type="VBoxContainer" parent="Ui/Root/Main/RightPanel/Inspector"]
+
+[node name="Title" type="Label" parent="Ui/Root/Main/RightPanel/Inspector/InspectorVBox"]
+text = "(select an entity)"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="InspectorScroll" type="ScrollContainer" parent="Ui/Root/Main/RightPanel/Inspector/InspectorVBox"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 180)
+
+[node name="InspectorText" type="RichTextLabel" parent="Ui/Root/Main/RightPanel/Inspector/InspectorVBox/InspectorScroll"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+fit_content = true
+scroll_active = false
+selection_enabled = true
+theme_override_colors/default_color = Color(0.23, 0.16, 0.08, 1)
+theme_override_font_sizes/normal_font_size = 12
+
+[node name="Footer" type="HBoxContainer" parent="Ui/Root/Main/RightPanel/Inspector/InspectorVBox"]
+alignment = 2
+
+[node name="CopyBtn" type="Button" parent="Ui/Root/Main/RightPanel/Inspector/InspectorVBox/Footer"]
+text = "Copy JSON"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)

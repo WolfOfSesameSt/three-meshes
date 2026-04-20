@@ -1,0 +1,11 @@
+Model Information:
+* title:	Fairy - Navi with Idle Animation
+* source:	https://sketchfab.com/3d-models/fairy-navi-with-idle-animation-9b43606d69a5494ab5cb75f3ecaa44c0
+* author:	Kaniksu (https://sketchfab.com/kaniksu)
+
+Model License:
+* license type:	CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/)
+* requirements:	Author must be credited. No commercial use. Modified versions must have the same license.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Fairy - Navi with Idle Animation" (https://sketchfab.com/3d-models/fairy-navi-with-idle-animation-9b43606d69a5494ab5cb75f3ecaa44c0) by Kaniksu (https://sketchfab.com/kaniksu) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/)

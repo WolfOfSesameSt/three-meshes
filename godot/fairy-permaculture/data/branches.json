@@ -1,0 +1,169 @@
+[
+  {
+    "id": "root",
+    "kind": "root",
+    "name": "The Starter Patch",
+    "description": "Forced common opening; every run begins here.",
+    "fairy_food_gated": "NONE",
+    "nodes": [
+      {
+        "id": "r1",
+        "name": "Compost Pile",
+        "description": "Place the first compost pile. The longest-lived mechanic in the game.",
+        "prerequisites": [],
+        "unlocks": {
+          "buildings": ["cold-pile"],
+          "roles": ["composter", "builder"],
+          "actions": ["place-pile", "drop-biomass"]
+        }
+      },
+      {
+        "id": "r2",
+        "name": "Pioneer Plants",
+        "description": "Clover, vetch, comfrey, yarrow, nettle, dandelion cover the bare ground.",
+        "prerequisites": ["r1"],
+        "unlocks": {
+          "plants": ["clover-white", "comfrey-bocking14", "yarrow-common", "nettle-stinging", "dandelion"]
+        }
+      },
+      {
+        "id": "r3",
+        "name": "Red-Wiggler Worm Bin",
+        "description": "Unlocks vermicompost and faster kitchen-scrap conversion.",
+        "prerequisites": ["r1"],
+        "unlocks": {
+          "buildings": ["worm-bin"]
+        }
+      },
+      {
+        "id": "r4",
+        "name": "First Swale / Water Capture",
+        "description": "Small contour earthworks; first multi-fairy coordinated job.",
+        "prerequisites": ["r1"],
+        "unlocks": {
+          "roles": ["digger"],
+          "actions": ["dig-swale"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "branch-a",
+    "kind": "branch",
+    "name": "Pollinators",
+    "description": "Path to HONEY.",
+    "fairy_food_gated": "HONEY",
+    "nodes": [
+      { "id": "a1", "name": "Mason Bee Tubes", "description": "BC-native mason bees colonize the tubes and pollinate.", "prerequisites": ["r2"], "unlocks": { "animals": ["mason-bee"], "roles": ["beekeeper"] } },
+      { "id": "a2", "name": "Bumblebee Nest Boxes", "description": "Bumblebees pollinate cool-season flowers.", "prerequisites": ["a1"], "unlocks": { "animals": ["bumblebee"] } },
+      { "id": "a3", "name": "Native-Bee Corridor", "description": "Flowering corridor of continuous bloom.", "prerequisites": ["a2"], "unlocks": {} },
+      { "id": "a4", "name": "Honeybee Warré Hive", "description": "HONEY production begins.", "prerequisites": ["a3"], "unlocks": { "animals": ["honeybee"], "buildings": ["warre-hive"] }, "product": "HONEY" },
+      { "id": "a5", "name": "Hive Multiplication", "description": "Split colonies to grow honey throughput.", "prerequisites": ["a4"], "unlocks": {} },
+      { "id": "a6", "name": "Queen Breeding", "description": "Landrace-bee resilience; mite resistance.", "prerequisites": ["a5"], "unlocks": {} }
+    ]
+  },
+  {
+    "id": "branch-b",
+    "kind": "branch",
+    "name": "Berries & Orchard",
+    "description": "Path to FRUIT.",
+    "fairy_food_gated": "FRUIT",
+    "nodes": [
+      { "id": "b1", "name": "Berry Patch", "description": "Salmonberry, thimbleberry, saskatoon, strawberry.", "prerequisites": ["r2"], "unlocks": { "plants": ["salmonberry", "thimbleberry", "saskatoon", "strawberry"] }, "product": "FRUIT" },
+      { "id": "b2", "name": "Cane Fruit Rows", "description": "Raspberry, blackberry.", "prerequisites": ["b1"], "unlocks": { "plants": ["raspberry", "blackberry"] } },
+      { "id": "b3", "name": "Blueberry Beds", "description": "Ericoid-mycorrhizal berry plot.", "prerequisites": ["b2"], "unlocks": { "plants": ["blueberry"] } },
+      { "id": "b4", "name": "Stone Fruit & Crabapple Guild", "description": "Pacific crabapple, cherry, plum.", "prerequisites": ["b3"], "unlocks": { "plants": ["pacific-crabapple", "cherry", "plum"] } },
+      { "id": "b5", "name": "Mature Orchard", "description": "Apple, pear.", "prerequisites": ["b4"], "unlocks": { "plants": ["apple", "pear"] } },
+      { "id": "b6", "name": "Nut Canopy", "description": "Hazelnut, chestnut, walnut.", "prerequisites": ["b5"], "unlocks": { "plants": ["hazelnut", "chestnut", "walnut"] } }
+    ]
+  },
+  {
+    "id": "branch-c",
+    "kind": "branch",
+    "name": "Livestock",
+    "description": "Path to MILK.",
+    "fairy_food_gated": "MILK",
+    "nodes": [
+      { "id": "c1", "name": "Chicken Tractor", "description": "Eggs + pest scratch.", "prerequisites": ["r2"], "unlocks": { "animals": ["chicken-layer"], "roles": ["shepherd"] } },
+      { "id": "c2", "name": "Duck Patrol", "description": "Slugs + aphid patrol.", "prerequisites": ["c1"], "unlocks": { "animals": ["duck"] } },
+      { "id": "c3", "name": "Dairy Goat", "description": "MILK production begins.", "prerequisites": ["c2"], "unlocks": { "animals": ["dairy-goat"] }, "product": "MILK" },
+      { "id": "c4", "name": "Dexter Cattle", "description": "Heritage dual-purpose breed.", "prerequisites": ["c3"], "unlocks": { "animals": ["dexter-cow"] } },
+      { "id": "c5", "name": "Silvopasture Pigs", "description": "Forest-finished pigs on mast.", "prerequisites": ["c4"], "unlocks": { "animals": ["pig-silvopasture"] } },
+      { "id": "c6", "name": "Salatin Cascade", "description": "Rotational cow→chicken→pig stacking.", "prerequisites": ["c5"], "unlocks": {} }
+    ]
+  },
+  {
+    "id": "branch-d",
+    "kind": "branch",
+    "name": "Aquaculture",
+    "description": "Path to FISH & wetland biomass.",
+    "fairy_food_gated": "NONE",
+    "nodes": [
+      { "id": "d1", "name": "Pond Excavation", "description": "Big fairy-coop dig.", "prerequisites": ["r4"], "unlocks": { "buildings": ["pond"] } },
+      { "id": "d2", "name": "Reed Bed Filter", "description": "Constructed wetland; greywater polish.", "prerequisites": ["d1"], "unlocks": {} },
+      { "id": "d3", "name": "Trout & Crayfish", "description": "Cold-water fish stocking.", "prerequisites": ["d2"], "unlocks": { "animals": ["rainbow-trout", "crayfish"] } },
+      { "id": "d4", "name": "Aquatic Forage", "description": "Watercress, aquatic plants.", "prerequisites": ["d3"], "unlocks": { "plants": ["watercress"] } },
+      { "id": "d5", "name": "Duck-Fish Integration", "description": "Aigamo-style polyculture.", "prerequisites": ["d4"], "unlocks": {} },
+      { "id": "d6", "name": "Salmon Stream Restoration", "description": "BC flavor: restore a salmon run.", "prerequisites": ["d5"], "unlocks": { "animals": ["coho-salmon"] } }
+    ]
+  },
+  {
+    "id": "branch-e",
+    "kind": "branch",
+    "name": "Grain & Annuals",
+    "description": "Path to GRAIN & staple calories.",
+    "fairy_food_gated": "NONE",
+    "nodes": [
+      { "id": "e1", "name": "Cover-Crop Mixes", "description": "Crimson clover, vetch, tillage radish, winter rye.", "prerequisites": ["r2"], "unlocks": { "plants": ["crimson-clover", "vetch", "tillage-radish", "winter-rye"] } },
+      { "id": "e2", "name": "Three-Sisters-Equivalent (BC)", "description": "Quinoa + bean + squash guild for the Pacific Northwest.", "prerequisites": ["e1"], "unlocks": { "plants": ["quinoa", "pole-bean", "winter-squash"] } },
+      { "id": "e3", "name": "Root Cellar Crops", "description": "Potato, carrot, turnip, parsnip.", "prerequisites": ["e2"], "unlocks": { "plants": ["potato", "carrot", "turnip", "parsnip"] } },
+      { "id": "e4", "name": "Buckwheat & Hulless Barley", "description": "Fast-cycle grain and cool-tolerant barley.", "prerequisites": ["e3"], "unlocks": { "plants": ["buckwheat", "hulless-barley"] } },
+      { "id": "e5", "name": "Landrace Seed Breeding", "description": "Locally adapted seed populations.", "prerequisites": ["e4"], "unlocks": {} },
+      { "id": "e6", "name": "Seed Vault", "description": "Tradable genetic resilience.", "prerequisites": ["e5"], "unlocks": {} }
+    ]
+  },
+  {
+    "id": "branch-f",
+    "kind": "branch",
+    "name": "Fungi & Remediation",
+    "description": "Path to MUSHROOMS & soil power-ups.",
+    "fairy_food_gated": "NONE",
+    "nodes": [
+      { "id": "f1", "name": "IMO Collection", "description": "Forage indigenous microorganisms from old-growth forest edge.", "prerequisites": ["r1"], "unlocks": { "actions": ["collect-imo"] } },
+      { "id": "f2", "name": "Wine-Cap Path Mulch", "description": "King stropharia in wood-chip paths.", "prerequisites": ["f1"], "unlocks": { "plants": ["wine-cap-mushroom"] } },
+      { "id": "f3", "name": "Oyster Logs on Red Alder", "description": "Pleurotus inoculation on alder.", "prerequisites": ["f2"], "unlocks": { "plants": ["oyster-mushroom"] } },
+      { "id": "f4", "name": "Shiitake on Bigleaf Maple", "description": "Shiitake log cultivation.", "prerequisites": ["f3"], "unlocks": { "plants": ["shiitake-mushroom"] } },
+      { "id": "f5", "name": "Mycoremediation of Edges", "description": "Clean up contaminated edge zones.", "prerequisites": ["f4"], "unlocks": { "actions": ["mycoremediate"] } },
+      { "id": "f6", "name": "Johnson-Su Bioreactor", "description": "12-month static fungal bioreactor.", "prerequisites": ["f5"], "unlocks": { "buildings": ["johnson-su-tower"] } }
+    ]
+  },
+  {
+    "id": "branch-g",
+    "kind": "branch",
+    "name": "Water & Earthworks",
+    "description": "Path to water storage and microclimate control.",
+    "fairy_food_gated": "NONE",
+    "nodes": [
+      { "id": "g1", "name": "Contour Swale Network", "description": "Multi-swale earthworks on contour.", "prerequisites": ["r4"], "unlocks": {} },
+      { "id": "g2", "name": "Keyline Subsoiling", "description": "Yeomans-style subsoil ripping off-contour.", "prerequisites": ["g1"], "unlocks": {} },
+      { "id": "g3", "name": "Hugelkultur Beds", "description": "Buried-wood raised beds with deep water buffer.", "prerequisites": ["g1"], "unlocks": { "buildings": ["hugel-bed"] } },
+      { "id": "g4", "name": "Rain Garden + Greywater", "description": "Capture roof runoff; branched-drain greywater.", "prerequisites": ["g2"], "unlocks": {} },
+      { "id": "g5", "name": "Dam / Reservoir", "description": "Large water storage with spillway.", "prerequisites": ["g4"], "unlocks": { "buildings": ["reservoir"] } },
+      { "id": "g6", "name": "Watershed Intervention", "description": "Catchment-scale restoration.", "prerequisites": ["g5"], "unlocks": {} }
+    ]
+  },
+  {
+    "id": "climax",
+    "kind": "climax",
+    "name": "Regenerative Climax",
+    "description": "Convergence of multiple branches; gates the 100-fairy end state.",
+    "fairy_food_gated": "NONE",
+    "nodes": [
+      { "id": "cx-biodynamic", "name": "Biodynamic Atelier", "description": "BD500-508 preparations; lunar calendar overlay.", "prerequisites": ["a4", "c3", "e4"], "unlocks": {} },
+      { "id": "cx-food-forest", "name": "Mature Food Forest", "description": "7-layer climax food forest.", "prerequisites": ["b6", "f4", "g3"], "unlocks": {} },
+      { "id": "cx-mob-grazing", "name": "Mob-Grazing Mastery", "description": "Leader-follower rotation at farm scale.", "prerequisites": ["c6", "e1", "g2"], "unlocks": {} },
+      { "id": "cx-seed-vault", "name": "Seed Vault & Landrace Network", "description": "Export-quality genetics.", "prerequisites": ["b5", "e6", "f4"], "unlocks": {} },
+      { "id": "cx-watershed", "name": "Watershed Regeneration", "description": "Whole-catchment health.", "prerequisites": ["g6"], "unlocks": {} }
+    ]
+  }
+]

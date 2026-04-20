@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1sim_woodchips"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_woodchips.gd" id="1_wchips"]
+
+[node name="SimWoodChips" type="Node3D"]
+script = ExtResource("1_wchips")

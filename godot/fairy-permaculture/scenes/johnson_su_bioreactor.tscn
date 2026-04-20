@@ -1,0 +1,43 @@
+[gd_scene load_steps=5 format=3 uid="uid://johnson_su_bioreactor_scene"]
+
+[ext_resource type="Script" path="res://scripts/johnson_su_bioreactor.gd" id="1_js"]
+
+[sub_resource type="BoxMesh" id="frame_mesh"]
+size = Vector3(2.2, 2.6, 2.2)
+
+[sub_resource type="CylinderMesh" id="pipe_mesh"]
+top_radius = 0.1
+bottom_radius = 0.1
+height = 3.2
+radial_segments = 8
+
+[sub_resource type="CylinderMesh" id="cap_mesh"]
+top_radius = 1.2
+bottom_radius = 1.2
+height = 0.2
+radial_segments = 12
+
+[sub_resource type="BoxShape3D" id="click_shape"]
+size = Vector3(2.8, 3.2, 2.8)
+
+[node name="JohnsonSuBioreactor" type="Node3D"]
+script = ExtResource("1_js")
+
+[node name="Frame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+mesh = SubResource("frame_mesh")
+
+[node name="Pipe" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 1.6, 0)
+mesh = SubResource("pipe_mesh")
+
+[node name="Cap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.7, 0)
+mesh = SubResource("cap_mesh")
+
+[node name="ClickArea" type="StaticBody3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+shape = SubResource("click_shape")

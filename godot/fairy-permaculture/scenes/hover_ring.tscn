@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://hover_ring_scene"]
+
+[ext_resource type="Script" path="res://scripts/hover_ring.gd" id="1_hr"]
+
+[node name="HoverRing" type="Node3D"]
+script = ExtResource("1_hr")
+
+[node name="Ring" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+
+[node name="RingOuter" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)

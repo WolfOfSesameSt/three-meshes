@@ -30,7 +30,17 @@ Access at `http://localhost:5173/src/games/kaiju-city/index.html` when dev serve
 
 ### Void Raiders Game
 Access at `http://localhost:5173/src/games/void-raiders/index.html` when dev server is running.
-GDD at `src/games/void-raiders/GDD.md`. Agentic dev system in `.claude/agents/`.
+GDD at `src/games/void-raiders/GDD.md`. Agentic dev system in `.claude/agents/` (unprefixed — VR team).
+
+### Fairy Permaculture Game
+Access at `http://localhost:5173/src/games/fairy-permaculture/index.html` when dev server is running.
+GDD at `src/games/fairy-permaculture/GDD.md`. Agentic dev system in `.claude/agents/` with `fp-` prefix (e.g. `fp-game-director`, `fp-permaculture-designer`).
+
+Permaculture sim game — fairy-overseer manages a BC coastal farm through a 7-branch food-chain tree, fairy population 1→100 driven by honey/milk/fruit, 500×500 tile homestead, isometric cel-shaded art. Research docs in `src/games/fairy-permaculture/docs/`.
+
+**Dev tools (MVP):**
+- Dev Lab: `http://localhost:5173/src/games/fairy-permaculture/lab/index.html` — model viewer (drag-drop GLB/GLTF with toon shader + palette remap), shader hot-reload, balance.json live-tuning, progression-simulator front-end, biome preview, audio audition.
+- Progression simulator: `npm run simulate -- --profile typical --seed 42 --years 3` (headless CLI; emits CSV + PNG).
 
 **Dev tools:**
 - Model Preview: `http://localhost:5173/src/games/void-raiders/model-preview/index.html`

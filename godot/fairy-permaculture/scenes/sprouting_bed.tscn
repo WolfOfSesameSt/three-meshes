@@ -1,0 +1,47 @@
+[gd_scene load_steps=5 format=3 uid="uid://sprouting_bed_scene"]
+
+[ext_resource type="Script" path="res://scripts/sprouting_bed.gd" id="1_sb"]
+
+[sub_resource type="BoxMesh" id="frame_mesh"]
+size = Vector3(3.4, 0.3, 2.0)
+
+[sub_resource type="SphereMesh" id="slot_mesh"]
+radius = 0.4
+height = 0.6
+radial_segments = 10
+
+[sub_resource type="BoxShape3D" id="bed_click_shape"]
+size = Vector3(3.8, 1.6, 2.4)
+
+[node name="SproutingBed" type="Node3D"]
+script = ExtResource("1_sb")
+
+[node name="Frame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+mesh = SubResource("frame_mesh")
+
+[node name="SlotMarkers" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+
+[node name="S0" type="MeshInstance3D" parent="SlotMarkers"]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, -1.15, 0.2, 0)
+mesh = SubResource("slot_mesh")
+
+[node name="S1" type="MeshInstance3D" parent="SlotMarkers"]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, -0.35, 0.2, 0)
+mesh = SubResource("slot_mesh")
+
+[node name="S2" type="MeshInstance3D" parent="SlotMarkers"]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0.45, 0.2, 0)
+mesh = SubResource("slot_mesh")
+
+[node name="S3" type="MeshInstance3D" parent="SlotMarkers"]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 1.25, 0.2, 0)
+mesh = SubResource("slot_mesh")
+
+[node name="ClickArea" type="StaticBody3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("bed_click_shape")

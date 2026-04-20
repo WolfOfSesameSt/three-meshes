@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1sim_compost_tiers"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_compost_tiers.gd" id="1_sct"]
+
+[node name="SimCompostTiers" type="Node3D"]
+script = ExtResource("1_sct")

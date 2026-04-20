@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://fairy_scene"]
+
+[ext_resource type="Script" path="res://scripts/fairy.gd" id="1_fairy"]
+[ext_resource type="PackedScene" path="res://models/fairy-navi/fairy.gltf" id="2_navi"]
+
+[node name="Fairy" type="Node3D"]
+script = ExtResource("1_fairy")
+
+[node name="Model" parent="." instance=ExtResource("2_navi")]
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, 0, 0, 0)
+
+[node name="Glow" type="OmniLight3D" parent="."]
+light_color = Color(0.949, 0.757, 0.306, 1)
+light_energy = 2.1
+omni_range = 4.5

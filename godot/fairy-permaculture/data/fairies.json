@@ -1,0 +1,134 @@
+{
+  "roles": [
+    {
+      "id": "composter",
+      "name": "Composter",
+      "hat_mesh": "hat-sunhat-brown",
+      "tool_mesh": "tool-pitchfork",
+      "unlock_node": "r1",
+      "primary_actions": ["haul-biomass-to-pile", "turn-pile", "harvest-finished-compost"],
+      "xp_sources": ["pile-turn", "finished-compost-harvest", "inoculant-application"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Composter", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Composter", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Composter", "multiplier": 1.20, "unique_ability": "seed-pile-with-inoculant" },
+        { "level": 4, "title": "Expert Composter", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Composter", "multiplier": 1.50, "unique_ability": "boost-nearby-composters" }
+      ]
+    },
+    {
+      "id": "harvester",
+      "name": "Harvester",
+      "hat_mesh": "hat-red-kerchief",
+      "tool_mesh": "tool-basket",
+      "unlock_node": "tier-2",
+      "primary_actions": ["pick-fruit", "gather-eggs", "harvest-grain"],
+      "xp_sources": ["fruit-picked", "egg-gathered", "grain-harvested"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Harvester", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Harvester", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Harvester", "multiplier": 1.20, "unique_ability": "reduced-wastage" },
+        { "level": 4, "title": "Expert Harvester", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Harvester", "multiplier": 1.50, "unique_ability": "boost-nearby-harvesters" }
+      ]
+    },
+    {
+      "id": "forager",
+      "name": "Forager",
+      "hat_mesh": "hat-leaf-crown",
+      "tool_mesh": "tool-satchel",
+      "unlock_node": "tier-1",
+      "primary_actions": ["collect-wild-biomass", "gather-imo", "collect-seeds", "collect-deadfall"],
+      "xp_sources": ["biomass-collected", "imo-gathered", "seed-found"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Forager", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Forager", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Forager", "multiplier": 1.20, "unique_ability": "find-rare-materials" },
+        { "level": 4, "title": "Expert Forager", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Forager", "multiplier": 1.50, "unique_ability": "boost-nearby-foragers" }
+      ]
+    },
+    {
+      "id": "builder",
+      "name": "Builder",
+      "hat_mesh": "hat-hardhat-leaf",
+      "tool_mesh": "tool-hammer",
+      "unlock_node": "r1",
+      "primary_actions": ["construct-pile", "construct-hive", "construct-coop", "construct-fence"],
+      "xp_sources": ["build-complete", "blueprint-completed"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Builder", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Builder", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Builder", "multiplier": 1.20, "unique_ability": "durability-boost" },
+        { "level": 4, "title": "Expert Builder", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Builder", "multiplier": 1.50, "unique_ability": "unlock-advanced-blueprints" }
+      ]
+    },
+    {
+      "id": "digger",
+      "name": "Digger",
+      "hat_mesh": "hat-green-bandana",
+      "tool_mesh": "tool-shovel",
+      "unlock_node": "r4",
+      "primary_actions": ["dig-swale", "dig-pond", "dig-hugel"],
+      "xp_sources": ["earthwork-completed"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Digger", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Digger", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Digger", "multiplier": 1.20, "unique_ability": "larger-earthworks" },
+        { "level": 4, "title": "Expert Digger", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Digger", "multiplier": 1.50, "unique_ability": "boost-nearby-diggers" }
+      ]
+    },
+    {
+      "id": "beekeeper",
+      "name": "Beekeeper",
+      "hat_mesh": "hat-veil",
+      "tool_mesh": "tool-honey-dipper",
+      "unlock_node": "a1",
+      "primary_actions": ["inspect-hive", "harvest-honey", "split-colony"],
+      "xp_sources": ["hive-inspected", "honey-harvested", "colony-split"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Beekeeper", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Beekeeper", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Beekeeper", "multiplier": 1.20, "unique_ability": "mite-prevention" },
+        { "level": 4, "title": "Expert Beekeeper", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Beekeeper", "multiplier": 1.50, "unique_ability": "queen-breeding" }
+      ]
+    },
+    {
+      "id": "shepherd",
+      "name": "Shepherd",
+      "hat_mesh": "hat-wool-cap",
+      "tool_mesh": "tool-staff",
+      "unlock_node": "c1",
+      "primary_actions": ["herd", "move-paddock", "milk", "feed-animal"],
+      "xp_sources": ["animal-milked", "paddock-moved", "predator-deterred"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Shepherd", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Shepherd", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Shepherd", "multiplier": 1.20, "unique_ability": "predator-awareness" },
+        { "level": 4, "title": "Expert Shepherd", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Shepherd", "multiplier": 1.50, "unique_ability": "herd-cohesion-aura" }
+      ]
+    },
+    {
+      "id": "healer",
+      "name": "Healer",
+      "hat_mesh": "hat-flower-crown",
+      "tool_mesh": "tool-watering-can",
+      "unlock_node": "tier-2",
+      "primary_actions": ["water-tile", "treat-pest", "restore-animal-health"],
+      "xp_sources": ["tile-watered", "pest-treated", "animal-healed"],
+      "level_bonuses": [
+        { "level": 1, "title": "Novice Healer", "multiplier": 1.00 },
+        { "level": 2, "title": "Apprentice Healer", "multiplier": 1.10 },
+        { "level": 3, "title": "Skilled Healer", "multiplier": 1.20, "unique_ability": "disease-prevention-aura" },
+        { "level": 4, "title": "Expert Healer", "multiplier": 1.35 },
+        { "level": 5, "title": "Master Healer", "multiplier": 1.50, "unique_ability": "large-radius-heal" }
+      ]
+    }
+  ],
+  "swap_cost_days": 1,
+  "swap_cost_fairy_food_units": 1
+}

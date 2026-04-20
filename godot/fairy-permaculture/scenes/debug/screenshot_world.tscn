@@ -1,0 +1,51 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/screenshot_world.gd" id="1_shot"]
+
+[sub_resource type="Environment" id="world_shot_env"]
+background_mode = 1
+background_color = Color(0.722, 0.847, 0.910, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.910, 0.902, 0.847, 1)
+ambient_light_energy = 0.75
+tonemap_mode = 2
+tonemap_exposure = 1.05
+tonemap_white = 6.0
+fog_enabled = true
+fog_light_color = Color(0.910, 0.902, 0.847, 1)
+fog_light_energy = 0.35
+fog_density = 0.0035
+fog_aerial_perspective = 0.3
+
+[node name="ShotRoot" type="Node3D"]
+script = ExtResource("1_shot")
+
+[node name="Sub" type="SubViewport" parent="."]
+size = Vector2i(1280, 720)
+render_target_update_mode = 4
+msaa_3d = 2
+handle_input_locally = false
+
+[node name="Stage" type="Node3D" parent="Sub"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Sub/Stage"]
+environment = SubResource("world_shot_env")
+
+[node name="Sun" type="DirectionalLight3D" parent="Sub/Stage"]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 40, 0)
+light_color = Color(1, 0.957, 0.863, 1)
+light_energy = 1.2
+shadow_enabled = true
+shadow_bias = 0.08
+shadow_normal_bias = 1.5
+shadow_blur = 1.5
+directional_shadow_mode = 1
+directional_shadow_max_distance = 180.0
+
+[node name="Rig" type="Node3D" parent="Sub/Stage"]
+
+[node name="Camera" type="Camera3D" parent="Sub/Stage/Rig"]
+projection = 1
+size = 110.0
+near = 0.5
+far = 600.0

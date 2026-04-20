@@ -1,0 +1,58 @@
+[gd_scene load_steps=9 format=3 uid="uid://hot_pile_scene"]
+
+[ext_resource type="Script" path="res://scripts/hot_pile.gd" id="1_hp"]
+
+[sub_resource type="CylinderMesh" id="base_mesh"]
+top_radius = 1.5
+bottom_radius = 2.6
+height = 2.8
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="base_mat"]
+albedo_color = Color(0.478, 0.361, 0.282, 1)
+
+[sub_resource type="SphereMesh" id="top_mesh"]
+radius = 1.6
+height = 2.2
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="top_mat"]
+albedo_color = Color(0.243, 0.184, 0.137, 1)
+
+[sub_resource type="SphereMesh" id="steam_mesh"]
+radius = 1.1
+
+[sub_resource type="StandardMaterial3D" id="steam_mat"]
+transparency = 1
+albedo_color = Color(0.93, 0.93, 0.93, 0)
+
+[sub_resource type="BoxShape3D" id="click_shape"]
+size = Vector3(5.2, 4.6, 5.2)
+
+[node name="HotPile" type="Node3D"]
+script = ExtResource("1_hp")
+
+[node name="Base" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("base_mesh")
+surface_material_override/0 = SubResource("base_mat")
+
+[node name="Top" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
+mesh = SubResource("top_mesh")
+surface_material_override/0 = SubResource("top_mat")
+
+[node name="Steam" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.8, 0)
+mesh = SubResource("steam_mesh")
+surface_material_override/0 = SubResource("steam_mat")
+
+[node name="Sparkle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, 0)
+
+[node name="ClickArea" type="StaticBody3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+shape = SubResource("click_shape")

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fairy Permaculture — Dev Lab</title>
+  <link rel="stylesheet" href="/src/games/fairy-permaculture/ui/theme.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: var(--color-mist); }
+    body {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      grid-template-rows: 48px 1fr;
+      grid-template-areas:
+        "header header"
+        "nav    main";
+      font-family: Georgia, serif;
+      color: var(--ink);
+    }
+    header {
+      grid-area: header;
+      background: var(--wood-plank-dark);
+      color: var(--parchment);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--wood-plank);
+    }
+    header h1 {
+      font-size: 20px;
+      letter-spacing: 0.5px;
+    }
+    header .status {
+      font-size: 13px;
+      opacity: 0.75;
+    }
+    nav.tabs {
+      grid-area: nav;
+      background: var(--wood-plank);
+      border-right: 3px solid var(--wood-plank-dark);
+      padding: 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+    }
+    nav.tabs button {
+      background: transparent;
+      color: var(--parchment);
+      border: none;
+      text-align: left;
+      padding: 10px 20px;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 100ms;
+    }
+    nav.tabs button:hover { background: var(--wood-plank-dark); }
+    nav.tabs button.active {
+      background: var(--parchment);
+      color: var(--ink);
+      font-weight: bold;
+    }
+    main {
+      grid-area: main;
+      padding: 16px;
+      overflow: auto;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .panel h2 { font-size: 22px; margin-bottom: 8px; }
+    .panel p.hint { color: var(--wood-plank-dark); margin-bottom: 16px; font-style: italic; }
+    .viewport {
+      width: 100%;
+      height: calc(100vh - 220px);
+      background: var(--color-sky);
+      border: 2px solid var(--wood-plank-dark);
+      border-radius: 4px;
+      position: relative;
+    }
+    .viewport canvas { display: block; width: 100%; height: 100%; }
+    .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
+    .field label { font-size: 12px; color: var(--wood-plank-dark); }
+    .field input, .field select, .field textarea {
+      padding: 6px 8px;
+      border: 1px solid var(--parchment-edge);
+      background: var(--parchment);
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--ink);
+    }
+    button.action {
+      background: var(--wood-plank);
+      color: var(--parchment);
+      border: none;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      border-radius: 3px;
+    }
+    button.action:hover { background: var(--wood-plank-dark); }
+    .drop-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--wood-plank-dark);
+      font-size: 18px;
+      pointer-events: none;
+    }
+    pre {
+      background: var(--parchment);
+      border: 1px solid var(--parchment-edge);
+      padding: 10px;
+      font-size: 12px;
+      max-height: 300px;
+      overflow: auto;
+    }
+    .palette-chip {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      margin-right: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+    }
+    .palette-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🧚 Fairy Permaculture — Dev Lab</h1>
+    <div class="status" id="status">ready</div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="model-viewer" class="active">1. Model Viewer</button>
+    <button data-tab="shader-lab">2. Shader Lab</button>
+    <button data-tab="biome-preview">3. Biome Preview</button>
+    <button data-tab="balance">4. Balance Tuning</button>
+    <button data-tab="simulator">5. Simulator</button>
+    <button data-tab="audio">6. Audio</button>
+    <button data-tab="fairy-workshop">7. Fairy Workshop</button>
+  </nav>
+
+  <main>
+    <!-- Model Viewer -->
+    <div class="panel active" id="panel-model-viewer">
+      <h2>Model Viewer</h2>
+      <p class="hint">Drag a <code>.glb</code> or <code>.gltf</code> file onto the viewport. Toon shader is applied automatically. Use the palette-remap to snap colors to the canonical 11-color palette.</p>
+      <div class="row">
+        <div class="field">
+          <label>Season LUT</label>
+          <select id="season-select">
+            <option value="spring">Spring</option>
+            <option value="summer" selected>Summer</option>
+            <option value="autumn">Autumn</option>
+            <option value="winter">Winter</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Time of Day</label>
+          <select id="tod-select">
+            <option value="dawn">Dawn</option>
+            <option value="noon" selected>Noon</option>
+            <option value="dusk">Dusk</option>
+            <option value="night">Night</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Rotate</label>
+          <input type="checkbox" id="rotate-toggle" checked />
+        </div>
+        <button class="action" id="reset-camera-btn">Reset camera</button>
+      </div>
+      <div class="palette-row" id="palette-row"></div>
+      <div class="viewport" id="model-viewport">
+        <div class="drop-hint" id="drop-hint">Drag a GLB / GLTF file here</div>
+      </div>
+    </div>
+
+    <!-- Shader Lab -->
+    <div class="panel" id="panel-shader-lab">
+      <h2>Shader Lab</h2>
+      <p class="hint">Fragment shader hot-reload for quick tuning. Compiles against a stock sphere. Save persists to <code>lab-staging/</code>.</p>
+      <div class="row" style="flex-direction: column;">
+        <div class="field" style="min-width: 100%;">
+          <label>Fragment shader (GLSL)</label>
+          <textarea id="shader-source" rows="14" spellcheck="false"></textarea>
+        </div>
+        <div class="row">
+          <button class="action" id="recompile-btn">Recompile</button>
+          <button class="action" id="save-shader-btn">Save to lab-staging/</button>
+        </div>
+      </div>
+      <div class="viewport" id="shader-viewport" style="height: 400px;"></div>
+    </div>
+
+    <!-- Biome Preview -->
+    <div class="panel" id="panel-biome-preview">
+      <h2>Biome Preview</h2>
+      <p class="hint">Generate a BC biome from a seed; inspect terrain, water, POI placement. (Full integration lands in C1.1.)</p>
+      <div class="row">
+        <div class="field">
+          <label>Seed</label>
+          <input type="number" id="biome-seed" value="42" />
+        </div>
+        <button class="action" id="regen-biome-btn">Generate</button>
+      </div>
+      <div class="viewport" id="biome-viewport" style="height: 500px;">
+        <div class="drop-hint">Biome renderer arrives in C1.1</div>
+      </div>
+    </div>
+
+    <!-- Balance Tuning -->
+    <div class="panel" id="panel-balance">
+      <h2>Balance Tuning</h2>
+      <p class="hint">Live-edit <code>data/balance.json</code>. Save writes a proposal to <code>balance/proposals/</code> for review — never overwrites the canonical file.</p>
+      <div class="row">
+        <button class="action" id="load-balance-btn">Load balance.json</button>
+        <button class="action" id="save-proposal-btn">Save as proposal</button>
+        <button class="action" id="run-sim-btn">Run sim</button>
+      </div>
+      <pre id="balance-editor" contenteditable="true" style="min-height: 400px; outline: none;"></pre>
+      <h3 style="margin-top: 16px;">Last sim output</h3>
+      <pre id="sim-output">(no sim run yet)</pre>
+    </div>
+
+    <!-- Simulator (placeholder UI; full feature in "Build progression simulator" task) -->
+    <div class="panel" id="panel-simulator">
+      <h2>Progression Simulator</h2>
+      <p class="hint">Headless progression sim. CLI: <code>npm run simulate</code>. Front-end lands post-C4.4.</p>
+      <div class="row">
+        <div class="field">
+          <label>Seed</label><input type="number" value="42" disabled />
+        </div>
+        <div class="field">
+          <label>Profile</label>
+          <select disabled>
+            <option>ideal</option><option selected>typical</option><option>naive</option><option>chaotic</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Years</label><input type="number" value="3" disabled />
+        </div>
+      </div>
+      <p class="hint">Graphs land post-simulator-build.</p>
+    </div>
+
+    <!-- Audio -->
+    <div class="panel" id="panel-audio">
+      <h2>Audio Lab</h2>
+      <p class="hint">Audition SFX + music per game situation. Generate new takes via ElevenLabs. Music direction: Zelda-inspired (BOTW sparse piano + ocarina + harp for night + orchestral milestones). Full implementation reuses VR music-lab pattern; lands after core gameplay chunks.</p>
+    </div>
+
+    <!-- Fairy Workshop -->
+    <div class="panel" id="panel-fairy-workshop">
+      <h2>Fairy Workshop</h2>
+      <p class="hint">Preview each of the 8 roles with hat + tool. Lands alongside C2.4 (composter) and C5.1 (full role set).</p>
+    </div>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fx_rain_streaks"]
+
+[ext_resource type="Script" path="res://scripts/fx/rain_streaks.gd" id="1_fxr"]
+
+[node name="RainStreaks" type="Node3D"]
+script = ExtResource("1_fxr")

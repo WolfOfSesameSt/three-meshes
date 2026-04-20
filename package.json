@@ -19,7 +19,8 @@
     "remotion:render": "remotion render AnaglyphScene src/remotion/out/anaglyph.mp4",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "simulate": "node src/games/fairy-permaculture/balance/cli.js"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.41.1",
@@ -35,6 +36,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.4",
     "puppeteer": "^24.40.0",
     "vite": "^6.0.0",
     "vitest": "^4.1.2"

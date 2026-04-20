@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dswalesim001"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_swale.gd" id="1_swale_sim"]
+
+[node name="SimSwale" type="Node3D"]
+script = ExtResource("1_swale_sim")

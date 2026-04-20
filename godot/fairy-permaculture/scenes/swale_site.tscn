@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dswalesite001"]
+
+[ext_resource type="Script" path="res://scripts/swale_site.gd" id="1_swale"]
+
+[node name="SwaleSite" type="Node3D"]
+script = ExtResource("1_swale")

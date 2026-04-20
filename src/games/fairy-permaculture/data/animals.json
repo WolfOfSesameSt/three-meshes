@@ -1,0 +1,103 @@
+[
+  {
+    "id": "mason-bee",
+    "name": "Mason Bee",
+    "scientific_name": "Osmia lignaria",
+    "category": "insect",
+    "diet": "herbivore",
+    "forage": ["pollen", "nectar"],
+    "products": [{ "id": "pollination-service", "rate_per_day": 0.8, "unit": "units" }],
+    "predators": ["wasp"],
+    "lifespan_days": 45,
+    "native_biomes": ["bc-coastal"]
+  },
+  {
+    "id": "bumblebee",
+    "name": "Bumblebee",
+    "scientific_name": "Bombus spp.",
+    "category": "insect",
+    "diet": "herbivore",
+    "forage": ["pollen", "nectar"],
+    "products": [{ "id": "pollination-service", "rate_per_day": 1.0, "unit": "units" }],
+    "predators": [],
+    "lifespan_days": 120,
+    "native_biomes": ["bc-coastal"]
+  },
+  {
+    "id": "honeybee",
+    "name": "Honeybee",
+    "scientific_name": "Apis mellifera",
+    "category": "insect",
+    "diet": "herbivore",
+    "forage": ["pollen", "nectar"],
+    "products": [
+      { "id": "honey", "rate_per_day": 0.2, "unit": "kg" },
+      { "id": "pollination-service", "rate_per_day": 1.5, "unit": "units" }
+    ],
+    "predators": ["varroa-mite"],
+    "lifespan_days": 90,
+    "native_biomes": ["bc-coastal"]
+  },
+  {
+    "id": "chicken-layer",
+    "name": "Laying Chicken",
+    "category": "poultry",
+    "diet": "omnivore",
+    "forage": ["seeds", "insects", "kitchen-scraps"],
+    "products": [{ "id": "egg", "rate_per_day": 0.8, "unit": "count" }],
+    "predators": ["hawk", "raccoon", "coyote"],
+    "lifespan_days": 2190,
+    "native_biomes": ["bc-coastal"]
+  },
+  {
+    "id": "duck",
+    "name": "Duck",
+    "category": "poultry",
+    "diet": "omnivore",
+    "forage": ["slugs", "aphids", "aquatic-plants", "grain"],
+    "products": [{ "id": "egg", "rate_per_day": 0.6, "unit": "count" }],
+    "predators": ["raccoon", "coyote"],
+    "lifespan_days": 2190,
+    "native_biomes": ["bc-coastal"]
+  },
+  {
+    "id": "dairy-goat",
+    "name": "Dairy Goat",
+    "category": "small-livestock",
+    "diet": "herbivore",
+    "forage": ["browse", "forbs", "shrubs"],
+    "products": [
+      { "id": "milk", "rate_per_day": 3.0, "unit": "liters" },
+      { "id": "manure", "rate_per_day": 2.0, "unit": "kg" }
+    ],
+    "predators": ["cougar", "coyote"],
+    "lifespan_days": 3650,
+    "native_biomes": ["bc-coastal"]
+  },
+  {
+    "id": "dexter-cow",
+    "name": "Dexter Cow",
+    "category": "medium-livestock",
+    "diet": "herbivore",
+    "forage": ["grass", "forbs", "tree-fodder"],
+    "products": [
+      { "id": "milk", "rate_per_day": 10.0, "unit": "liters" },
+      { "id": "manure", "rate_per_day": 15.0, "unit": "kg" }
+    ],
+    "predators": ["cougar", "black-bear"],
+    "lifespan_days": 5475,
+    "native_biomes": ["bc-coastal"]
+  },
+  {
+    "id": "rainbow-trout",
+    "name": "Rainbow Trout",
+    "scientific_name": "Oncorhynchus mykiss",
+    "category": "fish",
+    "diet": "omnivore",
+    "forage": ["insects", "small-fish"],
+    "products": [{ "id": "fish-meat", "rate_per_day": 0.02, "unit": "kg" }],
+    "predators": ["heron", "otter"],
+    "lifespan_days": 2190,
+    "native_biomes": ["bc-coastal"]
+  }
+]

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fx_kiln_plume"]
+
+[ext_resource type="Script" path="res://scripts/fx/kiln_plume.gd" id="1_fxk"]
+
+[node name="KilnPlume" type="Node3D"]
+script = ExtResource("1_fxk")

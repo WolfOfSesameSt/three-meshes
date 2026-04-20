@@ -1,0 +1,98 @@
+{
+  "variants": [
+    {
+      "id": "cold-pile",
+      "name": "Cold Pile",
+      "footprint_tiles": 1,
+      "throughput_days_range": [60, 120],
+      "output_quality_max": 3,
+      "unlock_node": "r1"
+    },
+    {
+      "id": "hot-pile",
+      "name": "Hot Pile",
+      "footprint_tiles": 4,
+      "throughput_days_range": [30, 60],
+      "output_quality_max": 5,
+      "unlock_node": "r1-alt"
+    },
+    {
+      "id": "worm-bin",
+      "name": "Worm Bin",
+      "footprint_tiles": 1,
+      "throughput_days_range": [60, 90],
+      "output_quality_max": 5,
+      "unlock_node": "r3"
+    },
+    {
+      "id": "bokashi-bucket",
+      "name": "Bokashi Bucket",
+      "footprint_tiles": 0.5,
+      "throughput_days_range": [42, 42],
+      "output_quality_max": 3,
+      "unlock_node": "c2"
+    },
+    {
+      "id": "johnson-su-tower",
+      "name": "Johnson-Su Bioreactor",
+      "footprint_tiles": 2,
+      "throughput_days_range": [365, 365],
+      "output_quality_max": 5,
+      "unlock_node": "f6"
+    },
+    {
+      "id": "compost-tea-brewer",
+      "name": "Compost Tea Brewer",
+      "footprint_tiles": 0.5,
+      "throughput_days_range": [1, 2],
+      "output_quality_max": 4,
+      "unlock_node": "r1-tea"
+    }
+  ],
+  "ingredient_categories": [
+    {
+      "id": "greens",
+      "cn_range": [10, 25],
+      "palette_color": "meadowGreen",
+      "items": ["fresh-grass", "comfrey-chop", "kitchen-scraps", "fresh-manure", "coffee-grounds", "fish-trim"]
+    },
+    {
+      "id": "browns",
+      "cn_range": [50, 500],
+      "palette_color": "earthBrown",
+      "items": ["dry-leaves", "straw", "wood-chips", "cardboard", "dead-corn-stalks", "sawdust"]
+    },
+    {
+      "id": "bulkers",
+      "palette_color": "oliveDark",
+      "items": ["wood-chips-coarse", "straw-bundles", "twigs"]
+    },
+    {
+      "id": "inoculants",
+      "palette_color": "berryPurple",
+      "items": ["forest-duff-imo", "finished-compost-seed", "worm-castings", "bd-500"]
+    },
+    {
+      "id": "accelerators",
+      "palette_color": "honeyGold",
+      "items": ["urine", "molasses-water", "seaweed", "lab-culture"]
+    }
+  ],
+  "states": [
+    "empty",
+    "filling",
+    "triggered",
+    "hot",
+    "turn-window",
+    "cooling",
+    "curing",
+    "finished",
+    "anaerobic",
+    "stalled",
+    "ammonia-loss"
+  ],
+  "hot_threshold_volume_m3": 1.0,
+  "hot_cn_band": [20, 40],
+  "hot_moisture_band": [50, 65],
+  "turn_window_days": [5, 7]
+}

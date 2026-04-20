@@ -1,5 +1,5 @@
 {
-  "totalCreditsUsed": 4720,
+  "totalCreditsUsed": 11820,
   "limit": 50000,
   "generations": [
     {
@@ -289,6 +289,342 @@
       "filename": "weapon-railgun-impact.mp3",
       "credits": 40,
       "totalAfter": 4720
+    },
+    {
+      "date": "2026-04-19T11:56:28.373Z",
+      "type": "sfx",
+      "prompt": "soft plucky ukulele pluck with tiny sparkle chime, cozy cartoon berry pick, short and bright, toy-like",
+      "filename": "fp-berry-pick.mp3",
+      "credits": 40,
+      "totalAfter": 4760
+    },
+    {
+      "date": "2026-04-19T11:56:34.568Z",
+      "type": "sfx",
+      "prompt": "crisp cartoon snip with leaf rustle, short and bright, toon garden snipping, soft foliage",
+      "filename": "fp-biomass-chop.mp3",
+      "credits": 40,
+      "totalAfter": 4800
+    },
+    {
+      "date": "2026-04-19T11:56:37.722Z",
+      "type": "sfx",
+      "prompt": "earthy wooden thud with warm low chord, muffled soil scoop, cozy cartoon composting",
+      "filename": "fp-compost-scoop.mp3",
+      "credits": 40,
+      "totalAfter": 4840
+    },
+    {
+      "date": "2026-04-19T11:56:45.865Z",
+      "type": "sfx",
+      "prompt": "rising harp glissando into bright angelic choir ahh with sparkle tail, magical fairy unlock moment, whimsical, Zelda-inspired discovery, twinkling resolve",
+      "filename": "fp-new-fairy.mp3",
+      "credits": 80,
+      "totalAfter": 4920
+    },
+    {
+      "date": "2026-04-19T11:56:50.102Z",
+      "type": "sfx",
+      "prompt": "soft whoosh with warm bell tone, gentle steam rise, compost pile heating up, cozy magical transition",
+      "filename": "fp-pile-hot.mp3",
+      "credits": 40,
+      "totalAfter": 4960
+    },
+    {
+      "date": "2026-04-19T11:56:57.585Z",
+      "type": "sfx",
+      "prompt": "gentle wind-chime cascade, soft glassy chimes descending, compost finished completion, cozy accomplishment, Zelda-inspired",
+      "filename": "fp-compost-finish.mp3",
+      "credits": 40,
+      "totalAfter": 5000
+    },
+    {
+      "date": "2026-04-19T11:57:09.264Z",
+      "type": "sfx",
+      "prompt": "very subtle wooden clock tick, quiet single wood-block tap, day transition, calm gentle toc, short and quiet",
+      "filename": "fp-day-transition.mp3",
+      "credits": 40,
+      "totalAfter": 5040
+    },
+    {
+      "date": "2026-04-19T11:57:12.909Z",
+      "type": "sfx",
+      "prompt": "soft wooden pop, quiet bok tap, gentle UI hover feedback, tiny and warm, short percussion",
+      "filename": "fp-hover-tick.mp3",
+      "credits": 40,
+      "totalAfter": 5080
+    },
+    {
+      "date": "2026-04-19T11:57:34.422Z",
+      "type": "music",
+      "prompt": "sparse BOTW-style piano field music, slow minimal piano with long rests, occasional flute or ocarina motif, gentle harp punctuation, soft warm pad, reverent contemplative, like Sable or Hollow Knight ambient, no drums, no melody-heavy passages, peaceful daytime garden",
+      "filename": "fp-music-day.mp3",
+      "credits": 1000,
+      "totalAfter": 6080
+    },
+    {
+      "date": "2026-04-19T11:58:01.839Z",
+      "type": "music",
+      "prompt": "Dreamy nighttime ambient music featuring soft harp plucks with long reverb, distant wooden flute phrases, gentle warm pad drone, sparse and contemplative textures, evoking a peaceful starlit garden atmosphere without drums or bass, inspired by serene and mystical natural landscapes.",
+      "filename": "fp-music-night.mp3",
+      "credits": 500,
+      "totalAfter": 6580
+    },
+    {
+      "date": "2026-04-19T11:58:14.283Z",
+      "type": "music",
+      "prompt": "brief orchestral swell resolving on bright triad, short celebratory stinger, harp and strings, uplifting magical fairy milestone, warm and whimsical, one-shot ending resolve",
+      "filename": "fp-music-milestone.mp3",
+      "credits": 500,
+      "totalAfter": 7080
+    },
+    {
+      "date": "2026-04-19T11:58:31.016Z",
+      "type": "music",
+      "prompt": "light dissonant ambient tension, low sustained drone, subtle scratchy percussion ticks, uneasy but not scary, watchful and cautious, sparse textural suspense, cozy garden unease during a worrying event, minor chord shimmer, no melody",
+      "filename": "fp-music-tense.mp3",
+      "credits": 500,
+      "totalAfter": 7580
+    },
+    {
+      "date": "2026-04-19T19:08:20.079Z",
+      "type": "sfx",
+      "prompt": "soft cartoon chicken cluck, quick warm pluck, cozy hen, single cluck, short and friendly",
+      "filename": "fp-chicken-cluck-01.mp3",
+      "credits": 40,
+      "totalAfter": 7620
+    },
+    {
+      "date": "2026-04-19T19:08:29.803Z",
+      "type": "sfx",
+      "prompt": "soft cartoon chicken cluck variant, slightly lower pitch, gentle coo-cluck, cozy hen, short",
+      "filename": "fp-chicken-cluck-02.mp3",
+      "credits": 40,
+      "totalAfter": 7660
+    },
+    {
+      "date": "2026-04-19T19:08:33.203Z",
+      "type": "sfx",
+      "prompt": "soft plop with tiny high cluck, cozy cartoon egg drop onto straw, quick and warm",
+      "filename": "fp-egg-drop.mp3",
+      "credits": 40,
+      "totalAfter": 7700
+    },
+    {
+      "date": "2026-04-19T19:08:35.865Z",
+      "type": "sfx",
+      "prompt": "gentle woosh igniting into warm wood crackle, fireplace starting up, cozy kiln, short",
+      "filename": "fp-kiln-fire-start.mp3",
+      "credits": 80,
+      "totalAfter": 7780
+    },
+    {
+      "date": "2026-04-19T19:08:45.407Z",
+      "type": "sfx",
+      "prompt": "steady warm wood fire crackling loop, cozy kiln firing, soft pops and hiss, seamless",
+      "filename": "fp-kiln-crackle-loop.mp3",
+      "credits": 120,
+      "totalAfter": 7900
+    },
+    {
+      "date": "2026-04-19T19:08:48.323Z",
+      "type": "sfx",
+      "prompt": "matter-of-fact wooden thud on cutting board, single cartoon knock, brief and dry, no gore, cozy farm task",
+      "filename": "fp-butcher-cleaver.mp3",
+      "credits": 40,
+      "totalAfter": 7940
+    },
+    {
+      "date": "2026-04-19T19:08:51.444Z",
+      "type": "sfx",
+      "prompt": "dry chalky particle burst, small puff of powder, crumbling bone meal release, short and soft",
+      "filename": "fp-bone-meal-pop.mp3",
+      "credits": 40,
+      "totalAfter": 7980
+    },
+    {
+      "date": "2026-04-19T19:08:55.256Z",
+      "type": "sfx",
+      "prompt": "three rising chime notes, soft bell glockenspiel, found food discovery, Zelda-like cozy forage reward, short",
+      "filename": "fp-forage-chime.mp3",
+      "credits": 80,
+      "totalAfter": 8060
+    },
+    {
+      "date": "2026-04-19T19:09:01.841Z",
+      "type": "sfx",
+      "prompt": "quick three rapid chicken pecks, peck peck peck, hen eating grain, cozy cartoon, short",
+      "filename": "fp-chicken-eat-peck.mp3",
+      "credits": 80,
+      "totalAfter": 8140
+    },
+    {
+      "date": "2026-04-19T19:09:04.901Z",
+      "type": "sfx",
+      "prompt": "single soft water droplet plink into pond, clean bright plop, cozy cartoon, short and wet",
+      "filename": "fp-water-splash.mp3",
+      "credits": 40,
+      "totalAfter": 8180
+    },
+    {
+      "date": "2026-04-19T19:09:08.322Z",
+      "type": "sfx",
+      "prompt": "wooden bucket dipping and scooping water from stream, gentle sloshing, cozy farm, short",
+      "filename": "fp-stream-draw.mp3",
+      "credits": 80,
+      "totalAfter": 8260
+    },
+    {
+      "date": "2026-04-19T19:09:11.373Z",
+      "type": "sfx",
+      "prompt": "small seedling tucked into soil with gentle pat of earth, cozy planting moment, soft and warm, short",
+      "filename": "fp-spiral-plant-settle.mp3",
+      "credits": 80,
+      "totalAfter": 8340
+    },
+    {
+      "date": "2026-04-19T19:09:17.927Z",
+      "type": "sfx",
+      "prompt": "wooden plank settling into place with soft knock, satisfying build, cozy carpentry, short dry thud",
+      "filename": "fp-bed-build-plank.mp3",
+      "credits": 40,
+      "totalAfter": 8380
+    },
+    {
+      "date": "2026-04-19T19:09:21.543Z",
+      "type": "sfx",
+      "prompt": "parchment scroll unrolling, soft crinkly paper unfurl, cozy inspection moment, brief and crisp",
+      "filename": "fp-soil-inspect-open.mp3",
+      "credits": 40,
+      "totalAfter": 8420
+    },
+    {
+      "date": "2026-04-19T19:09:24.876Z",
+      "type": "sfx",
+      "prompt": "tiny sparkling growth chime, two rising glassy bell notes, magical seedling sprouting, short and bright",
+      "filename": "fp-seedling-sprout.mp3",
+      "credits": 80,
+      "totalAfter": 8500
+    },
+    {
+      "date": "2026-04-19T19:09:29.269Z",
+      "type": "sfx",
+      "prompt": "delicate shimmering flower blooming, soft crystalline sparkle with gentle harp pluck, magical blossom opening, short",
+      "filename": "fp-blossom-open.mp3",
+      "credits": 80,
+      "totalAfter": 8580
+    },
+    {
+      "date": "2026-04-19T19:09:39.217Z",
+      "type": "sfx",
+      "prompt": "gentle bee hovering buzz loop, soft low frequency pollinator hum, cozy garden, seamless loop",
+      "filename": "fp-pollinator-hum-loop.mp3",
+      "credits": 160,
+      "totalAfter": 8740
+    },
+    {
+      "date": "2026-04-19T19:09:42.988Z",
+      "type": "sfx",
+      "prompt": "fairy wing flutter loop, soft rapid papery fluttering, magical tiny wings, seamless, cozy",
+      "filename": "fp-fairy-flutter-loop.mp3",
+      "credits": 120,
+      "totalAfter": 8860
+    },
+    {
+      "date": "2026-04-19T19:09:48.947Z",
+      "type": "sfx",
+      "prompt": "soft light rain on leaves, gentle pitter patter, cozy ambient drizzle, seamless loop, no thunder",
+      "filename": "fp-rain-light-loop.mp3",
+      "credits": 240,
+      "totalAfter": 9100
+    },
+    {
+      "date": "2026-04-19T19:09:53.638Z",
+      "type": "sfx",
+      "prompt": "gentle breeze through trees, soft wind rustling leaves, cozy outdoor ambient, seamless loop",
+      "filename": "fp-wind-gentle-loop.mp3",
+      "credits": 240,
+      "totalAfter": 9340
+    },
+    {
+      "date": "2026-04-19T19:10:02.225Z",
+      "type": "sfx",
+      "prompt": "distant rolling thunder rumble, low deep far-away storm boom, cozy atmospheric, no rain, short",
+      "filename": "fp-thunder-distant.mp3",
+      "credits": 80,
+      "totalAfter": 9420
+    },
+    {
+      "date": "2026-04-19T19:10:07.145Z",
+      "type": "sfx",
+      "prompt": "single gentle night owl hoot, soft whoo-whoo, cozy nocturnal woodland, warm and brief",
+      "filename": "fp-owl-hoot.mp3",
+      "credits": 80,
+      "totalAfter": 9500
+    },
+    {
+      "date": "2026-04-19T19:10:10.432Z",
+      "type": "sfx",
+      "prompt": "spring season chime progression, bright ascending bells and soft flute note, cozy awakening, magical, short",
+      "filename": "fp-season-spring.mp3",
+      "credits": 80,
+      "totalAfter": 9580
+    },
+    {
+      "date": "2026-04-19T19:10:13.728Z",
+      "type": "sfx",
+      "prompt": "warm major chord summer chime, sunny orchestral swell, glockenspiel and strings, cozy and bright, short",
+      "filename": "fp-season-summer.mp3",
+      "credits": 80,
+      "totalAfter": 9660
+    },
+    {
+      "date": "2026-04-19T19:10:20.122Z",
+      "type": "sfx",
+      "prompt": "warm falling chord autumn chime, mellow descending bells with mellow horn pad, cozy harvest mood, short",
+      "filename": "fp-season-autumn.mp3",
+      "credits": 80,
+      "totalAfter": 9740
+    },
+    {
+      "date": "2026-04-19T19:10:23.675Z",
+      "type": "sfx",
+      "prompt": "glassy sparse winter chord, crystalline bells with icy shimmer, cold and cozy still, short and resonant",
+      "filename": "fp-season-winter.mp3",
+      "credits": 80,
+      "totalAfter": 9820
+    },
+    {
+      "date": "2026-04-19T19:10:44.789Z",
+      "type": "music",
+      "prompt": "sparse warm dawn piano music, slow contemplative solo piano with long rests, occasional soft harp pluck, gentle pad underneath, BOTW-inspired field ambient, peaceful awakening garden, no drums, no vocals, loopable",
+      "filename": "fp-music-dawn-piano.mp3",
+      "credits": 500,
+      "totalAfter": 10320
+    },
+    {
+      "date": "2026-04-19T19:10:56.416Z",
+      "type": "music",
+      "prompt": "gentle hopeful string pad midday music, warm sustained strings with soft motion, occasional soft woodwind motif, cozy outdoor afternoon garden, no drums, loopable, sparse and reverent",
+      "filename": "fp-music-noon-strings.mp3",
+      "credits": 500,
+      "totalAfter": 10820
+    },
+    {
+      "date": "2026-04-19T19:11:11.182Z",
+      "type": "music",
+      "prompt": "mellow solo wooden flute with soft harp accompaniment, gentle evening music, warm sunset garden, contemplative and peaceful, no drums, sparse, loopable, BOTW-inspired",
+      "filename": "fp-music-evening-flute.mp3",
+      "credits": 500,
+      "totalAfter": 11320
+    },
+    {
+      "date": "2026-04-19T19:11:22.689Z",
+      "type": "music",
+      "prompt": "contemplative nighttime starlit music, sparse solo piano with subtle warm pad underneath, occasional shimmering bell, cozy dreamy garden at night, no drums, loopable, peaceful",
+      "filename": "fp-music-night-stars.mp3",
+      "credits": 500,
+      "totalAfter": 11820
     }
   ]
 }

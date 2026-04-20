@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://mbt_mason_bee_tubes"]
+
+[ext_resource type="Script" path="res://scripts/mason_bee_tubes.gd" id="1_mbt"]
+
+[node name="MasonBeeTubes" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_mbt")

@@ -1,0 +1,187 @@
+[gd_scene load_steps=3 format=3 uid="uid://compost_panel_scene"]
+
+[ext_resource type="Script" path="res://scripts/compost_panel.gd" id="1_cp"]
+
+[sub_resource type="StyleBoxFlat" id="parchment_style"]
+bg_color = Color(0.961, 0.922, 0.835, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.79, 0.72, 0.54, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 16.0
+
+[node name="CompostPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_cp")
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_right = 230.0
+offset_top = -280.0
+offset_bottom = 280.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="TierIcon" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+text = "♨"
+theme_override_font_sizes/font_size = 20
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Compost Pile — Empty"
+theme_override_font_sizes/font_size = 16
+
+[node name="Close" type="Button" parent="Panel/VBox/Header"]
+layout_mode = 2
+text = "✕"
+
+[node name="StateLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Awaiting inputs"
+theme_override_font_sizes/font_size = 12
+
+[node name="Sep1" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="MetricsHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Live metrics"
+theme_override_font_sizes/font_size = 13
+
+[node name="Metrics" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Volume" type="HBoxContainer" parent="Panel/VBox/Metrics"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Metrics/Volume"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 0)
+text = "Volume 0.00 m³"
+theme_override_font_sizes/font_size = 11
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/Volume"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CN" type="HBoxContainer" parent="Panel/VBox/Metrics"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Metrics/CN"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 0)
+text = "C:N 0:1 — (empty)"
+theme_override_font_sizes/font_size = 11
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/CN"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 14.0
+show_percentage = false
+
+[node name="Moisture" type="HBoxContainer" parent="Panel/VBox/Metrics"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Metrics/Moisture"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 0)
+text = "Moisture 0 %"
+theme_override_font_sizes/font_size = 11
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/Moisture"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="Temp" type="HBoxContainer" parent="Panel/VBox/Metrics"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Metrics/Temp"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 0)
+text = "Temp 18 °C"
+theme_override_font_sizes/font_size = 11
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/Temp"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 25.0
+show_percentage = false
+
+[node name="Days" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Day 0 in Empty · Next: —"
+theme_override_font_sizes/font_size = 11
+
+[node name="Sep2" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Ingredients" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Panel/VBox/Ingredients"]
+layout_mode = 2
+text = "Ingredient breakdown"
+theme_override_font_sizes/font_size = 13
+
+[node name="List" type="VBoxContainer" parent="Panel/VBox/Ingredients"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Sep3" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Blurb" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Panel/VBox/Blurb"]
+layout_mode = 2
+text = "What's happening"
+theme_override_font_sizes/font_size = 13
+
+[node name="Body" type="Label" parent="Panel/VBox/Blurb"]
+layout_mode = 2
+text = "Start adding greens + browns. Target ~1 m³ to trigger cooking."
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 2
+
+[node name="Recommendation" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Next: Right-click the pile: add plant trim (green), twigs or dry leaves (brown)."
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 2

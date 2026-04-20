@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fx_wind_leaves"]
+
+[ext_resource type="Script" path="res://scripts/fx/wind_leaves.gd" id="1_fxwl"]
+
+[node name="WindLeaves" type="Node3D"]
+script = ExtResource("1_fxwl")

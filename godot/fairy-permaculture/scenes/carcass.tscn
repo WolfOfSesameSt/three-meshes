@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://fp_carcass_scene"]
+
+[ext_resource type="Script" path="res://scripts/carcass.gd" id="1_carcass"]
+
+[node name="Carcass" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_carcass")

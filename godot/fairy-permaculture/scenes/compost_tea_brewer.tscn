@@ -1,0 +1,36 @@
+[gd_scene load_steps=4 format=3 uid="uid://compost_tea_brewer_scene"]
+
+[ext_resource type="Script" path="res://scripts/compost_tea_brewer.gd" id="1_tea"]
+
+[sub_resource type="CylinderMesh" id="tank_mesh"]
+top_radius = 0.6
+bottom_radius = 0.6
+height = 1.4
+radial_segments = 12
+
+[sub_resource type="CylinderMesh" id="cap_mesh"]
+top_radius = 0.55
+bottom_radius = 0.55
+height = 0.1
+radial_segments = 12
+
+[sub_resource type="BoxShape3D" id="click_shape"]
+size = Vector3(1.5, 2.0, 1.5)
+
+[node name="CompostTeaBrewer" type="Node3D"]
+script = ExtResource("1_tea")
+
+[node name="Tank" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+mesh = SubResource("tank_mesh")
+
+[node name="Cap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+mesh = SubResource("cap_mesh")
+
+[node name="ClickArea" type="StaticBody3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+shape = SubResource("click_shape")

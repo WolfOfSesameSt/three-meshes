@@ -1,0 +1,39 @@
+{
+  "fairy_pop_curve": {
+    "food_unit_cost_per_fairy": 2,
+    "pop_cap": 100,
+    "mvp_pop_cap": 25
+  },
+  "fairy_xp_curve": [0, 20, 60, 140, 300],
+  "target_curves": {
+    "fairy_count": {
+      "day_30":  [3,  7],
+      "day_90":  [10, 20],
+      "day_180": [30, 50],
+      "day_270": [60, 85],
+      "day_365": [90, 100]
+    },
+    "biomass_stock_kg": {
+      "day_30":  [50,   300],
+      "day_90":  [200,  1000],
+      "day_180": [500,  3000],
+      "day_365": [5000, 20000]
+    },
+    "yearly_output_fairy_food_units": {
+      "year_1": [50,   200],
+      "year_2": [1000, 5000],
+      "year_3": [5000, 15000]
+    }
+  },
+  "compost": {
+    "om_boost_per_m3_q3": 0.01,
+    "application_radius_tiles": 3
+  },
+  "event_probabilities": {
+    "summer-drought":      0.15,
+    "aphid-outbreak":      0.10,
+    "wet-pile-failure":    0.08,
+    "hawk-strike":         0.05
+  },
+  "simulator_tolerance": 0.15
+}

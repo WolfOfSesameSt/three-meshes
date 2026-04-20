@@ -1,0 +1,343 @@
+[gd_scene load_steps=3 format=3 uid="uid://soil_inspector_panel_scene"]
+
+[ext_resource type="Script" path="res://scripts/soil_inspector_panel.gd" id="1_sip"]
+
+[sub_resource type="StyleBoxFlat" id="parchment_style"]
+bg_color = Color(0.961, 0.922, 0.835, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.790, 0.720, 0.540, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 16.0
+
+[node name="SoilInspectorPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_sip")
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_right = 220.0
+offset_top = -260.0
+offset_bottom = 260.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Soil Plot — Barren"
+theme_override_font_sizes/font_size = 16
+
+[node name="Close" type="Button" parent="Panel/VBox/Header"]
+layout_mode = 2
+text = "✕"
+
+[node name="Subtitle" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Tier: Barren · OM 0.4 %"
+theme_override_font_sizes/font_size = 12
+
+[node name="Sep1" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="MacrosHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Macros"
+theme_override_font_sizes/font_size = 13
+
+[node name="Macros" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="OM" type="HBoxContainer" parent="Panel/VBox/Macros"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Macros/OM"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "OM 0.0 %"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Macros/OM"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 15.0
+value = 0.0
+show_percentage = false
+
+[node name="Moisture" type="HBoxContainer" parent="Panel/VBox/Macros"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Macros/Moisture"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "Moisture 0 %"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Macros/Moisture"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="PH" type="HBoxContainer" parent="Panel/VBox/Macros"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Macros/PH"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "pH 6.5"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Macros/PH"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 3.5
+max_value = 9.0
+value = 6.5
+step = 0.1
+show_percentage = false
+
+[node name="NpkHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "NPK"
+theme_override_font_sizes/font_size = 13
+
+[node name="NPK" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="N" type="HBoxContainer" parent="Panel/VBox/NPK"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/NPK/N"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "N 0"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/NPK/N"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="P" type="HBoxContainer" parent="Panel/VBox/NPK"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/NPK/P"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "P 0"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/NPK/P"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="K" type="HBoxContainer" parent="Panel/VBox/NPK"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/NPK/K"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "K 0"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/NPK/K"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="SecHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Secondary (Ca · Mg · S)"
+theme_override_font_sizes/font_size = 13
+
+[node name="Secondary" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Ca" type="VBoxContainer" parent="Panel/VBox/Secondary"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/VBox/Secondary/Ca"]
+layout_mode = 2
+text = "Ca 0"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Secondary/Ca"]
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="Mg" type="VBoxContainer" parent="Panel/VBox/Secondary"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/VBox/Secondary/Mg"]
+layout_mode = 2
+text = "Mg 0"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Secondary/Mg"]
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="S" type="VBoxContainer" parent="Panel/VBox/Secondary"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/VBox/Secondary/S"]
+layout_mode = 2
+text = "S 0"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Secondary/S"]
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="MicrosHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Micros (Fe Zn Cu Mn B Mo)"
+theme_override_font_sizes/font_size = 13
+
+[node name="Micros" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Fe" type="ColorRect" parent="Panel/VBox/Micros"]
+custom_minimum_size = Vector2(24, 16)
+layout_mode = 2
+
+[node name="Zn" type="ColorRect" parent="Panel/VBox/Micros"]
+custom_minimum_size = Vector2(24, 16)
+layout_mode = 2
+
+[node name="Cu" type="ColorRect" parent="Panel/VBox/Micros"]
+custom_minimum_size = Vector2(24, 16)
+layout_mode = 2
+
+[node name="Mn" type="ColorRect" parent="Panel/VBox/Micros"]
+custom_minimum_size = Vector2(24, 16)
+layout_mode = 2
+
+[node name="B" type="ColorRect" parent="Panel/VBox/Micros"]
+custom_minimum_size = Vector2(24, 16)
+layout_mode = 2
+
+[node name="Mo" type="ColorRect" parent="Panel/VBox/Micros"]
+custom_minimum_size = Vector2(24, 16)
+layout_mode = 2
+
+[node name="BioHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Biology · CEC · Worms"
+theme_override_font_sizes/font_size = 13
+
+[node name="Biology" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/Biology"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "Biology 0.0"
+
+[node name="Bar" type="ProgressBar" parent="Panel/VBox/Biology"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+value = 0.0
+step = 0.01
+show_percentage = false
+
+[node name="Misc" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="FB" type="Label" parent="Panel/VBox/Misc"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "F:B 0.5 bacterial"
+
+[node name="CEC" type="Label" parent="Panel/VBox/Misc"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "CEC 5"
+
+[node name="Worms" type="Label" parent="Panel/VBox/Misc"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Worms 0 / m²"
+
+[node name="Sep2" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="RecsHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Recommended crops"
+theme_override_font_sizes/font_size = 13
+
+[node name="Recs" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Rec0" type="Label" parent="Panel/VBox/Recs"]
+layout_mode = 2
+text = "—"
+autowrap_mode = 2
+
+[node name="Rec1" type="Label" parent="Panel/VBox/Recs"]
+layout_mode = 2
+text = "—"
+autowrap_mode = 2
+
+[node name="Rec2" type="Label" parent="Panel/VBox/Recs"]
+layout_mode = 2
+text = "—"
+autowrap_mode = 2
+
+[node name="Sep3" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="History" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox/History"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "OM trend"
+theme_override_font_sizes/font_size = 11
+
+[node name="Sparkline" type="Control" parent="Panel/VBox/History"]
+custom_minimum_size = Vector2(300, 24)
+layout_mode = 2
+size_flags_horizontal = 3

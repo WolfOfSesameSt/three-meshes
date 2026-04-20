@@ -1,0 +1,200 @@
+[gd_scene load_steps=3 format=3 uid="uid://settings_panel_scene"]
+
+[ext_resource type="Script" path="res://scripts/settings_panel.gd" id="1_sp"]
+
+[sub_resource type="StyleBoxFlat" id="parchment_style"]
+bg_color = Color(0.95, 0.9, 0.79, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.79, 0.72, 0.54, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
+
+[node name="SettingsPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 0
+script = ExtResource("1_sp")
+
+[node name="Dim" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 0
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -160.0
+offset_right = 240.0
+offset_bottom = 160.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Audio Settings"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="Close" type="Button" parent="Panel/VBox/Header"]
+layout_mode = 2
+text = "X"
+
+[node name="Divider" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MasterRow" type="HBoxContainer" parent="Panel/VBox/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="Panel/VBox/Rows/MasterRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(90, 0)
+text = "Master"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+
+[node name="Slider" type="HSlider" parent="Panel/VBox/Rows/MasterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(160, 0)
+max_value = 100.0
+value = 100.0
+step = 1.0
+
+[node name="Readout" type="Label" parent="Panel/VBox/Rows/MasterRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(56, 0)
+text = "100 / 100"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 2
+
+[node name="Mute" type="CheckBox" parent="Panel/VBox/Rows/MasterRow"]
+layout_mode = 2
+text = "Mute"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+
+[node name="Test" type="Button" parent="Panel/VBox/Rows/MasterRow"]
+layout_mode = 2
+text = "Test"
+
+[node name="MusicRow" type="HBoxContainer" parent="Panel/VBox/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="Panel/VBox/Rows/MusicRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(90, 0)
+text = "Music"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+
+[node name="Slider" type="HSlider" parent="Panel/VBox/Rows/MusicRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(160, 0)
+max_value = 100.0
+value = 80.0
+step = 1.0
+
+[node name="Readout" type="Label" parent="Panel/VBox/Rows/MusicRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(56, 0)
+text = "080 / 100"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 2
+
+[node name="Mute" type="CheckBox" parent="Panel/VBox/Rows/MusicRow"]
+layout_mode = 2
+text = "Mute"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+
+[node name="Test" type="Button" parent="Panel/VBox/Rows/MusicRow"]
+layout_mode = 2
+text = "Test"
+
+[node name="SfxRow" type="HBoxContainer" parent="Panel/VBox/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="Panel/VBox/Rows/SfxRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(90, 0)
+text = "SFX"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+
+[node name="Slider" type="HSlider" parent="Panel/VBox/Rows/SfxRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(160, 0)
+max_value = 100.0
+value = 90.0
+step = 1.0
+
+[node name="Readout" type="Label" parent="Panel/VBox/Rows/SfxRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(56, 0)
+text = "090 / 100"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 2
+
+[node name="Mute" type="CheckBox" parent="Panel/VBox/Rows/SfxRow"]
+layout_mode = 2
+text = "Mute"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+
+[node name="Test" type="Button" parent="Panel/VBox/Rows/SfxRow"]
+layout_mode = 2
+text = "Test"
+
+[node name="Spacer" type="Control" parent="Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Footer" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Reset" type="Button" parent="Panel/VBox/Footer"]
+layout_mode = 2
+text = "Reset"
+
+[node name="GrowSpacer" type="Control" parent="Panel/VBox/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Cancel" type="Button" parent="Panel/VBox/Footer"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="Apply" type="Button" parent="Panel/VBox/Footer"]
+layout_mode = 2
+text = "Apply"

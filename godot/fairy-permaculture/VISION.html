@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fairy Permaculture — Soil Engine & Progression Vision</title>
+<style>
+  :root {
+    --parchment: #F5EBD5;
+    --parchment-edge: #C9B88A;
+    --wood: #8B6845;
+    --wood-dark: #5C4429;
+    --earth: #7A5C48;
+    --compost: #3E2F23;
+    --ink: #2A1E10;
+    --meadow: #8BC47A;
+    --sage: #B7D1A0;
+    --olive: #5A7A4B;
+    --honey: #F2C14E;
+    --coral: #F28E74;
+    --berry: #A178B5;
+    --sky: #B8D8E8;
+    --mist: #D6EEF0;
+    --moon: #E8E6D8;
+    --N: #E88070;
+    --P: #A684C4;
+    --K: #7BB8D8;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--parchment);
+    color: var(--ink);
+    font-family: "Iowan Old Style", Georgia, "Times New Roman", serif;
+    line-height: 1.55;
+    font-size: 16px;
+    scroll-behavior: smooth;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 40px 28px 120px;
+  }
+  nav.toc {
+    position: sticky; top: 0;
+    background: rgba(245, 235, 213, 0.96);
+    backdrop-filter: blur(4px);
+    padding: 10px 24px;
+    border-bottom: 2px solid var(--parchment-edge);
+    z-index: 10;
+    font-size: 13px;
+  }
+  nav.toc a {
+    color: var(--wood-dark);
+    margin-right: 14px;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+  nav.toc a:hover { border-bottom-color: var(--wood); }
+  h1, h2, h3 { font-family: "Iowan Old Style", Georgia, serif; color: var(--compost); }
+  h1 {
+    font-size: 42px;
+    letter-spacing: -0.5px;
+    margin: 0 0 8px 0;
+  }
+  h1 small { display: block; font-size: 17px; color: var(--wood); font-style: italic; margin-top: 6px; font-weight: normal; letter-spacing: 0; }
+  h2 {
+    font-size: 28px;
+    margin: 60px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--parchment-edge);
+  }
+  h2 small { font-size: 13px; color: var(--wood); font-weight: normal; letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  h3 { font-size: 20px; margin: 28px 0 6px; color: var(--wood-dark); }
+  p { margin: 10px 0 16px; }
+  hr { border: none; height: 1px; background: var(--parchment-edge); margin: 40px 0; }
+  .hero {
+    background: linear-gradient(145deg, #F8F0DC 0%, #ECD9B0 100%);
+    border: 2px solid var(--parchment-edge);
+    border-radius: 12px;
+    padding: 36px 40px;
+    margin-bottom: 40px;
+    box-shadow: 0 6px 20px rgba(92, 68, 41, 0.12);
+  }
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0 0;
+  }
+  .pillar {
+    background: rgba(255,255,255,0.5);
+    border-left: 3px solid var(--meadow);
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .pillar b { color: var(--olive); }
+  /* Tier ladder */
+  .tier-ladder {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin: 18px 0;
+  }
+  .tier {
+    padding: 12px 10px;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: center;
+  }
+  .tier b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .tier span { opacity: 0.9; font-size: 11px; }
+  .t-0 { background: #998877; }
+  .t-1 { background: #B7B48C; }
+  .t-2 { background: var(--sage); color: var(--compost); }
+  .t-3 { background: var(--meadow); color: var(--compost); }
+  .t-4 { background: var(--olive); }
+  .t-5 { background: #2F4423; }
+  /* Nutrient columns */
+  .npk {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 16px 0 8px;
+  }
+  .nut-col { border: 2px solid; border-radius: 10px; padding: 16px; }
+  .nut-col h3 { margin: 0 0 6px 0; font-size: 22px; }
+  .nut-col.N { border-color: var(--N); background: linear-gradient(180deg, #FCE9E4 0%, #F9DBD3 100%); }
+  .nut-col.P { border-color: var(--P); background: linear-gradient(180deg, #EEE4F4 0%, #DED0E8 100%); }
+  .nut-col.K { border-color: var(--K); background: linear-gradient(180deg, #DCEBF4 0%, #C5DCEA 100%); }
+  .nut-col h3.N { color: #B6473A; }
+  .nut-col h3.P { color: #6A4A87; }
+  .nut-col h3.K { color: #3A6D8C; }
+  .nut-col .tag { display: inline-block; background: rgba(255,255,255,0.7); padding: 2px 8px; border-radius: 10px; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .sources {
+    list-style: none; padding: 0; margin: 0;
+    font-size: 13px; line-height: 1.5;
+  }
+  .sources li {
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(0,0,0,0.1);
+  }
+  .sources li:last-child { border: none; }
+  .sources b { color: var(--compost); }
+  .sources .from { color: var(--wood); font-size: 11px; font-style: italic; display: block; }
+  /* Amendment cards for Ca/Mg/S/etc */
+  .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .amend {
+    background: #fbf3dd;
+    border: 1px solid var(--parchment-edge);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .amend b { display: block; color: var(--wood-dark); font-size: 14px; margin-bottom: 3px; }
+  .amend span { color: var(--wood); font-size: 12px; font-style: italic; }
+  /* Automation ladder */
+  .ladder {
+    display: grid;
+    grid-template-columns: 80px 1fr 1fr;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .ladder > div { padding: 10px; }
+  .lvl { background: var(--wood); color: var(--parchment); font-weight: bold; text-align: center; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .lvl-label { background: #fbf3dd; border: 1px solid var(--parchment-edge); border-radius: 6px; font-weight: bold; }
+  .lvl-ex { background: rgba(255,255,255,0.4); border: 1px dashed var(--parchment-edge); border-radius: 6px; color: var(--wood); font-size: 13px; }
+  /* Synergies */
+  .synergy {
+    background: #fbf3dd;
+    border-left: 4px solid var(--olive);
+    padding: 14px 16px;
+    margin: 10px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .synergy h4 { margin: 0 0 4px; color: var(--olive); font-size: 16px; }
+  .synergy p { margin: 0; font-size: 14px; line-height: 1.55; }
+  /* Water / moisture retention */
+  .water-state {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .water-card {
+    background: linear-gradient(165deg, #E1F0F7 0%, #C5DCEA 100%);
+    border: 1px solid var(--K);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .water-card b { display: block; color: #3A6D8C; font-size: 14px; margin-bottom: 3px; }
+  .water-card p { margin: 0; font-size: 12px; color: var(--compost); line-height: 1.45; }
+  .retention-bars {
+    margin: 14px 0;
+  }
+  .ret-row {
+    display: grid;
+    grid-template-columns: 180px 1fr 70px;
+    gap: 10px;
+    align-items: center;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .ret-row b { color: var(--wood-dark); }
+  .ret-bar {
+    background: rgba(0,0,0,0.08);
+    border-radius: 4px;
+    height: 14px;
+    overflow: hidden;
+  }
+  .ret-bar .fill {
+    background: linear-gradient(90deg, var(--K) 0%, #4A8CB3 100%);
+    height: 100%;
+    display: block;
+  }
+  .ret-val { color: var(--wood); font-size: 12px; text-align: right; font-style: italic; }
+  .gain-loss {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .gl-col {
+    background: #fbf3dd;
+    border-radius: 8px;
+    padding: 12px 14px;
+    border-top: 3px solid;
+  }
+  .gl-col.gain { border-top-color: var(--meadow); }
+  .gl-col.loss { border-top-color: var(--coral); }
+  .gl-col h4 { margin: 0 0 6px; font-size: 15px; color: var(--compost); }
+  .gl-col ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+  .water-pref {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 14px 0;
+  }
+  .pref-card {
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: white;
+  }
+  .pref-card b { display: block; font-size: 13px; margin-bottom: 3px; }
+  .pref-dry { background: #B08A5A; }
+  .pref-med { background: var(--sage); color: var(--compost); }
+  .pref-wet { background: #5A9AB8; }
+  .pref-aq  { background: #2F6580; }
+  .loop-diag {
+    background: linear-gradient(90deg, #ECF5FA 0%, #F5ECDD 50%, #ECF5FA 100%);
+    border: 1px dashed var(--K);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 14px 0;
+    color: var(--compost);
+    text-align: center;
+  }
+  .loop-diag b { color: #3A6D8C; }
+  /* Landscape cards */
+  .earthworks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .earth-card {
+    background: #fbf3dd;
+    border: 1px solid var(--parchment-edge);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .earth-card h4 { margin: 0 0 4px 0; color: var(--wood-dark); }
+  .earth-card p { font-size: 13px; margin: 0; color: var(--ink); }
+  /* Progression rings */
+  .rings { list-style: none; padding: 0; margin: 20px 0; }
+  .ring-row {
+    display: grid;
+    grid-template-columns: 90px 140px 1fr 120px;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--parchment-edge);
+    align-items: center;
+  }
+  .ring-row:last-child { border: none; }
+  .ring-num {
+    background: var(--compost); color: var(--honey);
+    border-radius: 50%;
+    width: 54px; height: 54px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 22px;
+    margin: 0 auto;
+  }
+  .ring-title { font-weight: bold; color: var(--wood-dark); font-size: 15px; }
+  .ring-title span { font-weight: normal; color: var(--wood); font-style: italic; display: block; font-size: 12px; }
+  .ring-unlocks { font-size: 13px; line-height: 1.5; }
+  .ring-time { font-size: 12px; color: var(--wood); text-align: right; }
+  /* SVG frames */
+  .fig {
+    background: #fbf3dd;
+    border: 1px solid var(--parchment-edge);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 18px 0;
+    text-align: center;
+  }
+  .fig svg { max-width: 100%; height: auto; }
+  .fig figcaption { font-size: 12px; font-style: italic; color: var(--wood); margin-top: 6px; }
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--parchment-edge); }
+  th { background: rgba(139, 104, 69, 0.1); color: var(--wood-dark); font-weight: bold; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; }
+  tr:last-child td { border-bottom: none; }
+  /* By-product loops */
+  .loop {
+    background: linear-gradient(135deg, #F8F0DC 0%, #ECD9B0 100%);
+    border: 1px solid var(--parchment-edge);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 10px 0;
+    font-size: 13px;
+  }
+  .loop b { color: var(--compost); }
+  .loop .arrow { color: var(--meadow); font-weight: bold; }
+  /* Tab system */
+  .tabs-bar {
+    display: flex;
+    gap: 6px;
+    padding: 12px 24px 0;
+    max-width: 980px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: #E8D8AF;
+    border: 2px solid var(--parchment-edge);
+    border-bottom: none;
+    padding: 10px 18px;
+    border-radius: 8px 8px 0 0;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--wood-dark);
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+  }
+  .tab-btn:hover { background: #F0E3C0; }
+  .tab-btn.active {
+    background: var(--parchment);
+    border-color: var(--wood);
+    color: var(--compost);
+    box-shadow: 0 -2px 6px rgba(92, 68, 41, 0.12);
+  }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  /* Ecosystem catalog */
+  .eco-legend {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    background: #fbf3dd; border-radius: 8px; padding: 12px 16px;
+    font-size: 12px; margin: 14px 0;
+    border: 1px solid var(--parchment-edge);
+  }
+  .eco-legend .chip {
+    padding: 3px 9px; border-radius: 10px;
+    color: white; font-weight: bold;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .eco-cat {
+    background: linear-gradient(180deg, #F8F0DC 0%, #F2E5C3 100%);
+    border: 1px solid var(--parchment-edge);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 14px 0;
+  }
+  .eco-cat h3 {
+    margin: 0 0 10px;
+    color: var(--compost);
+    border-bottom: 2px solid var(--parchment-edge);
+    padding-bottom: 6px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 18px;
+  }
+  .eco-cat h3 small {
+    font-size: 11px; color: var(--wood); font-style: italic;
+    text-transform: uppercase; letter-spacing: 0.5px; font-weight: normal;
+  }
+  .eco-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 8px;
+  }
+  .ecard {
+    background: white;
+    border: 1px solid var(--parchment-edge);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.45;
+    position: relative;
+  }
+  .ecard b { display: block; color: var(--compost); font-size: 13px; margin-bottom: 2px; }
+  .ecard .lat { font-style: italic; color: var(--wood); font-size: 10px; display: block; margin-bottom: 5px; }
+  .ecard .tags {
+    display: flex; flex-wrap: wrap; gap: 3px;
+    margin-top: 6px;
+  }
+  .ecard .tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.08);
+    color: var(--compost);
+    letter-spacing: 0.2px;
+  }
+  /* Tier chip colors */
+  .t-barren   { background: #998877; color: white; }
+  .t-poor     { background: #B7B48C; color: white; }
+  .t-dev      { background: var(--sage); color: var(--compost); }
+  .t-rich     { background: var(--meadow); color: var(--compost); }
+  .t-abund    { background: var(--olive); color: white; }
+  .t-climax   { background: #2F4423; color: white; }
+  /* Sun chips */
+  .sun-full   { background: var(--honey); color: var(--compost); }
+  .sun-part   { background: #D4B066; color: var(--compost); }
+  .sun-shade  { background: #6A7A5A; color: white; }
+  /* Water chips */
+  .w-dry      { background: #B08A5A; color: white; }
+  .w-med      { background: var(--sage); color: var(--compost); }
+  .w-wet      { background: #5A9AB8; color: white; }
+  .w-aq       { background: #2F6580; color: white; }
+  /* Branch chips */
+  .br-A { background: var(--honey); color: var(--compost); }
+  .br-B { background: var(--coral); color: white; }
+  .br-C { background: var(--berry); color: white; }
+  .br-D { background: var(--K); color: var(--compost); }
+  .br-E { background: #C8A24A; color: white; }
+  .br-F { background: #8B6AB0; color: white; }
+  .br-G { background: var(--sky); color: var(--compost); }
+  .br-R { background: var(--earth); color: white; }
+  /* Food web diagram */
+  .web {
+    background: #F8F0DC;
+    border: 2px dashed var(--wood);
+    border-radius: 10px;
+    padding: 20px;
+    font-size: 13px;
+    line-height: 1.65;
+    margin: 14px 0;
+  }
+  .web .tier-line {
+    display: grid; grid-template-columns: 140px 1fr; gap: 10px;
+    padding: 7px 0; border-bottom: 1px dashed var(--parchment-edge);
+    align-items: center;
+  }
+  .web .tier-line:last-child { border: none; }
+  .web .tier-label { font-weight: bold; color: var(--wood-dark); }
+  .web .tier-label span { display: block; font-size: 11px; color: var(--wood); font-style: italic; font-weight: normal; }
+  /* Interaction matrix */
+  .matrix {
+    width: 100%; border-collapse: collapse; font-size: 11px;
+    margin: 12px 0;
+  }
+  .matrix th, .matrix td {
+    border: 1px solid var(--parchment-edge);
+    padding: 4px 6px;
+    text-align: center;
+  }
+  .matrix th {
+    background: rgba(139, 104, 69, 0.12);
+    font-size: 10px; letter-spacing: 0.3px;
+  }
+  .matrix .row-label { text-align: left; font-weight: bold; background: #fbf3dd; }
+  .good { background: rgba(139, 196, 122, 0.45); color: var(--compost); font-weight: bold; }
+  .bad  { background: rgba(242, 142, 116, 0.45); color: var(--compost); font-weight: bold; }
+  .neut { background: rgba(232, 230, 216, 0.55); color: var(--wood); }
+  @media (max-width: 700px) {
+    .npk { grid-template-columns: 1fr; }
+    .tier-ladder { grid-template-columns: repeat(3, 1fr); }
+    .ladder { grid-template-columns: 60px 1fr; }
+    .lvl-ex { grid-column: 2; }
+    .ring-row { grid-template-columns: 60px 1fr; }
+    .ring-num { width: 40px; height: 40px; font-size: 16px; }
+    .ring-time { grid-column: 2; text-align: left; }
+    .ring-unlocks { grid-column: 2; }
+  }
+</style>
+</head>
+<body>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" data-tab="soil">Soil engine</button>
+  <button class="tab-btn" data-tab="ecosystem">Ecosystem catalog</button>
+  <button class="tab-btn" data-tab="interactions">Interactions &amp; food web</button>
+  <button class="tab-btn" data-tab="world">World progression</button>
+  <button class="tab-btn" data-tab="wildlife">Wild ecology</button>
+  <button class="tab-btn" data-tab="unlocks">Unlock progression</button>
+</div>
+
+<nav class="toc" id="nav-soil">
+  <a href="#hero">Top</a>
+  <a href="#pillars">Pillars</a>
+  <a href="#engine">Soil engine</a>
+  <a href="#water">Water</a>
+  <a href="#npk">NPK</a>
+  <a href="#secondary">Ca / Mg / S / micros / pH</a>
+  <a href="#biology">Biology</a>
+  <a href="#ladder">Automation</a>
+  <a href="#synergies">Synergies</a>
+  <a href="#landscape">Earthworks</a>
+  <a href="#loops">Waste loops</a>
+  <a href="#progression">Progression</a>
+</nav>
+
+<div class="wrap">
+<div class="tab-pane active" id="tab-soil">
+
+<section class="hero" id="hero">
+  <h1>Fairy Permaculture
+    <small>The Soil Engine · Progression Vision · April 2026</small>
+  </h1>
+  <p>The player arrives at a parcel of depleted coastal BC land. Trees stand, rocks rest, streams run, ruins hint at past failure. The soil is grey-brown, lifeless. The job: heal it into living forest. The currency is not coins or fairy food — it is <b>soil</b>. Every system of the farm funnels into building it.</p>
+  <p>This document shows the soil engine in full, the production routes for every amendment, how the player automates the work with fairies and animals, how plant-animal synergies compound, and how progression rings layer easy-to-manage over hard-to-master depth.</p>
+</section>
+
+<section id="pillars">
+<h2><small>Design pillars</small>Six locked principles</h2>
+<div class="pillars">
+  <div class="pillar"><b>Soil is the currency.</b> Every system funnels into building it. Compost, animals, plants, earthworks — all soil-building loops.</div>
+  <div class="pillar"><b>No waste.</b> Manure, urine, bones, prunings, runoff — every by-product feeds another loop. No trash bucket.</div>
+  <div class="pillar"><b>Paired feedback.</b> Every action + every state change = visual + audio confirmation. No silent successes.</div>
+  <div class="pillar"><b>No dead time.</b> Slow-cooking systems ship with a parallel action. Player always has something world-building to do.</div>
+  <div class="pillar"><b>Everything is material.</b> Trees, rocks, ruins, streams — raw stuff, not set-dressing. Click anything, work with it.</div>
+  <div class="pillar"><b>Easy to manage, hard to master.</b> Defaults run themselves. Depth (rotation, cover-crop sequencing, mycoremediation, biochar) is discoverable.</div>
+</div>
+</section>
+
+<section id="engine">
+<h2><small>The soil engine</small>What a tile knows about itself</h2>
+<p>Soil is not a single "fertility" number. Each tile carries a dozen dimensions. Plants tier by combinations of these. The player's job is to shift them — toward balance, toward biology, toward life.</p>
+<table>
+<tr><th>Dimension</th><th>Range</th><th>What it means</th><th>How it moves</th></tr>
+<tr><td><b>OM %</b></td><td>0–20 %</td><td>Organic matter — the master stat</td><td>Compost, chop-and-drop, cover crops, animal manure, biochar</td></tr>
+<tr><td><b>N / P / K</b></td><td>kg/ha equivalent</td><td>Plant-available primary macros</td><td>See NPK production routes below</td></tr>
+<tr><td><b>Ca / Mg / S</b></td><td>ppm</td><td>Secondary macros — structure, fruiting, protein</td><td>Eggshells, dolomite, gypsum, wood ash</td></tr>
+<tr><td><b>Micros</b></td><td>Fe Zn Cu Mn B Mo</td><td>Trace elements — flavor, health, disease resistance</td><td>Kelp, rock dust, diverse compost, SEA dilute</td></tr>
+<tr><td><b>pH</b></td><td>3.5 – 9.0</td><td>Acidity — gates nutrient availability</td><td>Lime raises, sulfur lowers, pine needles acidify</td></tr>
+<tr><td><b>Biology</b></td><td>0 – 1</td><td>Microbial + fungal activity index</td><td>IMO, compost tea, mycorrhizal inoculant, living roots</td></tr>
+<tr><td><b>F:B ratio</b></td><td>0.1 – 10⁴</td><td>Fungal vs. bacterial dominance — gates plant community</td><td>Woody mulch ↑ fungal; green mulch ↑ bacterial</td></tr>
+<tr><td><b>Moisture</b></td><td>0 – 100 %</td><td>Available water fraction</td><td>Rain, stream proximity, swales, mulch, shade</td></tr>
+<tr><td><b>CEC</b></td><td>1 – 80</td><td>Cation exchange capacity — nutrient holding</td><td>Clay fraction + OM</td></tr>
+<tr><td><b>Worms</b></td><td>0 – 400/m²</td><td>Anecic + endogeic activity</td><td>No-till + OM + moisture</td></tr>
+</table>
+
+<h3>Plant tiering by soil</h3>
+<p>Plants don't grow on arbitrary tiles. They gate by soil combination. The player walks up this ladder by building soil.</p>
+<div class="tier-ladder">
+  <div class="tier t-0"><b>Barren</b><span>&lt; 1 % OM</span><br>Nettle · Dandelion · Yarrow · Plantain</div>
+  <div class="tier t-1"><b>Poor</b><span>1–2 % OM</span><br>+ Legumes · Coriander · Radish</div>
+  <div class="tier t-2"><b>Developing</b><span>2–3 % OM</span><br>Salmonberry · Brassicas · Lettuce · Onion</div>
+  <div class="tier t-3"><b>Rich</b><span>3–5 % OM</span><br>Apple · Pear · Tomato · Squash</div>
+  <div class="tier t-4"><b>Abundant</b><span>5–10 % OM</span><br>Nut canopy · Grape · Shrub food forest</div>
+  <div class="tier t-5"><b>Climax</b><span>10 %+ OM</span><br>Old-growth · Truffles · Rare herbs</div>
+</div>
+</section>
+
+<section id="water">
+<h2><small>Water &amp; moisture retention</small>The other half of soil</h2>
+<p>Dry soil grows nothing. Soaked soil rots. Moisture is <b>the limiting factor</b> through BC's dry summer — and the mechanic that rewards the player's earthworks, mulch, shade, and OM discipline. Retention is not one stat: it's a stack of modifiers that compound. A climax tile can hold <b>5×</b> the water of a barren tile from the same rain.</p>
+
+<h3>Per-tile water state</h3>
+<div class="water-state">
+  <div class="water-card"><b>Moisture</b><p>0–100 % — the current fraction of field capacity held in the root zone.</p></div>
+  <div class="water-card"><b>Field capacity</b><p>The max this tile can hold before drainage. A function of texture, OM, mulch, structure.</p></div>
+  <div class="water-card"><b>Wilting point</b><p>Moisture floor below which plants stop drawing water. Higher in clay, lower with biology.</p></div>
+  <div class="water-card"><b>Infiltration rate</b><p>How fast rain soaks in vs. runs off. Gated by compaction, aggregates, living roots.</p></div>
+  <div class="water-card"><b>Evap rate</b><p>Daily surface loss. Halved by mulch, halved again by canopy shade, cut 30 % by windbreaks.</p></div>
+  <div class="water-card"><b>Slope &amp; aspect</b><p>South-facing + steep = dries fast. North-facing + shaded = holds moisture. Earthworks flatten this.</p></div>
+</div>
+
+<h3>Field capacity — what multiplies it</h3>
+<p>Base texture sets the floor. Every other modifier stacks on top. 1 % OM alone adds ~20,000 gal/acre in real BC studies — the game models this as a big, visible bump.</p>
+<div class="retention-bars">
+  <div class="ret-row"><b>Sandy base</b><div class="ret-bar"><span class="fill" style="width: 15%"></span></div><div class="ret-val">~5 % FC</div></div>
+  <div class="ret-row"><b>Loam base</b><div class="ret-bar"><span class="fill" style="width: 40%"></span></div><div class="ret-val">~15 % FC</div></div>
+  <div class="ret-row"><b>Clay base</b><div class="ret-bar"><span class="fill" style="width: 55%"></span></div><div class="ret-val">~22 % FC</div></div>
+  <div class="ret-row"><b>+ per 1 % OM</b><div class="ret-bar"><span class="fill" style="width: 12%"></span></div><div class="ret-val">+3 % FC</div></div>
+  <div class="ret-row"><b>+ mulch cover</b><div class="ret-bar"><span class="fill" style="width: 18%"></span></div><div class="ret-val">+5 % FC</div></div>
+  <div class="ret-row"><b>+ hugelkultur core</b><div class="ret-bar"><span class="fill" style="width: 30%"></span></div><div class="ret-val">+8 % FC (10 yr)</div></div>
+  <div class="ret-row"><b>+ charged biochar</b><div class="ret-bar"><span class="fill" style="width: 38%"></span></div><div class="ret-val">+10 % FC (perm.)</div></div>
+  <div class="ret-row"><b>+ mycorrhizae &amp; glomalin</b><div class="ret-bar"><span class="fill" style="width: 12%"></span></div><div class="ret-val">+3 % FC</div></div>
+  <div class="ret-row"><b>+ no-till aggregates</b><div class="ret-bar"><span class="fill" style="width: 10%"></span></div><div class="ret-val">+2 % FC</div></div>
+</div>
+<p style="font-size: 13px; color: var(--wood); font-style: italic;">A Rich-tier orchard tile (5 % OM) with mulch, a hugel core beneath, and charged biochar holds <b>~45 % FC</b> vs. the starting barren sand at 5 %. That's a 9× multiplier on every inch of rain.</p>
+
+<h3>Daily water balance</h3>
+<div class="gain-loss">
+  <div class="gl-col gain">
+    <h4>Gains</h4>
+    <ul>
+      <li><b>Rain</b> — climate-driven; BC wet winter, dry summer</li>
+      <li><b>Stream / pond sub-irrigation</b> — tiles within 6 m of water auto-wick</li>
+      <li><b>Swale infiltration</b> — redirects slope runoff into the berm</li>
+      <li><b>Keyline plow</b> — moves water from wet valleys to dry ridges</li>
+      <li><b>Dew condensation</b> — cool nights + thick mulch trap atmospheric moisture</li>
+      <li><b>Irrigation</b> — manual (watering can), fairy route (buckets), piped from pond</li>
+    </ul>
+  </div>
+  <div class="gl-col loss">
+    <h4>Losses</h4>
+    <ul>
+      <li><b>Surface evaporation</b> — 2–8 %/day in summer sun; mulch halves it, shade halves it again</li>
+      <li><b>Plant transpiration</b> — heavy crops pull 5–10 %/day during fruiting</li>
+      <li><b>Runoff</b> — 20–80 % of rain lost on bare slopes; ~0 % on swaled contour</li>
+      <li><b>Deep drainage</b> — water past root zone on sandy / compacted / over-saturated tiles</li>
+      <li><b>Wind</b> — +30–50 % evap on exposed tiles; windbreaks the answer</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Crop water preference bands</h3>
+<p>Every plant wants a band. Match the plant to the tile's water profile, or move the tile toward the plant's band with earthworks + mulch.</p>
+<div class="water-pref">
+  <div class="pref-card pref-dry"><b>Drought-tolerant</b>Yarrow · Lavender · Rosemary · Olive · Mature grape · Sage</div>
+  <div class="pref-card pref-med"><b>Moderate</b>Apple · Pear · Squash · Corn · Bean · Goat pasture · Most vegetables</div>
+  <div class="pref-card pref-wet"><b>Thirsty</b>Lettuce · Celery · Brassicas · Berries · Watercress · Salmonberry</div>
+  <div class="pref-card pref-aq"><b>Aquatic</b>Rice · Taro · Cattail · Reed · Duck / fish integration</div>
+</div>
+
+<h3>The retention flywheel</h3>
+<div class="loop-diag">
+  <b>More OM</b> → more water held → happier <b>mycorrhizae</b> → more <b>glomalin</b> glues soil into aggregates → more <b>porosity</b> → rain <b>infiltrates</b> instead of running off → roots go <b>deeper</b> → plants thrive → more biomass → <b>more OM</b>.
+</div>
+<p style="font-size: 13px; color: var(--wood); font-style: italic; text-align: center;">Break any link in this chain — bare soil, compaction, tillage, overgrazing — and the flywheel reverses. Drought exposes whoever's been skipping the work.</p>
+
+<h3>Drought mechanic (BC summer event)</h3>
+<p>10+ rain-free days triggers a drought banner. Tile moisture drops daily. Tiles falling under wilting point show drooping plants, halted growth, and — if prolonged — plant death. The player's tools, in order of leverage:</p>
+<ul style="font-size: 14px;">
+  <li><b>Already-built earthworks</b> — swaled orchard tiles barely notice a 2-week drought. <em>This is the reward for prior work.</em></li>
+  <li><b>Mulch</b> — fairies can chop-and-drop comfrey/grass onto stressed tiles (fast, cheap)</li>
+  <li><b>Shade</b> — a tall tree's drip-zone holds moisture for ~8 m around; nurse trees matter</li>
+  <li><b>Irrigation</b> — healer fairies with watering cans; later, gravity-fed pond lines</li>
+  <li><b>Pond draw-down</b> — long droughts eat pond reserves; large ponds buffer entire orchards</li>
+  <li><b>Drought-tolerant plantings</b> — south-facing ridges should be herbs + grape, not lettuce</li>
+</ul>
+</section>
+
+<section id="npk">
+<h2><small>Primary macros</small>NPK production routes</h2>
+<p>Each macro has its own production paths. Every route is the permaculture-accurate by-product of some other loop on the farm. The player collects by-products from animals, plants, and the landscape, then crafts or applies them.</p>
+
+<div class="npk">
+
+<div class="nut-col N">
+  <h3 class="N">N — Nitrogen</h3>
+  <span class="tag">Greens · leafy growth · quick</span>
+  <ul class="sources">
+    <li><b>Legume cover crops</b> <span class="from">clover, vetch, fava — Rhizobium symbiosis, 50–250 kg N/ha/yr</span></li>
+    <li><b>Chicken manure</b> <span class="from">hottest + fastest of the manures</span></li>
+    <li><b>Cow / horse / goat manure</b> <span class="from">cooler, slower release, volume</span></li>
+    <li><b>Urine (dilute 10:1)</b> <span class="from">concentrated soluble N — catch it</span></li>
+    <li><b>Fish emulsion (FAA)</b> <span class="from">fish trim + brown sugar, 7-day ferment, KNF</span></li>
+    <li><b>Blood meal</b> <span class="from">culling by-product, fastest N burn</span></li>
+    <li><b>Nettle tea</b> <span class="from">fermented stinging nettle, 2-wk brew</span></li>
+    <li><b>Compost tea (aerated)</b> <span class="from">24–36 h brew, apply within 4 h</span></li>
+    <li><b>Coffee grounds</b> <span class="from">mild, acidifying — blueberries love it</span></li>
+  </ul>
+</div>
+
+<div class="nut-col P">
+  <h3 class="P">P — Phosphorus</h3>
+  <span class="tag">Roots · flowers · fruits · slow</span>
+  <ul class="sources">
+    <li><b>Bone meal</b> <span class="from">crushed + heated culled-animal bones, 15–30 % P</span></li>
+    <li><b>WCP (water-soluble Ca-P)</b> <span class="from">roasted bones + vinegar, KNF</span></li>
+    <li><b>Fish bones / fish meal</b> <span class="from">from fish trim, same profile as bone meal</span></li>
+    <li><b>Rock phosphate</b> <span class="from">quarried from outcrops, long release</span></li>
+    <li><b>Bat guano</b> <span class="from">from cave POI, premium</span></li>
+    <li><b>Seabird guano</b> <span class="from">coastal-only, very concentrated</span></li>
+    <li><b>Chicken manure</b> <span class="from">moderate P alongside N</span></li>
+    <li><b>Compost</b> <span class="from">slow P mineralization baseline</span></li>
+  </ul>
+</div>
+
+<div class="nut-col K">
+  <h3 class="K">K — Potassium</h3>
+  <span class="tag">Stress resistance · fruit quality · color</span>
+  <ul class="sources">
+    <li><b>Comfrey tea</b> <span class="from">THE permaculture K source, Bocking 14 × 3 cuts/yr</span></li>
+    <li><b>Wood ash</b> <span class="from">from hearth / biochar kiln, 5–10 % K, raises pH</span></li>
+    <li><b>Kelp / seaweed</b> <span class="from">coastal forage, K + full micros</span></li>
+    <li><b>Banana-peel tea</b> <span class="from">kitchen-scrap soak, 3-day brew</span></li>
+    <li><b>Alfalfa meal</b> <span class="from">K + N, also dynamic accumulator</span></li>
+    <li><b>Greensand / granite dust</b> <span class="from">ancient ocean sediment, long release</span></li>
+    <li><b>Hardwood ash</b> <span class="from">higher K than softwood</span></li>
+  </ul>
+</div>
+
+</div>
+<p style="font-size:12px; color:var(--wood); font-style: italic; text-align:center; margin-top:0;">Every row is collected from or crafted from a by-product already in the player's farm. Nothing is abstract fertilizer-in-a-bag.</p>
+</section>
+
+<section id="secondary">
+<h2><small>Secondary macros + micros + pH</small>The supporting cast</h2>
+
+<h3>Ca · Calcium</h3>
+<div class="mini-grid">
+  <div class="amend"><b>Crushed eggshells</b><span>from laying chickens</span></div>
+  <div class="amend"><b>WCA (KNF)</b><span>shells + vinegar, 7 days</span></div>
+  <div class="amend"><b>Oyster shells</b><span>coastal / aquaculture</span></div>
+  <div class="amend"><b>Ground limestone</b><span>from quarried rock</span></div>
+  <div class="amend"><b>Gypsum</b><span>Ca without pH shift</span></div>
+  <div class="amend"><b>Wood ash</b><span>some Ca with the K</span></div>
+</div>
+
+<h3>Mg · Magnesium</h3>
+<div class="mini-grid">
+  <div class="amend"><b>Dolomite lime</b><span>Ca + Mg combo</span></div>
+  <div class="amend"><b>Epsom salts</b><span>fast Mg fix</span></div>
+  <div class="amend"><b>Seaweed</b><span>Mg + micros</span></div>
+</div>
+
+<h3>S · Sulfur</h3>
+<div class="mini-grid">
+  <div class="amend"><b>Gypsum</b><span>Ca + S</span></div>
+  <div class="amend"><b>Elemental S</b><span>lowers pH, blueberries</span></div>
+  <div class="amend"><b>Compost</b><span>trace S</span></div>
+</div>
+
+<h3>Trace micros · Fe, Zn, Cu, Mn, B, Mo</h3>
+<div class="mini-grid">
+  <div class="amend"><b>Kelp / seaweed</b><span>full micro profile</span></div>
+  <div class="amend"><b>SEA (KNF)</b><span>seawater diluted 1:30</span></div>
+  <div class="amend"><b>Rock dust</b><span>paramagnetic basalt</span></div>
+  <div class="amend"><b>Diverse compost</b><span>whatever was in the pile</span></div>
+  <div class="amend"><b>Hyperaccumulator plants</b><span>sunflower pulls Cd/Zn</span></div>
+</div>
+
+<h3>pH — the master gate</h3>
+<p>Nutrient availability curves peak at pH 6.0–7.0 for most crops. The player can shift pH deliberately; some species <em>want</em> acid.</p>
+<div class="mini-grid">
+  <div class="amend"><b>Lime (raises)</b><span>acidic → neutral</span></div>
+  <div class="amend"><b>Sulfur (lowers)</b><span>alkaline → acidic</span></div>
+  <div class="amend"><b>Wood ash (raises, mild)</b><span>also K + Ca</span></div>
+  <div class="amend"><b>Pine needles (lowers, slow)</b><span>blueberry bed</span></div>
+  <div class="amend"><b>Oak leaves (lowers, slow)</b><span>mushroom bed</span></div>
+</div>
+</section>
+
+<section id="biology">
+<h2><small>Life below the soil</small>Biology is half the engine</h2>
+<p>Plants don't eat rocks — they eat microbial exudates, fungal gifts, worm castings. A soil with the right NPK and no biology is still half-dead. The player builds biology with <b>living roots, diverse compost, KNF ferments, and restraint from tilling.</b></p>
+<div class="mini-grid">
+  <div class="amend"><b>IMO</b><span>KNF indigenous microorganisms, gathered from old-growth forest floor + cooked rice ferment</span></div>
+  <div class="amend"><b>Mycorrhizal inoculant</b><span>from forest edge, brushed onto roots</span></div>
+  <div class="amend"><b>LAB (KNF)</b><span>lactic acid bacteria — rice-wash + milk, fast inoculant</span></div>
+  <div class="amend"><b>Worm castings</b><span>vermicompost, 5–11× ambient NPK</span></div>
+  <div class="amend"><b>Johnson-Su bioreactor</b><span>12-mo static fungal, premium</span></div>
+  <div class="amend"><b>Compost tea (aerated)</b><span>24–36 h brew, apply within 4 h</span></div>
+  <div class="amend"><b>Living cover-crop roots</b><span>root exudates feed bacteria + fungi year-round</span></div>
+  <div class="amend"><b>Chop-and-drop + mulch</b><span>feeds saprophytic fungi, builds F:B ratio</span></div>
+</div>
+<p>In the game, biology shows as a subtle glow/haze on tiles with high microbial activity, a mycelial tracery at night, and little worm-cast mounds appearing on high-worm tiles. <b>Not a hidden stat — surface it.</b></p>
+</section>
+
+<section id="ladder">
+<h2><small>How the player scales</small>Automation ladder — L1 to L6</h2>
+<p>At L1 the player does everything by hand. At L6 the ecosystem runs itself. The middle rungs are where permaculture <em>teaches</em>: role fairies, route patterns, animal stacking, earthworks.</p>
+
+<div class="ladder">
+  <div class="lvl">L1</div>
+  <div class="lvl-label">Manual</div>
+  <div class="lvl-ex">Player clicks a bush to harvest. Player drops biomass in pile. Every action = one click.</div>
+
+  <div class="lvl">L2</div>
+  <div class="lvl-label">Role fairy</div>
+  <div class="lvl-ex">Composter fairy auto-tends the nearest pile. Harvester picks ripe fruit. Shepherd moves livestock.</div>
+
+  <div class="lvl">L3</div>
+  <div class="lvl-label">Route fairy</div>
+  <div class="lvl-ex">Forager chops comfrey → brings to pile → returns to forest edge for IMO. A short supply chain runs on its own.</div>
+
+  <div class="lvl">L4</div>
+  <div class="lvl-label">Animal system</div>
+  <div class="lvl-ex">Chicken tractor clears a zone over 7 days. Duck patrol eats slugs in the orchard. Animals are the laborers.</div>
+
+  <div class="lvl">L5</div>
+  <div class="lvl-label">Stacked cascade</div>
+  <div class="lvl-ex">Cow graze paddock A → chickens enter A 5 days later → pigs arrive next season. Soil builds 3× faster than any single species alone.</div>
+
+  <div class="lvl">L6</div>
+  <div class="lvl-label">Mature ecosystem</div>
+  <div class="lvl-ex">Food forest self-mulches from leaf-drop. Polinators maintain themselves. Player tends edges and harvests yield. Work collapses to almost zero.</div>
+</div>
+</section>
+
+<section id="synergies">
+<h2><small>Where the magic lives</small>Plant-animal synergies</h2>
+<p>A mature farm isn't 10 separate systems running in parallel. It's one system where every piece makes the others better. These are the famous stacks every permaculture book preaches.</p>
+
+<div class="synergy">
+<h4>Cow → Chicken (5-day lag) — Salatin mob-then-sanitize</h4>
+<p>Cows graze a paddock high-density for a day, drop manure. Five days later the fly larvae in the manure are peak nutrition and the chickens move in, scratching the pats apart and eating the larvae. The manure spreads evenly, gets incorporated, and soil OM jumps <b>~300 %</b> vs. either species alone.</p>
+</div>
+
+<div class="synergy">
+<h4>Pig → Chicken → Fruit tree</h4>
+<p>Pigs rootle-clear a patch of forest (removing saplings + disturbing soil). Chickens follow to sanitize + spread seed. A fruit tree planted into the resulting bed hits the ground running. Mark Shepard's "Restoration Agriculture" loop.</p>
+</div>
+
+<div class="synergy">
+<h4>Duck + Rice paddy (aigamo)</h4>
+<p>Ducks patrol the paddy, eating slugs and weed seeds. Their manure feeds the rice. Azolla (N-fixing fern) floats alongside. No pesticides, no synthetic fert — Furuno's system in Japan.</p>
+</div>
+
+<div class="synergy">
+<h4>Three Sisters — Haudenosaunee classic</h4>
+<p>Corn is a vertical trellis + heavy N-feeder. Bean climbs corn + fixes N for corn. Squash covers the ground with big prickly leaves — shades out weeds, deters raccoons. Together they yield <b>~30 %</b> more calories per area than corn alone.</p>
+</div>
+
+<div class="synergy">
+<h4>Apple guild — Hemenway classic</h4>
+<p>Comfrey at the drip line mines K from deep soil and chops-and-drops it onto the tree's feeder roots. Yarrow flowers attract hoverflies that eat aphids. Clover matrix fixes N in the grass. Alliums deter apple maggot. Daffodils at the edge scare off voles. All one guild.</p>
+</div>
+
+<div class="synergy">
+<h4>Chop-and-drop + mycorrhizae</h4>
+<p>The comfrey you cut drops K-rich leaves onto the tile. Underground, the fungal network ties the fruit tree's roots to neighboring trees, sharing phosphorus in exchange for sugar. The tree pays fungi 10–30 % of its photosynthate for water + P + defense. You water once; the fungi do the rest.</p>
+</div>
+
+<div class="synergy">
+<h4>Cover crop → mob graze → chop-and-drop (the triple stack)</h4>
+<p>Sow crimson clover + winter rye + tillage radish in fall. In spring, mob graze cattle for a day to press seed into soil. Immediately chop-and-drop what they miss. Soil builds 1–2 % OM in a single season — real farms measure this.</p>
+</div>
+</section>
+
+<section id="landscape">
+<h2><small>Working with the shape of the land</small>Earthworks the player builds</h2>
+<p>A farm's water, wind, and thermal patterns are set by topography and built infrastructure. Every earthwork the player places tunes the microclimate — more soil, less erosion, longer growing season, better microbiome.</p>
+<div class="earthworks">
+  <div class="earth-card"><h4>Swale</h4><p>On-contour ditch + berm. Slows rainwater, infiltrates groundwater, sediment collects on the berm → trees planted there get constant water + accumulated OM.</p></div>
+  <div class="earth-card"><h4>Keyline plow</h4><p>Yeomans-style sub-soiling off-contour. Moves water from wet valleys to dry ridges. Rapid topsoil building when paired with mob grazing.</p></div>
+  <div class="earth-card"><h4>Hugelkultur bed</h4><p>Buried woody core under soil + compost. Wood rots into a 10-year OM reservoir + water sponge. Halves irrigation demand.</p></div>
+  <div class="earth-card"><h4>Pond</h4><p>Water storage, frost buffer, fire break, duck habitat, aquaculture, reflected light for adjacent orchards. High-leverage structure.</p></div>
+  <div class="earth-card"><h4>Windbreak</h4><p>Multi-row tree hedge at 40–60 % permeability. Reduces evaporation ~30 %, protects tender crops, wildlife corridor, bonus fruit + nuts.</p></div>
+  <div class="earth-card"><h4>Check dam</h4><p>Small dams (rock, woven willow, log) stop gully erosion. Sediment builds behind them — former gullies become fertile swales.</p></div>
+  <div class="earth-card"><h4>Terrace</h4><p>Flat growing on steep slopes. Captures runoff; each terrace holds its own microclimate and moisture profile.</p></div>
+  <div class="earth-card"><h4>Rock garden / thermal mass</h4><p>Stones absorb day heat, radiate at night. Extends season 2–4 weeks. Mediterranean herbs thrive against south-facing stone walls.</p></div>
+</div>
+</section>
+
+<section id="loops">
+<h2><small>No waste</small>Closing the loops</h2>
+<p>A mature permaculture farm is a closed circle. Every output loops back. The game makes these loops visible as UI threads — when you capture a by-product, the game tells you <em>what it feeds</em>.</p>
+
+<div class="loop"><b>Chicken eats kitchen scraps</b> <span class="arrow">→</span> lays <b>egg</b> (fairy food / Ca source) + drops <b>manure</b> <span class="arrow">→</span> compost pile heats 15 % faster <span class="arrow">→</span> <b>compost</b> applied to orchard tile <span class="arrow">→</span> apple ripens larger + faster.</div>
+
+<div class="loop"><b>Comfrey grows</b> on a tile <span class="arrow">→</span> chopped by fairy <span class="arrow">→</span> drops as <b>K-rich mulch</b> at drip line of fruit tree <span class="arrow">→</span> tree K-up, produces more <b>fruit</b> <span class="arrow">→</span> fruit feeds fairies <span class="arrow">→</span> more fairies do more chopping.</div>
+
+<div class="loop">Culled <b>animal bones</b> <span class="arrow">→</span> roasted in kiln <span class="arrow">→</span> soaked in vinegar <span class="arrow">→</span> <b>WCP</b> (water-soluble P) <span class="arrow">→</span> drenched at flowering fruit tree <span class="arrow">→</span> bigger crop <span class="arrow">→</span> more fruit scraps <span class="arrow">→</span> back to chickens.</div>
+
+<div class="loop">Fairy / worker <b>urine</b> <span class="arrow">→</span> diluted 10:1 in water <span class="arrow">→</span> applied to cover crop patch <span class="arrow">→</span> explosive N-loving growth <span class="arrow">→</span> <b>chop-and-drop</b> <span class="arrow">→</span> feeds soil and next season's vegetables.</div>
+
+<div class="loop"><b>Wood</b> from felled tree <span class="arrow">→</span> half to building shed, half to <b>biochar kiln</b> <span class="arrow">→</span> biochar + compost = charged biochar <span class="arrow">→</span> applied to tile <span class="arrow">→</span> CEC bumps permanently <span class="arrow">→</span> soil holds nutrients for decades.</div>
+
+<div class="loop"><b>Roof runoff</b> <span class="arrow">→</span> rain barrel <span class="arrow">→</span> filtered through <b>reed bed</b> <span class="arrow">→</span> irrigation + <b>greywater</b> returns reed biomass to <b>compost</b> <span class="arrow">→</span> soil.</div>
+
+<p style="text-align:center; font-style:italic; color:var(--wood); margin-top:20px;">"The problem is the solution." — Bill Mollison</p>
+</section>
+
+<section id="progression">
+<h2><small>Progression rings</small>Easy to manage, hard to master</h2>
+<p>The game opens simple. A player who only engages with Ring 0–1 has a complete, satisfying, short farm sim. A player who wants depth unlocks Rings 2–5 where synergies, automation, and ecological stacks matter.</p>
+<div class="rings">
+
+<div class="ring-row">
+  <div class="ring-num">0</div>
+  <div class="ring-title">Tutorial<span>First 5 minutes</span></div>
+  <div class="ring-unlocks">Harvest berries · chop comfrey · feed pile · scoop compost · enrich one soil plot.</div>
+  <div class="ring-time">~5 min</div>
+</div>
+
+<div class="ring-row">
+  <div class="ring-num">1</div>
+  <div class="ring-title">Resource collection<span>Wood + stone enter the economy</span></div>
+  <div class="ring-unlocks">Fell trees → wood. Quarry rocks → stone. Storage shed unlocks. All build recipes now consume materials.</div>
+  <div class="ring-time">~15 min</div>
+</div>
+
+<div class="ring-row">
+  <div class="ring-num">2</div>
+  <div class="ring-title">Specialized amendments<span>NPK awareness + KNF inputs</span></div>
+  <div class="ring-unlocks">Craft bone meal (P) · comfrey tea (K) · fish emulsion (N) · WCA from eggshells (Ca) · wood ash from kiln (K + Ca). Soil panel now shows per-tile NPK bars.</div>
+  <div class="ring-time">~1 h</div>
+</div>
+
+<div class="ring-row">
+  <div class="ring-num">3</div>
+  <div class="ring-title">Biology & life below<span>KNF + mycorrhizae + worms</span></div>
+  <div class="ring-unlocks">IMO collection from old-growth edge · LAB, FPJ, FFJ ferments · compost tea brewer · mycorrhizal inoculant. Worm-cast mounds appear on high-biology tiles.</div>
+  <div class="ring-time">~3 h</div>
+</div>
+
+<div class="ring-row">
+  <div class="ring-num">4</div>
+  <div class="ring-title">Integrated systems<span>Animal stacks + rotational grazing</span></div>
+  <div class="ring-unlocks">Cow → chicken cascade (+300 % OM). Duck-fish aigamo. Cover-crop sequences. Keyline + swale water management. Pigs forest-reset for orchards.</div>
+  <div class="ring-time">~8 h</div>
+</div>
+
+<div class="ring-row">
+  <div class="ring-num">5</div>
+  <div class="ring-title">Regenerative climax<span>Food forest + mastery</span></div>
+  <div class="ring-unlocks">7-layer food forest. Biodynamic preparations. Biochar at scale. Landrace seed vault. Watershed restoration. Food forest self-mulches from leaf drop — labor collapses toward zero.</div>
+  <div class="ring-time">~30 h+</div>
+</div>
+
+</div>
+</section>
+
+<section style="margin-top: 80px; padding: 30px; background: #fbf3dd; border: 1px solid var(--parchment-edge); border-radius: 10px; text-align: center;">
+<p style="margin: 0; font-size: 15px; color: var(--wood-dark);">Soil is not a bar that fills up. It's a living matrix of NPK, micros, pH, biology, water — shaped by every plant you grow, every animal you pasture, every amendment you craft from your own waste stream.</p>
+<p style="margin: 12px 0 0; font-size: 13px; color: var(--wood); font-style: italic;">Building it is the game. Watching it come alive is the reward.</p>
+</section>
+
+</div><!-- /tab-soil -->
+
+<div class="tab-pane" id="tab-ecosystem">
+<section class="hero" style="margin-top: 20px;">
+  <h1>BC Coastal Ecosystem
+    <small>Every species you can grow, raise, forage, or partner with</small>
+  </h1>
+  <p>The shipped biome is the <b>Pacific Northwest coastal forest</b> — wet winters, dry summers, acidic conifer soils, salmon streams, cedar + douglas fir canopy, ericoid-mycorrhizal berries, legume-light native flora. Each species below is a permaculture-valid introduction to the BC food forest or pasture.</p>
+  <p style="font-size: 13px; color: var(--wood); font-style: italic;">Each entry shows its soil tier gate, water band, sun need, and which food-chain branch it anchors. Tap the Interactions tab to see what it companions, competes with, or feeds.</p>
+</section>
+
+<div class="eco-legend">
+  <b style="margin-right: 10px;">Legend:</b>
+  <span class="chip t-barren">Barren</span>
+  <span class="chip t-poor">Poor</span>
+  <span class="chip t-dev">Developing</span>
+  <span class="chip t-rich">Rich</span>
+  <span class="chip t-abund">Abundant</span>
+  <span class="chip t-climax">Climax</span>
+  <span style="margin-left: 14px;"></span>
+  <span class="chip sun-full">Full sun</span>
+  <span class="chip sun-part">Partial</span>
+  <span class="chip sun-shade">Shade</span>
+  <span style="margin-left: 14px;"></span>
+  <span class="chip w-dry">Dry</span>
+  <span class="chip w-med">Moderate</span>
+  <span class="chip w-wet">Thirsty</span>
+  <span class="chip w-aq">Aquatic</span>
+  <span style="margin-left: 14px;"></span>
+  <span class="chip br-R">R Root</span>
+  <span class="chip br-A">A Pollinators</span>
+  <span class="chip br-B">B Fruit</span>
+  <span class="chip br-C">C Livestock</span>
+  <span class="chip br-D">D Aquaculture</span>
+  <span class="chip br-E">E Grain</span>
+  <span class="chip br-F">F Fungi</span>
+  <span class="chip br-G">G Water</span>
+</div>
+
+<div class="eco-cat">
+  <h3>Pioneers <small>First life on bare soil · OM &lt; 1 %</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Stinging Nettle</b><span class="lat">Urtica dioica</span>N-accumulator · fermented N-tea · edible greens · silica<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Dandelion</b><span class="lat">Taraxacum officinale</span>Deep taproot breaks compaction · early bee food · edible<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Yarrow</b><span class="lat">Achillea millefolium</span>Insectary (predatory wasps) · Ca accumulator · medicinal<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Plantain</b><span class="lat">Plantago major</span>Heals bruises · spreads on trampled ground · nutrient miner<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Sheep Sorrel</b><span class="lat">Rumex acetosella</span>Acid-soil indicator · tangy edible · bird food<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Chickweed</b><span class="lat">Stellaria media</span>Winter annual · edible greens · living mulch · chicken food<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Red Fescue</b><span class="lat">Festuca rubra</span>Native grass · quick cover · low-input lawn<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Fireweed</b><span class="lat">Chamerion angustifolium</span>Colonizes burned / disturbed ground · bee forage · edible shoots<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Cover crops &amp; N-fixers <small>Build soil fast · OM 1–2 %</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Crimson Clover</b><span class="lat">Trifolium incarnatum</span>Heavy N-fixer · honey plant · winter cover<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>White Clover</b><span class="lat">Trifolium repens</span>Living mulch under orchard · perennial N · low maintenance<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Hairy Vetch</b><span class="lat">Vicia villosa</span>Massive biomass · N-fixer · winter-kill cover for spring beds<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Fava Bean</b><span class="lat">Vicia faba</span>N-fixer + edible protein · frost-hardy · chop-and-drop<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Tillage Radish</b><span class="lat">Raphanus sativus</span>Deep taproot smashes hardpan · winter-kill leaves holes<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Buckwheat</b><span class="lat">Fagopyrum esculentum</span>Fast summer cover · P-accumulator · bee forage · grain<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Winter Rye</b><span class="lat">Secale cereale</span>Huge biomass · allelopathic weed control · winter cover<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Red Alder</b><span class="lat">Alnus rubra</span>BC native · Frankia N-fixer tree · shiitake substrate · fast<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-full">Full</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Herbs &amp; dynamic accumulators <small>The permaculture superstars</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Comfrey (Bocking 14)</b><span class="lat">Symphytum × uplandicum</span>K dynamic accumulator · chop-and-drop 4×/yr · sterile (doesn't spread)<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Borage</b><span class="lat">Borago officinalis</span>Ca accumulator · bee magnet · edible star-shaped flowers<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Chamomile</b><span class="lat">Matricaria chamomilla</span>Insectary · companion to brassicas · calming tea<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Lavender</b><span class="lat">Lavandula angustifolia</span>Drought hero · bee &amp; butterfly magnet · culinary + medicinal<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Rosemary</b><span class="lat">Salvia rosmarinus</span>Drought · culinary · bee forage · pest confuser<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Thyme</b><span class="lat">Thymus vulgaris</span>Ground cover on dry rocky tiles · culinary · bee forage<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Oregano</b><span class="lat">Origanum vulgare</span>Spreading ground cover · antimicrobial · culinary<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Lemon Balm</b><span class="lat">Melissa officinalis</span>Bee attractor · calming tea · shade-tolerant<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Wild Mint</b><span class="lat">Mentha arvensis</span>BC native · stream edges · tea · pest deterrent<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-wet">Wet</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Stinging Nettle</b><span class="lat">Urtica dioica</span>N-tea ferment · silica-rich biomass · butterfly host plant<div class="tags"><span class="tag t-barren">Barren</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Berries <small>Fairy food — fruit branch anchor</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Salmonberry</b><span class="lat">Rubus spectabilis</span>BC native · shade-tolerant · spring fruit · salmon-run tradition<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-wet">Wet</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Thimbleberry</b><span class="lat">Rubus parviflorus</span>BC native · understory · red velvety fruit · forest edges<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-shade">Shade</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Huckleberry</b><span class="lat">Vaccinium ovatum</span>BC native · ericoid mycorrhizae · forest-floor wild<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Wild Strawberry</b><span class="lat">Fragaria vesca</span>Ground cover · runner-spread · early pollinator<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Saskatoon</b><span class="lat">Amelanchier alnifolia</span>Native pioneer shrub · drought tolerant · early fruit<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Blueberry (Highbush)</b><span class="lat">Vaccinium corymbosum</span>Wants acidic (pH 4.5) · ericoid mycorrhizae · premium fruit<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-wet">Wet</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Black Currant</b><span class="lat">Ribes nigrum</span>Shade-tolerant · heavy vitamin C · bird magnet<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Raspberry</b><span class="lat">Rubus idaeus</span>Summer + autumn fruiting variants · prolific · bird food<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Trailing Blackberry</b><span class="lat">Rubus ursinus</span>BC native · hedge + ground cover · ecosystem bird value<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Gooseberry</b><span class="lat">Ribes uva-crispa</span>Tart culinary fruit · tolerates shade<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Orchard — pome &amp; stone fruit <small>Mature canopy · OM 3–5 %</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Pacific Crabapple</b><span class="lat">Malus fusca</span>BC native · pollinator anchor for orchard · small tart fruit<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Apple</b><span class="lat">Malus domestica</span>Orchard king · many cultivars · apple-guild center<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Pear (European)</b><span class="lat">Pyrus communis</span>Long-lived · late-summer fruit · wildlife magnet<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Asian Pear</b><span class="lat">Pyrus pyrifolia</span>Crisp autumn fruit · disease-resistant<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Italian Plum</b><span class="lat">Prunus domestica</span>Reliable BC cropper · dries well · fresh eating<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Sweet Cherry</b><span class="lat">Prunus avium</span>Self-incompatible · plant pairs · spring bee forage<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Nanking Cherry</b><span class="lat">Prunus tomentosa</span>Hedge-height cherry · cold hardy · tart fruit<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Peach (hardy)</b><span class="lat">Prunus persica</span>South-facing wall lover · drought-tolerant once established<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Quince</b><span class="lat">Cydonia oblonga</span>Ancient fruit · aromatic · ferment &amp; preserve<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Nuts &amp; canopy <small>Abundant tier · OM 5–10 % · decades to maturity</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Hazelnut</b><span class="lat">Corylus avellana / cornuta</span>BC native + European · 5-yr to bearing · truffle host later<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Walnut (English)</b><span class="lat">Juglans regia</span>Long-lived nut tree · allelopathic (juglone) — site carefully<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Black Walnut</b><span class="lat">Juglans nigra</span>Premium lumber · heavy juglone · standalone placement<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Sweet Chestnut</b><span class="lat">Castanea sativa</span>Carb-heavy nut · leaves feed pigs · rot-resistant wood<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Butternut</b><span class="lat">Juglans cinerea</span>Short-lived walnut cousin · buttery nut<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Douglas Fir</b><span class="lat">Pseudotsuga menziesii</span>BC native king conifer · windbreak · slow lumber · tips for tea<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Western Red Cedar</b><span class="lat">Thuja plicata</span>BC native · rot-proof lumber · cultural tree · shade<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-part">Part</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Big-leaf Maple</b><span class="lat">Acer macrophyllum</span>BC native · shiitake log substrate · shade · sap for syrup<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-part">Part</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Black Locust</b><span class="lat">Robinia pseudoacacia</span>N-fixer tree · rot-proof lumber · premium bee forage<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-A">A</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Grains &amp; pseudo-grains <small>Annual calorie crops · E branch</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Hulless Barley</b><span class="lat">Hordeum vulgare</span>BC-adapted · no-thresh hulls · bread &amp; brewing<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Quinoa</b><span class="lat">Chenopodium quinoa</span>Cool-tolerant pseudo-grain · high protein · short season<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-dry">Dry</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Amaranth</b><span class="lat">Amaranthus spp.</span>Heat-loving · leaves edible · pseudo-grain<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Winter Wheat</b><span class="lat">Triticum aestivum</span>Fall-plant overwinter · summer harvest · straw + grain<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Flax</b><span class="lat">Linum usitatissimum</span>Oil seed + fiber · pretty blue flowers<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Corn (Flint)</b><span class="lat">Zea mays</span>Three Sisters pillar · polenta + meal · short-season BC types<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Vegetables <small>The everyday garden</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Kale (Siberian)</b><span class="lat">Brassica oleracea</span>Overwinters on BC coast · nutrient-dense · chicken green<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-wet">Wet</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Cabbage</b><span class="lat">Brassica oleracea</span>Storage crop · ferment as sauerkraut · heavy feeder<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-wet">Wet</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Broccoli</b><span class="lat">Brassica oleracea</span>Heavy feeder · cool-season · side-shoot production<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-wet">Wet</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Garlic (Hardneck)</b><span class="lat">Allium sativum</span>Plant fall / harvest summer · scapes edible · pest deterrent<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Onion</b><span class="lat">Allium cepa</span>Storage crop · long-day types for BC · aphid deterrent<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Leek</b><span class="lat">Allium porrum</span>Overwinters BC coast · companion to brassicas<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-wet">Wet</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Potato</b><span class="lat">Solanum tuberosum</span>Calorie king · hills easily · chit for early crop<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Carrot</b><span class="lat">Daucus carota</span>Needs loose soil · store in sand over winter<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Parsnip</b><span class="lat">Pastinaca sativa</span>Frost-sweet · overwinters in ground · long-storing<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Beet</b><span class="lat">Beta vulgaris</span>Root + greens · storage · boron indicator<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Sunchoke</b><span class="lat">Helianthus tuberosus</span>Perennial root crop · stubborn spreader · windbreak<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Tomato</b><span class="lat">Solanum lycopersicum</span>BC short-season types (Stupice, Early Girl) · companion basil<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Winter Squash</b><span class="lat">Cucurbita maxima</span>Three Sisters squash · storage crop · heavy feeder<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-E">E</span></div></div>
+    <div class="ecard"><b>Lettuce</b><span class="lat">Lactuca sativa</span>Succession plant · bolt in summer heat · loves shade<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-wet">Wet</span><span class="tag br-R">R</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Native edibles &amp; wildcraft <small>Forage-tier · low maintenance · forest-edge</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Wapato / Duck Potato</b><span class="lat">Sagittaria latifolia</span>Native wetland tuber · duck forage · traditional food<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-aq">Aquatic</span><span class="tag br-D">D</span></div></div>
+    <div class="ecard"><b>Camas</b><span class="lat">Camassia quamash</span>Native bulb · meadow beauty · traditional food<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Ostrich Fern</b><span class="lat">Matteuccia struthiopteris</span>Spring fiddleheads · shade-loving · moist creek edges<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Wild Ginger</b><span class="lat">Asarum caudatum</span>BC native shade ground cover · aromatic · slow-spread<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Miner's Lettuce</b><span class="lat">Claytonia perfoliata</span>Winter salad green · self-seeds · partial shade<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-R">R</span></div></div>
+    <div class="ecard"><b>Oregon Grape</b><span class="lat">Mahonia aquifolium</span>BC native edible tart berry · shade · medicinal root<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span><span class="tag br-B">B</span></div></div>
+    <div class="ecard"><b>Sea Asparagus</b><span class="lat">Salicornia virginica</span>Salt marsh wild · coastal forager · crunchy green<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-full">Full</span><span class="tag w-aq">Aquatic</span><span class="tag br-D">D</span></div></div>
+    <div class="ecard"><b>Wild Ramps</b><span class="lat">Allium tricoccum</span>Shade woodland · slow-spreading onion · premium forage<div class="tags"><span class="tag t-rich">Rich</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Fungi <small>Branch F · soil biology + food + medicine</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Oyster Mushroom</b><span class="lat">Pleurotus ostreatus</span>Pasteurized straw/wood · fast · beginner species<div class="tags"><span class="tag t-poor">Poor</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Shiitake</b><span class="lat">Lentinula edodes</span>Maple/alder logs · 1-yr to fruit · 6-yr producer<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Wine Cap (King Stropharia)</b><span class="lat">Stropharia rugosoannulata</span>Wood-chip paths · path mulch that fruits<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-part">Part</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Lion's Mane</b><span class="lat">Hericium erinaceus</span>Hardwood logs · neuroprotective · seafood flavor<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Chanterelle</b><span class="lat">Cantharellus formosus</span>Mycorrhizal with douglas fir · wild forage · premium<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-shade">Shade</span><span class="tag w-med">Mod</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>King Bolete (Porcini)</b><span class="lat">Boletus edulis</span>Conifer mycorrhizal · wild · dries to culinary gold<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-shade">Shade</span><span class="tag w-med">Mod</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Pacific Golden Truffle</b><span class="lat">Tuber gibbosum</span>BC native · douglas-fir root zone · climax-only forage<div class="tags"><span class="tag t-climax">Climax</span><span class="tag sun-shade">Shade</span><span class="tag w-med">Mod</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Turkey Tail</b><span class="lat">Trametes versicolor</span>Hardwood · medicinal · common garden edge<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Reishi</b><span class="lat">Ganoderma oregonense</span>Medicinal polypore · conifer · immune tonic<div class="tags"><span class="tag t-abund">Abund</span><span class="tag sun-shade">Shade</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>Mycorrhizal Inoculant</b><span class="lat">Glomus + Rhizophagus spp.</span>Not harvested — the underground network itself<div class="tags"><span class="tag t-dev">Dev</span><span class="tag sun-shade">Under</span><span class="tag w-med">Mod</span><span class="tag br-F">F</span></div></div>
+    <div class="ecard"><b>IMO — Indigenous Microbes</b><span class="lat">Wild microbial community</span>KNF · collected from old-growth duff · key inoculant<div class="tags"><span class="tag t-climax">Climax</span><span class="tag sun-shade">Under</span><span class="tag w-wet">Wet</span><span class="tag br-F">F</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Livestock — fowl <small>Branch C · eggs · meat · pest control</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Chicken (heritage)</b><span class="lat">Gallus gallus</span>Egg + manure machine · scratches compost · loves kitchen scraps<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Coop+yard</span></div></div>
+    <div class="ecard"><b>Duck (Khaki Campbell / Runner)</b><span class="lat">Anas platyrhynchos</span>Slug + aphid patrol · prefers wet ground · cleaner than chicken<div class="tags"><span class="tag br-C">C</span><span class="tag w-wet">Wet</span><span class="tag sun-full">Pond+shed</span></div></div>
+    <div class="ecard"><b>Goose (Pilgrim)</b><span class="lat">Anser anser</span>Guard animal · weeds grass · large eggs · one breed per pair<div class="tags"><span class="tag br-C">C</span><span class="tag w-wet">Wet</span><span class="tag sun-full">Pasture</span></div></div>
+    <div class="ecard"><b>Heritage Turkey</b><span class="lat">Meleagris gallopavo</span>Tick + grasshopper control · huge meat bird · heritage breeds<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Pasture</span></div></div>
+    <div class="ecard"><b>Guinea Fowl</b><span class="lat">Numida meleagris</span>Tick &amp; snake alarm · loud · great integrated pest controller<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Free-range</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Livestock — ruminants &amp; other <small>Milk · meat · brush-control · manure</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Dairy Goat (Nigerian Dwarf)</b><span class="lat">Capra aegagrus</span>Small-holder milk · brush clearer · friendly<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Pasture+shed</span></div></div>
+    <div class="ecard"><b>Dairy Sheep (East Friesian)</b><span class="lat">Ovis aries</span>Mob-grazer · milk + wool · gentle impact<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Pasture</span></div></div>
+    <div class="ecard"><b>Dexter Cow</b><span class="lat">Bos taurus</span>Small breed · milk + beef · hoof-presses seeds into soil<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Pasture</span></div></div>
+    <div class="ecard"><b>Tamworth Pig</b><span class="lat">Sus domesticus</span>Rootle cleaner · forest reset before orchard · bacon<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Paddock</span></div></div>
+    <div class="ecard"><b>Angora Rabbit</b><span class="lat">Oryctolagus cuniculus</span>Fiber · premium manure (no composting needed) · compact<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Hutch</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Guardians &amp; helpers <small>Keep predators off the others</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Livestock Guardian Dog</b><span class="lat">Canis familiaris (LGD)</span>Great Pyrenees / Anatolian · cougar + bear deter<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Field</span></div></div>
+    <div class="ecard"><b>Llama</b><span class="lat">Lama glama</span>Guard for sheep/goats · intimidates coyotes<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Pasture</span></div></div>
+    <div class="ecard"><b>Donkey</b><span class="lat">Equus asinus</span>Anti-canine guard · loud bray alarm · pasture partner<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Pasture</span></div></div>
+    <div class="ecard"><b>Barn Cat</b><span class="lat">Felis catus</span>Rodent control in storage &amp; coop<div class="tags"><span class="tag br-C">C</span><span class="tag w-med">Mod</span><span class="tag sun-full">Barn</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Pollinators &amp; insect livestock <small>Branch A · the smallest workers</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Mason Bee (Blue Orchard)</b><span class="lat">Osmia lignaria</span>BC native · tube nester · 1 bee = 100 honeybees for orchard<div class="tags"><span class="tag br-A">A</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span></div></div>
+    <div class="ecard"><b>Bumblebee (Yellow-faced)</b><span class="lat">Bombus vosnesenskii</span>Native · low-temp forager · greenhouse pollinator<div class="tags"><span class="tag br-A">A</span><span class="tag sun-part">Part</span><span class="tag w-med">Mod</span></div></div>
+    <div class="ecard"><b>Honeybee (Warré hive)</b><span class="lat">Apis mellifera</span>Managed hive · honey + wax + propolis · fairy food anchor<div class="tags"><span class="tag br-A">A</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span></div></div>
+    <div class="ecard"><b>Leafcutter Bee</b><span class="lat">Megachile rotundata</span>Tube nester · alfalfa &amp; clover pollinator<div class="tags"><span class="tag br-A">A</span><span class="tag sun-full">Full</span><span class="tag w-med">Mod</span></div></div>
+    <div class="ecard"><b>Red Wiggler</b><span class="lat">Eisenia fetida</span>Vermicomposter · kitchen-scraps to castings · premium biology<div class="tags"><span class="tag br-R">R</span><span class="tag w-med">Mod</span><span class="tag sun-shade">Dark</span></div></div>
+    <div class="ecard"><b>BSF Larvae</b><span class="lat">Hermetia illucens</span>Kitchen-scrap → protein loop · auto-harvesting design<div class="tags"><span class="tag br-R">R</span><span class="tag w-med">Mod</span><span class="tag sun-shade">Bin</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Aquaculture <small>Branch D · pond + wetland life</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Rainbow Trout</b><span class="lat">Oncorhynchus mykiss</span>Cold clean water · BC staple · auto-feeding with BSF<div class="tags"><span class="tag br-D">D</span><span class="tag w-aq">Aquatic</span></div></div>
+    <div class="ecard"><b>Signal Crayfish</b><span class="lat">Pacifastacus leniusculus</span>Native decomposer · pond cleaner · edible<div class="tags"><span class="tag br-D">D</span><span class="tag w-aq">Aquatic</span></div></div>
+    <div class="ecard"><b>Watercress</b><span class="lat">Nasturtium officinale</span>Stream edge · nutrient scrubber · peppery green<div class="tags"><span class="tag br-D">D</span><span class="tag w-aq">Aquatic</span></div></div>
+    <div class="ecard"><b>Azolla</b><span class="lat">Azolla filiculoides</span>Floating N-fixer fern · duck food · green manure<div class="tags"><span class="tag br-D">D</span><span class="tag w-aq">Aquatic</span></div></div>
+    <div class="ecard"><b>Cattail</b><span class="lat">Typha latifolia</span>Edible tubers &amp; pollen · nutrient scrubber · biomass<div class="tags"><span class="tag br-D">D</span><span class="tag w-aq">Aquatic</span></div></div>
+    <div class="ecard"><b>Sockeye Salmon (restoration)</b><span class="lat">Oncorhynchus nerka</span>Climax-only · stream restoration unlocks runs · nutrient pump<div class="tags"><span class="tag t-climax">Climax</span><span class="tag br-D">D</span><span class="tag w-aq">Aquatic</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Helpful insects <small>Build these populations · pest control for free</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Ladybug</b><span class="lat">Hippodamia convergens</span>Aphid assassin · dill + fennel insectary · overwinter bundle<div class="tags"><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Green Lacewing</b><span class="lat">Chrysoperla carnea</span>Larvae: aphid/thrip killer · adults: pollinator · yarrow &amp; dill<div class="tags"><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Hoverfly</b><span class="lat">Syrphidae</span>Dual-role: pollinator + aphid-larva predator · loves alyssum<div class="tags"><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Parasitic Wasp</b><span class="lat">Braconidae / Trichogramma</span>Lay eggs in caterpillars · fennel + carrot-family umbels<div class="tags"><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Ground Beetle</b><span class="lat">Carabidae</span>Slug + cutworm hunter · perennial living mulch habitat<div class="tags"><span class="tag br-A">A</span></div></div>
+    <div class="ecard"><b>Dragonfly</b><span class="lat">Anisoptera</span>Mosquito control · needs pond for nymphs · pond multiplier<div class="tags"><span class="tag br-D">D</span></div></div>
+    <div class="ecard"><b>Butterfly (Swallowtail)</b><span class="lat">Papilio spp.</span>Pollinator · host plants (parsley, dill) · aesthetic<div class="tags"><span class="tag br-A">A</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Pests <small>Real threats — mitigated by ecology, not pesticide</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Aphid</b><span class="lat">Aphidoidea</span>Mono-crop hazard · ladybug + lacewing + alyssum control<div class="tags"><span class="tag bad">Pest</span></div></div>
+    <div class="ecard"><b>Cabbage Looper</b><span class="lat">Trichoplusia ni</span>Brassica caterpillar · Bt spray + parasitic wasp<div class="tags"><span class="tag bad">Pest</span></div></div>
+    <div class="ecard"><b>Codling Moth</b><span class="lat">Cydia pomonella</span>Apple/pear worm · pheromone trap + chicken patrol<div class="tags"><span class="tag bad">Pest</span></div></div>
+    <div class="ecard"><b>Apple Maggot</b><span class="lat">Rhagoletis pomonella</span>Fly larvae in apple · red sticky sphere traps<div class="tags"><span class="tag bad">Pest</span></div></div>
+    <div class="ecard"><b>Slug (Banana)</b><span class="lat">Ariolimax columbianus</span>BC native everywhere · duck patrol + copper ring + beer trap<div class="tags"><span class="tag bad">Pest</span></div></div>
+    <div class="ecard"><b>Flea Beetle</b><span class="lat">Phyllotreta spp.</span>Brassica shotgun-hole · row cover + radish trap crop<div class="tags"><span class="tag bad">Pest</span></div></div>
+    <div class="ecard"><b>Cabbage White Butterfly</b><span class="lat">Pieris rapae</span>Adult nice, caterpillars devastate · row cover + parasitic wasp<div class="tags"><span class="tag bad">Pest</span></div></div>
+    <div class="ecard"><b>Vole / Mountain Beaver</b><span class="lat">Microtus / Aplodontia</span>Girdles saplings · tree guards + barn cat · ground cover deters<div class="tags"><span class="tag bad">Pest</span></div></div>
+  </div>
+</div>
+
+<div class="eco-cat">
+  <h3>Large wildlife <small>Visitors to manage — some help, some threaten</small></h3>
+  <div class="eco-grid">
+    <div class="ecard"><b>Black-tailed Deer</b><span class="lat">Odocoileus hemionus</span>Browses everything — 8-ft fence required at orchard scale<div class="tags"><span class="tag bad">Threat</span></div></div>
+    <div class="ecard"><b>Black Bear</b><span class="lat">Ursus americanus</span>Raids orchard + hive + coop · electric fence + storage hygiene<div class="tags"><span class="tag bad">Threat</span></div></div>
+    <div class="ecard"><b>Cougar</b><span class="lat">Puma concolor</span>Takes goat/sheep · LGD + llama + secure night shelter<div class="tags"><span class="tag bad">Threat</span></div></div>
+    <div class="ecard"><b>Coyote</b><span class="lat">Canis latrans</span>Small fowl + lamb at night · LGD + coop + goose alarm<div class="tags"><span class="tag bad">Threat</span></div></div>
+    <div class="ecard"><b>Red-tailed Hawk</b><span class="lat">Buteo jamaicensis</span>Day predator on chickens · canopy cover + guinea alarm<div class="tags"><span class="tag bad">Threat</span></div></div>
+    <div class="ecard"><b>Great Blue Heron</b><span class="lat">Ardea herodias</span>Raids pond fish · netting + depth refuge<div class="tags"><span class="tag bad">Threat</span></div></div>
+    <div class="ecard"><b>Raven / Crow</b><span class="lat">Corvus spp.</span>Pulls seedlings · steals fruit · shiny decoys + row cover<div class="tags"><span class="tag neut">Mixed</span></div></div>
+    <div class="ecard"><b>Bald Eagle</b><span class="lat">Haliaeetus leucocephalus</span>BC icon · may take fowl · majestic neighbor<div class="tags"><span class="tag neut">Mixed</span></div></div>
+    <div class="ecard"><b>Bumble population</b><span class="lat">(free-form wild)</span>Native pollinators thrive with habitat · no action required<div class="tags"><span class="tag good">Welcome</span></div></div>
+  </div>
+</div>
+
+<section style="margin-top: 60px; padding: 30px; background: #fbf3dd; border: 1px solid var(--parchment-edge); border-radius: 10px; text-align: center;">
+<p style="margin: 0; font-size: 15px; color: var(--wood-dark);">This catalog is the target. The game ships with a subset and expands branch-by-branch; the Lab tab (in-game) lets you browse every species the engine has data for — along with their animation states and production curves.</p>
+</section>
+
+</div><!-- /tab-ecosystem -->
+
+<div class="tab-pane" id="tab-interactions">
+<section class="hero" style="margin-top: 20px;">
+  <h1>Interactions &amp; food web
+    <small>Who helps who · who eats who · who blocks whom</small>
+  </h1>
+  <p>Permaculture is relational. Every species has a web of friends, enemies, and neighbors that change its effective yield. This tab shows the major food-web tiers, companion/antagonist matrices, and the closed loops the player discovers over the course of a run.</p>
+</section>
+
+<h2><small>Food web tiers</small>What feeds what on a healthy BC farm</h2>
+<div class="web">
+  <div class="tier-line"><div class="tier-label">Sun &amp; minerals<span>energy &amp; substrate</span></div><div>Sunlight → plants via photosynthesis. Weathered rock → minerals via fungal + root acids.</div></div>
+  <div class="tier-line"><div class="tier-label">Producers<span>primary — build biomass</span></div><div>All plants. Pioneers &amp; cover crops on poor soil; orchard &amp; canopy on rich soil. They convert sun + CO₂ + water into sugars + leaves + fruit.</div></div>
+  <div class="tier-line"><div class="tier-label">Decomposers<span>return &amp; recycle</span></div><div>Bacteria, archaea, fungi (saprophytic), earthworms, BSF larvae, isopods, springtails, millipedes. Turn dead plant matter back into soil-accessible nutrients.</div></div>
+  <div class="tier-line"><div class="tier-label">Mycorrhizae<span>underground trade network</span></div><div>Fungal partnership with plant roots. Plants pay sugar; fungi deliver water + P + trade between plants. Gates access to higher-tier plants.</div></div>
+  <div class="tier-line"><div class="tier-label">Primary consumers<span>plant eaters</span></div><div>Pollinators (bees, hoverflies, butterflies). Grazers (goat, sheep, cow, rabbit). Gleaners (chicken, duck eat seeds/bugs). Pests (aphid, caterpillar, slug).</div></div>
+  <div class="tier-line"><div class="tier-label">Secondary consumers<span>bug eaters</span></div><div>Ladybug, lacewing, parasitic wasp, ground beetle, spider, hoverfly larvae, dragonfly, guinea fowl, barn swallow, duck, chicken. Control pest populations without intervention.</div></div>
+  <div class="tier-line"><div class="tier-label">Tertiary consumers<span>top predators</span></div><div>Hawk, coyote, cougar, bear, human. Affect farm when unbalanced; become neighbors when boundaries work.</div></div>
+  <div class="tier-line"><div class="tier-label">Guardians<span>player-deployed buffers</span></div><div>LGD dogs, llamas, donkeys, guardian geese, barn cats. Flip the threat from top predators into neutral pass-through.</div></div>
+  <div class="tier-line"><div class="tier-label">Soil food web<span>the hidden driver</span></div><div>&gt; 1 billion organisms per teaspoon of healthy soil. Bacteria feed protozoa; nematodes poop ammonium; fungi exchange with roots. Everything above depends on this.</div></div>
+</div>
+
+<h2><small>Companion planting</small>The classic beneficial pairings</h2>
+<table class="matrix">
+  <tr>
+    <th></th><th>Basil</th><th>Carrot</th><th>Onion</th><th>Dill</th><th>Comfrey</th><th>Clover</th><th>Nasturtium</th><th>Marigold</th>
+  </tr>
+  <tr><td class="row-label">Tomato</td><td class="good">++</td><td class="neut">·</td><td class="neut">·</td><td class="bad">—</td><td class="good">+</td><td class="good">+</td><td class="good">+</td><td class="good">+</td></tr>
+  <tr><td class="row-label">Carrot</td><td class="neut">·</td><td class="neut">·</td><td class="good">++</td><td class="good">+</td><td class="neut">·</td><td class="neut">·</td><td class="good">+</td><td class="good">+</td></tr>
+  <tr><td class="row-label">Brassicas</td><td class="neut">·</td><td class="neut">·</td><td class="good">+</td><td class="good">+</td><td class="good">+</td><td class="good">++</td><td class="good">++</td><td class="good">+</td></tr>
+  <tr><td class="row-label">Apple</td><td class="neut">·</td><td class="neut">·</td><td class="good">+</td><td class="good">+</td><td class="good">++</td><td class="good">++</td><td class="good">+</td><td class="good">+</td></tr>
+  <tr><td class="row-label">Blueberry</td><td class="neut">·</td><td class="neut">·</td><td class="bad">—</td><td class="neut">·</td><td class="good">+</td><td class="good">+</td><td class="good">+</td><td class="neut">·</td></tr>
+  <tr><td class="row-label">Corn</td><td class="neut">·</td><td class="neut">·</td><td class="bad">—</td><td class="good">+</td><td class="good">+</td><td class="good">++</td><td class="good">+</td><td class="good">+</td></tr>
+  <tr><td class="row-label">Strawberry</td><td class="neut">·</td><td class="neut">·</td><td class="good">+</td><td class="neut">·</td><td class="good">+</td><td class="good">+</td><td class="neut">·</td><td class="good">+</td></tr>
+</table>
+<p style="font-size: 12px; color: var(--wood); font-style: italic;">++ strong synergy · + benefit · · neutral · — antagonist (compete for same resource or allelopathic)</p>
+
+<h2><small>Animal antagonisms</small>Who not to pair</h2>
+<table class="matrix">
+  <tr><th></th><th>Chicken</th><th>Duck</th><th>Goat</th><th>Sheep</th><th>Cow</th><th>Pig</th><th>LGD</th></tr>
+  <tr><td class="row-label">Chicken</td><td class="neut">—</td><td class="good">OK</td><td class="neut">·</td><td class="neut">·</td><td class="good">5-day lag</td><td class="bad">pig eats</td><td class="good">protects</td></tr>
+  <tr><td class="row-label">Duck</td><td class="good">OK</td><td class="neut">—</td><td class="good">OK</td><td class="good">OK</td><td class="good">OK</td><td class="neut">·</td><td class="good">protects</td></tr>
+  <tr><td class="row-label">Goat/Sheep</td><td class="neut">·</td><td class="good">OK</td><td class="good">OK</td><td class="good">OK</td><td class="good">OK</td><td class="bad">stress</td><td class="good">protects</td></tr>
+  <tr><td class="row-label">Orchard saplings</td><td class="good">OK</td><td class="good">OK</td><td class="bad">browse!</td><td class="bad">browse</td><td class="neut">fence</td><td class="bad">rootle</td><td class="good">OK</td></tr>
+</table>
+
+<h2><small>The Salatin cascade</small>Time-stacked grazing</h2>
+<div class="loop"><b>Day 0</b> — Cows graze pasture A for 1 day <span class="arrow">→</span> manure drops, grass knocked down <span class="arrow">→</span> <b>Day 4–5</b> — Fly larvae peak in manure <span class="arrow">→</span> <b>Chickens move in</b> <span class="arrow">→</span> scratch manure, eat larvae, spread compost, deposit their own manure <span class="arrow">→</span> <b>Day 30</b> — Pasture A has recovered, grass tall + lush + <b>+300 % OM</b> vs. cow-alone baseline.</div>
+
+<h2><small>Apple guild</small>A classic 7-layer permaculture pattern</h2>
+<div class="fig">
+<svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="canopy" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#8BC47A"/>
+      <stop offset="100%" stop-color="#5A7A4B"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="260" width="700" height="40" fill="#7A5C48"/>
+  <line x1="0" y1="260" x2="700" y2="260" stroke="#5C4429" stroke-width="2"/>
+  <ellipse cx="350" cy="120" rx="160" ry="90" fill="url(#canopy)"/>
+  <rect x="340" y="150" width="20" height="110" fill="#5C4429"/>
+  <text x="360" y="105" fill="#2A1E10" font-size="14" text-anchor="middle" font-weight="bold">Apple (canopy)</text>
+  <circle cx="220" cy="235" r="14" fill="#A178B5"/><text x="220" y="239" text-anchor="middle" font-size="10" fill="white">comfrey</text>
+  <circle cx="480" cy="235" r="14" fill="#A178B5"/><text x="480" y="239" text-anchor="middle" font-size="10" fill="white">comfrey</text>
+  <circle cx="150" cy="240" r="10" fill="#F2C14E"/><text x="150" y="244" text-anchor="middle" font-size="9" fill="#3E2F23">yarrow</text>
+  <circle cx="550" cy="240" r="10" fill="#F2C14E"/><text x="550" y="244" text-anchor="middle" font-size="9" fill="#3E2F23">yarrow</text>
+  <rect x="270" y="245" width="160" height="10" fill="#8BC47A" opacity="0.8"/>
+  <text x="350" y="253" text-anchor="middle" font-size="9" fill="#3E2F23">clover + fescue living mulch</text>
+  <circle cx="100" cy="245" r="8" fill="#E88070"/><text x="100" y="265" text-anchor="middle" font-size="8" fill="#5C4429">chive</text>
+  <circle cx="600" cy="245" r="8" fill="#E88070"/><text x="600" y="265" text-anchor="middle" font-size="8" fill="#5C4429">chive</text>
+  <ellipse cx="350" cy="270" rx="200" ry="6" fill="#3E2F23" opacity="0.3"/>
+  <text x="350" y="290" text-anchor="middle" font-size="10" fill="#5C4429" font-style="italic">mycorrhizal network — P + water + tree↔tree trade</text>
+  <text x="20" y="30" font-size="12" font-weight="bold" fill="#5C4429">Apple guild layers:</text>
+  <text x="20" y="48" font-size="10" fill="#5C4429">◯ Canopy — apple</text>
+  <text x="20" y="62" font-size="10" fill="#5C4429">◯ Shrub layer — elderberry / currant (optional)</text>
+  <text x="20" y="76" font-size="10" fill="#5C4429">◯ Herb layer — comfrey, yarrow, chamomile</text>
+  <text x="20" y="90" font-size="10" fill="#5C4429">◯ Ground cover — white clover, fescue</text>
+  <text x="20" y="104" font-size="10" fill="#5C4429">◯ Bulbs — chive, garlic, daffodil</text>
+  <text x="20" y="118" font-size="10" fill="#5C4429">◯ Vine — grape or hardy kiwi (optional)</text>
+  <text x="20" y="132" font-size="10" fill="#5C4429">◯ Rhizosphere — mycorrhizae</text>
+</svg>
+<figcaption>The 7 layers of the apple guild. Each row feeds the tree back — comfrey mines K, clover fixes N, chive deters pests, mycorrhizae trade water + P for photosynthate sugars. A properly-installed guild needs no irrigation, no fertilizer, no pesticide after year three.</figcaption>
+</div>
+
+<h2><small>The closed loops</small>Everything feeds something</h2>
+<div class="loop"><b>Chicken</b> eats kitchen scraps <span class="arrow">→</span> lays <b>egg</b> + drops <b>manure</b> <span class="arrow">→</span> compost pile heats 15 % faster <span class="arrow">→</span> <b>compost</b> applied to orchard <span class="arrow">→</span> <b>apple</b> ripens bigger <span class="arrow">→</span> <b>cider pressings</b> + <b>apple scraps</b> back to chicken.</div>
+<div class="loop"><b>Comfrey</b> grows on a tile <span class="arrow">→</span> chopped by fairy <span class="arrow">→</span> drops as <b>K-rich mulch</b> at drip line <span class="arrow">→</span> tree K-up <span class="arrow">→</span> <b>bigger fruit</b> <span class="arrow">→</span> fruit feeds fairies <span class="arrow">→</span> more fairies do more chopping.</div>
+<div class="loop">Culled animal <b>bones</b> <span class="arrow">→</span> roasted in kiln <span class="arrow">→</span> vinegar soak <span class="arrow">→</span> <b>WCP (water-soluble P)</b> <span class="arrow">→</span> drenched at flowering tree <span class="arrow">→</span> bigger crop <span class="arrow">→</span> more fruit scraps <span class="arrow">→</span> back to chicken.</div>
+<div class="loop"><b>Urine</b> diluted 10:1 <span class="arrow">→</span> applied to cover crop patch <span class="arrow">→</span> explosive N-loving growth <span class="arrow">→</span> <b>chop-and-drop</b> <span class="arrow">→</span> feeds soil + next season's vegetables.</div>
+<div class="loop"><b>Wood</b> from felled tree <span class="arrow">→</span> half to building, half to <b>biochar kiln</b> <span class="arrow">→</span> char + compost = <b>charged biochar</b> <span class="arrow">→</span> tile CEC bumps permanently.</div>
+<div class="loop"><b>Roof runoff</b> <span class="arrow">→</span> rain barrel <span class="arrow">→</span> <b>reed bed</b> filter <span class="arrow">→</span> irrigation + <b>reed biomass</b> to compost <span class="arrow">→</span> soil.</div>
+<div class="loop"><b>Salmonberry</b> in hedge <span class="arrow">→</span> flowers feed <b>mason bees</b> <span class="arrow">→</span> bees pollinate <b>apple</b> (10× orchard yield vs. no bees) <span class="arrow">→</span> apples ripen in summer <span class="arrow">→</span> culls to <b>pig</b> <span class="arrow">→</span> pig manures future salmonberry ground.</div>
+</div><!-- /tab-interactions -->
+
+<div class="tab-pane" id="tab-world">
+<section class="hero" style="margin-top: 20px;">
+  <h1>World-state visual progression
+    <small>The landscape itself is the scoreboard</small>
+  </h1>
+  <p>A fresh game should feel <b>untamed, wild, and barren</b> — thin scrub on grey-brown soil, low saturation, little motion. A climax farm should feel <b>overwhelmingly alive</b> — vibrant summer greens, fruit glowing in the canopy, pollinator clouds, and permaculture design features tattooed across the landscape like the signature of a decades-long practitioner. The player's progress is something they <em>see</em>, not something they read in a menu.</p>
+</section>
+
+<h2><small>The four stages</small>From barren to vibrant</h2>
+<div class="rings">
+  <div class="ring-row" style="grid-template-columns: 90px 160px 1fr 140px;">
+    <div class="ring-num" style="background:#998877; color:#E8E6D8;">0.0–0.2</div>
+    <div class="ring-title">Barren<span>untamed &amp; wild</span></div>
+    <div class="ring-unlocks">Palette desaturated 40 %, cool grey-brown bias. Muted sky. Low contrast. Sparse pioneer scrub (nettle, dandelion, yarrow) in patches. Isolated trees, exposed rock. Bird cries heard but rarely seen. Soil cracks visible on close zoom.</div>
+    <div class="ring-time">Day 1<br>Vitality &lt; 0.2</div>
+  </div>
+  <div class="ring-row" style="grid-template-columns: 90px 160px 1fr 140px;">
+    <div class="ring-num" style="background:#B7B48C; color:#3E2F23;">0.2–0.5</div>
+    <div class="ring-title">Waking<span>first pulse of life</span></div>
+    <div class="ring-unlocks">Saturation climbs; greens fill in. Pioneer cover, first cover crops, first berry bushes. Dawn fog returns with moisture retention. Mason bees visible around early flowers. First chicken patrols the yard. Dead patches heal visibly.</div>
+    <div class="ring-time">2–15 hr<br>Vitality 0.2–0.5</div>
+  </div>
+  <div class="ring-row" style="grid-template-columns: 90px 160px 1fr 140px;">
+    <div class="ring-num" style="background:#8BC47A; color:#3E2F23;">0.5–0.8</div>
+    <div class="ring-title">Thriving<span>diversity visible</span></div>
+    <div class="ring-unlocks">Full palette saturation. Orchard in bloom, bees cloud the canopy, fruit fills. Guilds recognizable from the air. Swales + hedgerows visible as design lines. Animals in rotation. Night: firefly flicker + mycelium glow. Season transitions dramatic.</div>
+    <div class="ring-time">15–40 hr<br>Vitality 0.5–0.8</div>
+  </div>
+  <div class="ring-row" style="grid-template-columns: 90px 160px 1fr 140px;">
+    <div class="ring-num" style="background:#2F4423; color:#F2C14E;">0.8–1.0</div>
+    <div class="ring-title">Vibrant climax<span>tattooed design</span></div>
+    <div class="ring-unlocks">Hyper-saturated summer. Pollinator clouds visible on wind. Aurora-tier flourishes at solstice. 7-layer food forest. Bioluminescent mushroom clusters at night. Visible salmon run in stream. Permaculture patterns everywhere — from above, the farm reads as consciously designed.</div>
+    <div class="ring-time">40 hr+<br>Vitality &gt; 0.8</div>
+  </div>
+</div>
+
+<h2><small>Permaculture tattoos</small>Visible signatures on the mesh</h2>
+<p>Every earthwork and planting pattern renders as a <b>permanent visible mark</b> on the terrain. You can recognize a mature permaculture farm from the air because the design is literally written on the land.</p>
+<div class="earthworks">
+  <div class="earth-card"><h4>Contour swales</h4><p>On-contour lines carved across slope — trace elevation curves exactly. Trees on the berms render as continuous species ribbons.</p></div>
+  <div class="earth-card"><h4>Guild clusters</h4><p>Center-tree + satellite plants in recognizable arrangement. Apple in the middle, comfrey at drip line, yarrow spokes, clover matrix, chive ring.</p></div>
+  <div class="earth-card"><h4>Hedgerows</h4><p>Continuous species-rich bands along property edges — diverse height, thorny in the middle, bird-magnet.</p></div>
+  <div class="earth-card"><h4>Hugelkultur mounds</h4><p>Raised berms visibly swelling from the ground with layered plantings up the sides.</p></div>
+  <div class="earth-card"><h4>Keyline scarring</h4><p>Faint contour lines from sub-soiling that green over time as OM accumulates along them.</p></div>
+  <div class="earth-card"><h4>Terraces</h4><p>Step-function landscape on steep land. Each step its own microclimate.</p></div>
+  <div class="earth-card"><h4>Ponds &amp; wetlands</h4><p>Sky-reflecting water, ripples on rain, cattails at edges, visible frog chorus at night.</p></div>
+  <div class="earth-card"><h4>Chop-and-drop rings</h4><p>Small mulch skirts at tree drip lines showing the comfrey-K labor cycle.</p></div>
+  <div class="earth-card"><h4>Paddock footprints</h4><p>Fence lines + grazing patterns visible in grass height differentials between rotations.</p></div>
+  <div class="earth-card"><h4>Fairy-trail arcs</h4><p>At night, cumulative fairy flight paths leave faint luminous traces marking favorite routes — literal labor made visible.</p></div>
+</div>
+
+<h2><small>Seasonal drama</small>The world shifts four times a year</h2>
+<div class="gain-loss">
+  <div class="gl-col gain">
+    <h4>Spring</h4>
+    <ul>
+      <li><b>Blossom storm</b> — cherry, apple, plum, salmonberry simultaneous</li>
+      <li>Palette pushed pastel-pink + fresh-green</li>
+      <li>Mason bees emerge first, visible around tubes</li>
+      <li>First fiddleheads unfurl in shade</li>
+      <li>Morning fog lifts dramatically</li>
+    </ul>
+  </div>
+  <div class="gl-col gain">
+    <h4>Summer</h4>
+    <ul>
+      <li><b>Peak saturation</b> — everything glows with sun</li>
+      <li>Fruit swells visibly on branches</li>
+      <li>Pollinator cloud animates over orchard</li>
+      <li>Heat shimmer on south-facing tiles</li>
+      <li>Long-twilight warm gold evenings</li>
+    </ul>
+  </div>
+  <div class="gl-col loss">
+    <h4>Autumn</h4>
+    <ul>
+      <li><b>Fire palette</b> — coral, berry, honey-gold</li>
+      <li>Leaves fall into mulch layers under trees</li>
+      <li>Smoky atmospheric fog in mornings</li>
+      <li>Harvest bounty visible on vines + canes</li>
+      <li>Migrating birds traverse the sky</li>
+    </ul>
+  </div>
+  <div class="gl-col loss">
+    <h4>Winter</h4>
+    <ul>
+      <li><b>Desaturated</b>, silver rim-light, blue-hour everywhere</li>
+      <li>Bare branches reveal guild geometry</li>
+      <li>Snow highlights earthworks (swales pop white)</li>
+      <li>Evergreens + winter kale remain as color anchors</li>
+      <li>Barn windows glow warm, smoke from kiln</li>
+    </ul>
+  </div>
+</div>
+
+<h2><small>Night mode amplifies</small>Dark reveals magic</h2>
+<div class="eco-grid">
+  <div class="ecard"><b>Moonlight wash</b>Cool blue-hour LUT; silhouettes stay readable</div>
+  <div class="ecard"><b>Fairy lights</b>Each fairy casts a warm cone; clusters create glow pools</div>
+  <div class="ecard"><b>Window glow</b>Barn, storage, kiln windows emit warm additive</div>
+  <div class="ecard"><b>Firefly field</b>Emerges at biology &gt; 0.6; scatters through grass</div>
+  <div class="ecard"><b>Mycelium veins</b>Faint cyan lines beneath climax forest floor</div>
+  <div class="ecard"><b>Mushroom bloom</b>Bioluminescent clusters on dead logs</div>
+  <div class="ecard"><b>Bat silhouettes</b>Visible around box at dusk, moth-chasing motion</div>
+  <div class="ecard"><b>Solstice aurora</b>Climax-tier: aurora ribbon across sky (shader)</div>
+</div>
+
+<section style="margin-top: 60px; padding: 30px; background: #fbf3dd; border: 1px solid var(--parchment-edge); border-radius: 10px; text-align: center;">
+<p style="margin: 0; font-size: 15px; color: var(--wood-dark);">Numbers on the HUD are optional for min-maxers. The <b>world itself</b> is enough to tell any player how they're doing.</p>
+</section>
+</div><!-- /tab-world -->
+
+<div class="tab-pane" id="tab-wildlife">
+<section class="hero" style="margin-top: 20px;">
+  <h1>Self-balancing wild ecology
+    <small>Provide habitat. The ecology runs itself.</small>
+  </h1>
+  <p>The player does not command predators. They do not assign snakes to mice. They <b>build habitat</b> — nest boxes, rock piles, brush piles, ponds, hedgerows — and creatures arrive when conditions are met. A mouse boom triggers an owl arrival when you've built the box. A slug boom triggers duck interest or a garter snake moving into the rock pile. The web self-regulates from there.</p>
+</section>
+
+<h2><small>The loop</small>How arrivals happen</h2>
+<div class="loop-diag">
+  Player builds <b>habitat</b> → conditions reach <b>arrival threshold</b> for a species → <b>arrival event</b> fires (banner · camera · audio · bestiary) → species <b>affects populations</b> (predation, pollination, decomposition) → the farm <b>self-regulates</b> without direct command.
+</div>
+
+<h2><small>Habitat buildables</small>Place these, invite these</h2>
+<table>
+  <tr><th>Habitat</th><th>Cost</th><th>Invites</th><th>Function</th></tr>
+  <tr><td><b>Owl box</b> (on pole or barn)</td><td>wood × 3</td><td>Barn owl · Screech owl</td><td>6–10 rodents / night</td></tr>
+  <tr><td><b>Bat box</b> (12 ft up)</td><td>wood × 2</td><td>Brown bat · Little brown bat</td><td>~900 moths / bat / night</td></tr>
+  <tr><td><b>Rock pile</b></td><td>stone × 6 labor</td><td>Garter snake · Gopher snake · Salamander</td><td>Slug + rodent hunter</td></tr>
+  <tr><td><b>Brush pile</b></td><td>free (from prunings)</td><td>Ground beetle · Salamander · Overwintering lacewing</td><td>Slug + cutworm + aphid control next spring</td></tr>
+  <tr><td><b>Hedgerow</b> (5+ perennials in band)</td><td>plantings</td><td>Bumble queen · Songbird · Beneficial insects</td><td>Pollination + pest patrol + wind shelter</td></tr>
+  <tr><td><b>Pond margin</b></td><td>earthworks</td><td>Dragonfly · Pacific tree frog · Duck · Heron</td><td>Mosquito control + amphibian food chain</td></tr>
+  <tr><td><b>Insectary strip</b></td><td>diverse flowering plants</td><td>Ladybug · Lacewing · Hoverfly · Parasitic wasp</td><td>Aphid + caterpillar control</td></tr>
+  <tr><td><b>Bare-ground patch</b></td><td>leave unmulched</td><td>70 % native solitary bees (nest in soil)</td><td>Orchard pollination</td></tr>
+  <tr><td><b>Hollow-stem bundle</b></td><td>pruning scraps</td><td>Leafcutter bee · Stem-nesting natives</td><td>Supplemental pollinators</td></tr>
+  <tr><td><b>Barn rafters open</b></td><td>allow it</td><td>Barn swallow · Bats</td><td>~600 flies / swallow / day</td></tr>
+</table>
+
+<h2><small>The self-balancing cycle</small>Predator-prey in code</h2>
+<p>Every mobile species has population arithmetic running on the day-tick: <code>population</code>, <code>birth_rate</code>, <code>death_rate</code>, <code>food_consumption</code>. Predators eat prey → prey decreases → predators starve or leave → prey rebounds. The cycle amplitude dampens as biodiversity rises, because more species = more dampening feedbacks.</p>
+
+<div class="fig">
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="700" height="260" fill="#fbf3dd"/>
+  <line x1="60" y1="230" x2="670" y2="230" stroke="#7A5C48" stroke-width="2"/>
+  <line x1="60" y1="30" x2="60" y2="230" stroke="#7A5C48" stroke-width="2"/>
+  <text x="30" y="140" font-size="11" fill="#5C4429" transform="rotate(-90 30 140)">Population</text>
+  <text x="365" y="250" font-size="11" fill="#5C4429" text-anchor="middle">Time (days)</text>
+  <path d="M 60 200 Q 120 50, 180 100 Q 240 170, 300 120 Q 360 40, 420 110 Q 480 170, 540 140 Q 600 100, 670 130" stroke="#F28E74" stroke-width="3" fill="none"/>
+  <path d="M 60 220 Q 120 200, 180 190 Q 240 80, 300 200 Q 360 220, 420 170 Q 480 80, 540 200 Q 600 220, 670 180" stroke="#6A4A87" stroke-width="3" fill="none"/>
+  <text x="85" y="50" font-size="12" fill="#B6473A" font-weight="bold">Prey (mice / aphids)</text>
+  <text x="85" y="68" font-size="12" fill="#6A4A87" font-weight="bold">Predator (owl / ladybug)</text>
+  <text x="660" y="215" font-size="10" fill="#5C4429" text-anchor="end">Amplitude dampens as biodiversity grows →</text>
+</svg>
+<figcaption>Classic Lotka-Volterra oscillation — prey booms invite predators, which crash the prey, which starves the predators, which releases the prey. Amplitude smooths out with richer habitat.</figcaption>
+</div>
+
+<h2><small>Outbreaks are the nudge</small>When something goes off-balance</h2>
+<p>The game doesn't hand you a quest. It shows you a problem, and hints at the ecological answer. You decide whether to build the habitat.</p>
+<div class="loop"><b>Aphid outbreak</b> in your kale mono-row → bushes wilt visibly → tooltip appears: <em>"Could an insectary strip help?"</em> → you plant one → ladybugs + lacewings arrive within a week → aphids crash.</div>
+<div class="loop"><b>Mouse population boom</b> in the pantry-rich farm → seedlings chewed at dawn → tooltip: <em>"An owl box attracts a barn owl; a rock pile attracts snakes."</em> → you build → mice stabilize over 2 weeks.</div>
+<div class="loop"><b>Slug explosion</b> in the wet spring → lettuce shredded → tooltip: <em>"Ducks, garter snakes, ground beetles, and frogs all eat slugs. Which habitat suits your farm?"</em> → you pick one → problem solves over a month.</div>
+<div class="loop"><b>Grasshopper plague</b> in summer → dry pasture stripping → <em>"Kestrels hunt grasshoppers if they have an open perch. Guineas eat them too."</em> → you place a perch + guinea → flock balances.</div>
+
+<h2><small>Indicator species</small>Soft achievements that reward patience</h2>
+<p>Some arrivals aren't pest control — they're signals. They appear only when the farm has reached particular thresholds of health, and they are their own reward.</p>
+<div class="eco-grid">
+  <div class="ecard"><b>Firefly field</b><span class="lat">Photinus spp.</span>Shows up at biology index &gt; 0.6. Night-time magic.<div class="tags"><span class="tag good">Indicator</span></div></div>
+  <div class="ecard"><b>Western Tanager</b><span class="lat">Piranga ludoviciana</span>Bird diversity &gt; 8 species; mature forest structure.<div class="tags"><span class="tag good">Indicator</span></div></div>
+  <div class="ecard"><b>Native bumblebee queen</b><span class="lat">Bombus spp.</span>Undisturbed brushy edge overwinters her. Spring emergence.<div class="tags"><span class="tag good">Indicator</span></div></div>
+  <div class="ecard"><b>Pacific Tree Frog</b><span class="lat">Pseudacris regilla</span>Pond + tall grass + no-pesticide. Night chorus.<div class="tags"><span class="tag good">Indicator</span></div></div>
+  <div class="ecard"><b>Long-toed Salamander</b><span class="lat">Ambystoma macrodactylum</span>Wood pile + moisture + clean soil.<div class="tags"><span class="tag good">Indicator</span></div></div>
+  <div class="ecard"><b>Pacific Chorus</b><span class="lat">evening amphibian song</span>At least 3 amphibian species active. Audio cue at twilight.<div class="tags"><span class="tag good">Indicator</span></div></div>
+  <div class="ecard"><b>Pileated Woodpecker</b><span class="lat">Dryocopus pileatus</span>Old-snag retention + beetle populations. Climax hallmark.<div class="tags"><span class="tag good">Indicator</span></div></div>
+  <div class="ecard"><b>Salmon fry</b><span class="lat">Oncorhynchus</span>Branch D+G climax — stream restored + cool clean water.<div class="tags"><span class="tag t-climax">Climax</span></div></div>
+</div>
+
+<h2><small>Wildlife as ecosystem engineers</small>Some species reshape the land</h2>
+<div class="synergy">
+<h4>Beaver</h4>
+<p>If allowed to remain on-stream, a beaver pair builds its own dam, floods a valley, creates a whole new wetland niche — cattails, salamanders, ducks, dragonflies — that the player didn't plan but now owns. The game lets you decide: trap/relocate, or coexist. Coexistence is more productive in the long run.</p>
+</div>
+<div class="synergy">
+<h4>Black bear</h4>
+<p>A bear trail through your orchard is a problem for fruit but it also spreads seeds across the land — salmonberry, salal, thimbleberry establish in places you never planted. Pick your level of fencing.</p>
+</div>
+<div class="synergy">
+<h4>Deer browse line</h4>
+<p>Visible at ~1.8 m across unfenced tiles — the deer have a say in what stays short. Use it as a test: fence before planting sensitive orchard.</p>
+</div>
+<div class="synergy">
+<h4>Salmon run (climax)</h4>
+<p>A restored salmon stream deposits marine-derived nitrogen in the riparian zone. Trees within 20 m of the stream grow 20–40 % faster the year after a run. Bears + eagles pull fish up into the forest, fertilizing far beyond the water.</p>
+</div>
+
+<h2><small>The bestiary</small>Every arrival is logged</h2>
+<p>Every species that ever visits the farm gets a bestiary card: species name, first arrival date, current population, habitat requirement, diet, ecological role, and paired species (predators / prey / companions). The bestiary is the player's growing knowledge of <em>their</em> farm's unique ecology.</p>
+
+<section style="margin-top: 60px; padding: 30px; background: #fbf3dd; border: 1px solid var(--parchment-edge); border-radius: 10px; text-align: center;">
+<p style="margin: 0; font-size: 15px; color: var(--wood-dark);">The magic isn't that you assigned an owl to hunt mice. The magic is that the owl <em>chose you</em> because you made a good home.</p>
+</section>
+</div><!-- /tab-wildlife -->
+
+<div class="tab-pane" id="tab-unlocks">
+<section class="hero" style="margin-top: 20px;">
+  <h1>Unlock progression
+    <small>When each species, structure, and skill enters play</small>
+  </h1>
+  <p>The game is a layered onboarding. Ring 0 is the first five minutes — chop, feed compost, scoop compost, plant. Ring 5 is the climax food-forest after dozens of hours. No ring is optional for completion, but the <em>order within a ring</em> is fully up to the player.</p>
+</section>
+
+<div class="rings">
+  <div class="ring-row">
+    <div class="ring-num">0</div>
+    <div class="ring-title">Tutorial<span>first 5 min</span></div>
+    <div class="ring-unlocks"><b>Unlocked:</b> chop-and-drop, harvest ripe fruit, feed compost, scoop finished compost, plant pioneer on enriched tile. <b>Species active:</b> nettle, dandelion, yarrow, wild strawberry, red wiggler worms. Fairy 1 present.</div>
+    <div class="ring-time">5 min</div>
+  </div>
+  <div class="ring-row">
+    <div class="ring-num">1</div>
+    <div class="ring-title">Resources<span>5–15 min</span></div>
+    <div class="ring-unlocks"><b>New:</b> fell small tree (task), quarry rock, gather deadwood, storage shed, fairy roles: composter + forager. <b>Species:</b> + clover, vetch, fava (cover crops), comfrey, chive, red alder (N-fixer). Fairies 2–3.</div>
+    <div class="ring-time">15 min</div>
+  </div>
+  <div class="ring-row">
+    <div class="ring-num">2</div>
+    <div class="ring-title">Infrastructure<span>15–45 min</span></div>
+    <div class="ring-unlocks"><b>New:</b> second compost pile, sprouting bed, chicken coop, mason-bee hotel, swale marker, contour diggings. <b>Species:</b> + chicken, mason bee, saskatoon, wild strawberry (cultivated), salmonberry, huckleberry, garlic. Fairies 4–7.</div>
+    <div class="ring-time">30 min</div>
+  </div>
+  <div class="ring-row">
+    <div class="ring-num">3</div>
+    <div class="ring-title">Production<span>45 min – 2 hr</span></div>
+    <div class="ring-unlocks"><b>New:</b> Warré hive (honey), orchard placement, goat shed, sprouting bed upgrade, diversion channels, pond excavation. <b>Species:</b> + honeybee, apple, pear, plum, cherry, hazelnut (planted), blueberry, currant, potato, kale, cabbage, lettuce, rainbow trout, duck, pig. Fairies 8–20.</div>
+    <div class="ring-time">75 min</div>
+  </div>
+  <div class="ring-row">
+    <div class="ring-num">4</div>
+    <div class="ring-title">Soil mastery<span>2–6 hr</span></div>
+    <div class="ring-unlocks"><b>New:</b> mob-grazing rotation UI, cover-crop sequences, biochar kiln, WCA / WCP / FAA / IMO amendment recipes (full NPK crafting), Johnson-Su bioreactor, mycoremediation, aquaculture expansion. <b>Species:</b> + cow (Dexter), sheep, goose, turkey, LGD, llama, all fungi for inoculation, black locust, quinoa, amaranth, advanced brassicas. Fairies 20–60.</div>
+    <div class="ring-time">4 hr</div>
+  </div>
+  <div class="ring-row">
+    <div class="ring-num">5</div>
+    <div class="ring-title">Climax<span>6 hr+</span></div>
+    <div class="ring-unlocks"><b>New:</b> 7-layer food forest, biodynamic preparations (BD500–508), landrace seed vault, watershed-scale swale networks, salmon run restoration, forest-edge truffle cultivation, old-growth canopy, mature IMO harvest, farmstead-trade economy. <b>Species:</b> + chanterelle, porcini, Pacific golden truffle, wild ramps, reishi, mature sockeye salmon (stream restoration). Fairies approach 100.</div>
+    <div class="ring-time">open-ended</div>
+  </div>
+</div>
+
+<h2><small>Cross-branch unlocks</small>What the game opens next</h2>
+<p>Some unlocks require progress in <em>multiple</em> branches — this forces diverse play and prevents single-strategy farms.</p>
+<table>
+  <tr><th>Unlock</th><th>Requires</th><th>What it enables</th></tr>
+  <tr><td><b>Biochar Kiln</b></td><td>Branch F node 2 + 6 wood + 6 stone in storage</td><td>Charged-biochar amendment (permanent +10 % FC)</td></tr>
+  <tr><td><b>Johnson-Su Bioreactor</b></td><td>Branch F node 4 + 12-month wait</td><td>Top-tier fungal inoculant; climax-ready soil biology</td></tr>
+  <tr><td><b>Mob-Grazing Rotation UI</b></td><td>Branch C ≥ 3 species + Branch G node 1</td><td>Full Salatin cascade; +300 % OM/rotation</td></tr>
+  <tr><td><b>Seed Vault</b></td><td>Branch B ≥ 5 species + Branch E ≥ 3 species + Branch F node 4</td><td>Landrace seed breeding; climate resilience</td></tr>
+  <tr><td><b>Biodynamic Atelier</b></td><td>Branch A + C + E all at node 4+</td><td>BD500–508 preparations; lunar-calendar bonus</td></tr>
+  <tr><td><b>Food Forest Climax</b></td><td>Branch B + F + G all at node 5+</td><td>7-layer mature food forest; auto-maintain</td></tr>
+  <tr><td><b>Salmon Run Restoration</b></td><td>Branch D + G at max + watershed-scale work</td><td>Stream ecology; massive nutrient pump; climax flourish</td></tr>
+</table>
+
+<section style="margin-top: 60px; padding: 30px; background: #fbf3dd; border: 1px solid var(--parchment-edge); border-radius: 10px; text-align: center;">
+<p style="margin: 0; font-size: 15px; color: var(--wood-dark);">A mastered farm is a decades-long project compressed into 10–20 hours of play. The engine rewards patience, observation, and creative combination — the real permaculture skills.</p>
+</section>
+</div><!-- /tab-unlocks -->
+
+<script>
+(function() {
+  const buttons = document.querySelectorAll('.tab-btn');
+  const panes = document.querySelectorAll('.tab-pane');
+  const toc = document.getElementById('nav-soil');
+  function show(tabId) {
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+    panes.forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
+    if (toc) toc.style.display = (tabId === 'soil') ? '' : 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  buttons.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+})();
+</script>
+</body>
+</html>

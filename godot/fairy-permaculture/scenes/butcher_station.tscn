@@ -1,0 +1,37 @@
+[gd_scene load_steps=6 format=3 uid="uid://fp_butcher_station_scene"]
+
+[ext_resource type="Script" path="res://scripts/butcher_station.gd" id="1_butcher"]
+
+[sub_resource type="BoxMesh" id="block_mesh"]
+size = Vector3(1.0, 0.6, 0.8)
+
+[sub_resource type="CylinderMesh" id="post_mesh"]
+top_radius = 0.07
+bottom_radius = 0.08
+height = 1.6
+
+[sub_resource type="BoxMesh" id="hook_mesh"]
+size = Vector3(0.3, 0.08, 0.08)
+
+[sub_resource type="BoxShape3D" id="station_click_shape"]
+size = Vector3(1.1, 2.1, 0.9)
+
+[node name="ButcherStation" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_butcher")
+
+[node name="Block" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+mesh = SubResource("block_mesh")
+
+[node name="Post" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 1.4, 0)
+mesh = SubResource("post_mesh")
+
+[node name="Hook" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 2.1, 0)
+mesh = SubResource("hook_mesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+shape = SubResource("station_click_shape")

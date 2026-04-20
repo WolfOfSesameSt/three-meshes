@@ -1,0 +1,52 @@
+[gd_scene load_steps=8 format=3 uid="uid://fp_chicken_coop_scene"]
+
+[ext_resource type="Script" path="res://scripts/chicken_coop.gd" id="1_coop"]
+
+[sub_resource type="BoxMesh" id="walls_mesh"]
+size = Vector3(2.2, 1.8, 1.8)
+
+[sub_resource type="PrismMesh" id="roof_mesh"]
+size = Vector3(2.6, 1.0, 2.1)
+
+[sub_resource type="BoxMesh" id="door_mesh"]
+size = Vector3(0.6, 1.0, 0.05)
+
+[sub_resource type="BoxMesh" id="nest_mesh"]
+size = Vector3(1.6, 0.25, 0.9)
+
+[sub_resource type="SphereMesh" id="egg_badge_mesh"]
+radius = 0.12
+height = 0.18
+
+[sub_resource type="BoxShape3D" id="coop_click_shape"]
+size = Vector3(2.8, 3.0, 2.2)
+
+[node name="ChickenCoop" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_coop")
+
+[node name="Walls" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("walls_mesh")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.35, 0)
+mesh = SubResource("roof_mesh")
+
+[node name="Door" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0.92)
+mesh = SubResource("door_mesh")
+
+[node name="Nest" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.55)
+mesh = SubResource("nest_mesh")
+
+[node name="EggBadge" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, -0.55)
+mesh = SubResource("egg_badge_mesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("coop_click_shape")
+
+[node name="FencePosts" type="Node3D" parent="."]

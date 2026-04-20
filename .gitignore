@@ -12,3 +12,7 @@ public/audio/music/
 .claude/worktrees/
 src/games/void-raiders/.qa-game/
 src/games/void-raiders/model-preview/.qa/
+out/
+# Godot project caches + runtime logs — regenerated on open/play.
+godot/*/.godot/
+godot/*/logs/

@@ -1,0 +1,82 @@
+[gd_scene load_steps=10 format=3 uid="uid://main_scene"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/camera_rig.gd" id="2_rig"]
+[ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="3_hud"]
+[ext_resource type="AudioStream" path="res://audio/music-day.mp3" id="4_mday"]
+[ext_resource type="AudioStream" path="res://audio/music-night.mp3" id="5_mnight"]
+[ext_resource type="Script" path="res://scripts/sun_cycle.gd" id="6_sun_cycle"]
+
+[sub_resource type="PlaneMesh" id="plane_ground"]
+size = Vector2(200, 200)
+
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.545, 0.769, 0.478, 1)
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.722, 0.847, 0.910, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.910, 0.902, 0.847, 1)
+ambient_light_energy = 0.75
+tonemap_mode = 2
+tonemap_exposure = 1.05
+tonemap_white = 6.0
+fog_enabled = true
+fog_light_color = Color(0.910, 0.902, 0.847, 1)
+fog_light_energy = 0.35
+fog_density = 0.0035
+fog_aerial_perspective = 0.3
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 30, 60, 30)
+light_color = Color(1, 0.957, 0.863, 1)
+light_energy = 1.2
+shadow_enabled = true
+shadow_bias = 0.12
+shadow_normal_bias = 2.5
+shadow_blur = 2.2
+directional_shadow_mode = 2
+directional_shadow_split_1 = 0.12
+directional_shadow_split_2 = 0.28
+directional_shadow_split_3 = 0.55
+directional_shadow_max_distance = 180.0
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+visible = false
+mesh = SubResource("plane_ground")
+surface_material_override/0 = SubResource("ground_mat")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("2_rig")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+projection = 1
+size = 30.0
+
+[node name="Audio" type="Node" parent="."]
+
+[node name="MusicDay" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("4_mday")
+volume_db = -80.0
+autoplay = true
+bus = "Music"
+parameters/looping = true
+
+[node name="MusicNight" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("5_mnight")
+volume_db = -80.0
+autoplay = true
+bus = "Music"
+parameters/looping = true
+
+[node name="Hud" parent="." instance=ExtResource("3_hud")]
+
+[node name="SunCycle" type="Node" parent="."]
+script = ExtResource("6_sun_cycle")
