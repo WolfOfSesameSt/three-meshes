@@ -43,6 +43,7 @@ RandomEvents="*res://autoload/random_events.gd"
 Achievements="*res://autoload/achievements.gd"
 EventHandlers="*res://autoload/event_handlers.gd"
 LifetimeStats="*res://autoload/lifetime_stats.gd"
+Butterflies="*res://autoload/butterflies.gd"
 
 [debug]
 
