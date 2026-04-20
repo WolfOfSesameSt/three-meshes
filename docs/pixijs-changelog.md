@@ -3,11 +3,47 @@
 Tracks Pixi.js releases relevant to this project. Auto-updated weekly by scheduled agent.
 
 **Installed version:** v8.17.1
-**Latest known version:** v8.17.1 (as of 2026-04-06)
+**Latest known version:** v8.18.1 (as of 2026-04-20)
 
 ---
 
 <!-- New entries are prepended below this line by the scheduled agent -->
+
+## v8.18.1 (2026-04-14)
+### Bug Fixes
+- Fixed error when using `Application.domContainerRoot` in Node.js environments (DOM unavailable server-side)
+
+---
+
+## v8.18.0 (2026-04-14)
+### New Features
+- **Graphics to SVG export** — `graphicsContextToSvg()` converts `Graphics`/`GraphicsContext` to an SVG string, supporting shapes, strokes, gradients, and holes
+- **Mask channel selection** — `setMask()` now accepts a `channel` option (`'red'` or `'alpha'`) to specify which texture channel drives mask visibility:
+  ```js
+  sprite.setMask({ mask: maskTexture, channel: 'red' });
+  ```
+- **Renderer preference array** — `autoDetectRenderer()` and `Application.init()` now accept an array for `preference` to restrict the renderer fallback chain:
+  ```js
+  await app.init({ preference: ['webgpu', 'webgl'] });
+  ```
+- **DOM container root getter** — `app.domContainerRoot` exposes the wrapping `HTMLDivElement` for CSS customization and DOM overlay control
+- **`MeshRope` width option** — explicit `width` parameter for rope thickness, decoupled from texture height
+- **`renderer.generateTexture()` / `RenderTexture.create()` `defaultAnchor` option** — set anchor for generated textures at creation time
+
+### Bug Fixes
+- Fixed stroke-only Graphics masks on Canvas renderer
+- Fixed iOS 18 single-mip texture handling
+- Fixed stale `TextureMatrix` with pooled textures
+- Fixed unhandled `GraphicsPath.transform()` actions
+- Fixed `VideoSource` play/mediaReady recursion
+- Fixed literal `<` character parsing in tagged text
+- Fixed `SplitText` baseline misalignment with `tagStyles`
+- Fixed `TilingSprite.tilePosition` resolution issue on Canvas
+
+### Breaking Changes
+- `text.width` for wrapped text with non-left alignment now returns the actual rendered width instead of `wordWrapWidth`. If layout depends on the old behavior, use `wordWrapWidth` directly or wrap text in a sized container.
+
+---
 
 ## v8.17.1 (2026-03-16)
 ### Bug Fixes
