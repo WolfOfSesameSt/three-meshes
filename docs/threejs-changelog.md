@@ -3,11 +3,38 @@
 Tracks Three.js releases relevant to this project. Auto-updated weekly by scheduled agent.
 
 **Installed version:** r170
-**Latest known version:** r183 (as of 2026-04-04)
+**Latest known version:** r184 (as of 2026-04-20)
 
 ---
 
 <!-- New entries are prepended below this line by the scheduled agent -->
+
+## r184 (2026-04-16)
+### New Features
+- HTMLTexture: New texture type for rendering HTML content as textures
+- LightProbeGrid: Add position-dependent diffuse Global Illumination
+- TSL: Compilation performance improved 3.0x; add hyperbolic math nodes, global/local scope, `OnFrameUpdate` / `OnBeforeFrameUpdate` lifecycle events
+- WebGPURenderer: Introduce Dynamic Lights; make `compileAsync()` truly non-blocking; add compute shader bounds check; introduce `ReadbackBuffer`
+- WebGLRenderer: Add support for packed normal maps; implement `WEBGL_multi_draw` fallback
+- GLTFExporter: Add `EXT_texture_webp` support
+- EXRLoader: Support YCbCr and B44/A formats; add multi-part and deep scanline support
+- KTX2Loader: Support RGBA 16-bit unsigned normalized formats
+- FBXLoader: Multiple skinning fixes (bind matrix, rotation animations, morph deltas, Z-up correction)
+- USDLoader: Add geometric primitives (Cube, Sphere, Cylinder, Cone, Capsule); add MaterialX UsdPreviewSurface support
+- ColladaLoader: Add `polygons` primitive and `instance_joint` support
+- ColorUtils: Add `setKelvin()` function
+- MeshPhysicalMaterial: Fix Anisotropic regression
+- InstancedMesh / BatchedMesh: Fix `getColorAt()` throwing when colors not set
+- Reflector: Support orthographic cameras
+- Sky: Make sun disc optional
+### Deprecations
+- VTKLoader: Deprecated
+### Breaking Changes
+- BatchedMesh: Removed deprecated instancing render paths
+- Texture: Removed default setter parameter
+### Migration Notes
+- If using deprecated BatchedMesh instancing render paths, update to current API
+- Review any `Texture` setter calls that relied on the removed default parameter
 
 ## r183 (2026-02-20)
 ### New Features
