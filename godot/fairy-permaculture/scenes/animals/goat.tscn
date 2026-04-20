@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fp_goat_scene"]
+
+[ext_resource type="Script" path="res://scripts/animals/goat.gd" id="1_goat"]
+
+[node name="Goat" type="Node3D"]
+script = ExtResource("1_goat")

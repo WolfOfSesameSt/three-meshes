@@ -1,0 +1,236 @@
+[
+  {
+    "id": "travelling-merchant",
+    "name": "Travelling Merchant",
+    "description": "A merchant cart parks on the road tile for 2 days. Trades meat and eggs for rare seed packets and bee queens.",
+    "probability": 0.04,
+    "cooldown_days": 14,
+    "conditions": { "min_day": 10 },
+    "payload": { "stay_days": 2, "offers": ["rare-seed-pack", "bee-queen"] }
+  },
+  {
+    "id": "stray-animal",
+    "name": "Stray Animal",
+    "description": "A feral chicken or semi-wild goat wanders onto the farm. Adopt for +1 stock or chase off for +5 morale.",
+    "probability": 0.04,
+    "cooldown_days": 8,
+    "conditions": { "min_day": 6 },
+    "payload": { "species_pool": ["chicken-layer", "goat-young"] }
+  },
+  {
+    "id": "dead-log-discovery",
+    "name": "Dead Log Discovery",
+    "description": "A forest-edge deadfall drops 40 wood. Claim it within 3 days before a woodpecker starts harvesting.",
+    "probability": 0.05,
+    "cooldown_days": 10,
+    "payload": { "wood_yield": 40.0, "claim_window_days": 3 }
+  },
+  {
+    "id": "seed-discovery",
+    "name": "Heritage Seed Found",
+    "description": "A foraging fairy finds a rare heritage seed - unlocks a higher-tier plant for one planting.",
+    "probability": 0.04,
+    "cooldown_days": 12,
+    "payload": { "tier_bonus": 1 }
+  },
+  {
+    "id": "wandering-fairy",
+    "name": "Wandering Fairy",
+    "description": "An unaffiliated fairy offers to join the farm, bypassing normal population growth.",
+    "probability": 0.02,
+    "cooldown_days": 20,
+    "conditions": { "min_day": 18 },
+    "payload": { "fairy_count_bonus": 1 }
+  },
+  {
+    "id": "old-letter",
+    "name": "Old Letter",
+    "description": "A parchment scrap from the ruin hints at a buried tool or seed cache. A pin appears on the map.",
+    "probability": 0.03,
+    "cooldown_days": 15,
+    "conditions": { "has_ruin": true },
+    "payload": { "reveals": "buried-cache" }
+  },
+  {
+    "id": "lost-duckling",
+    "name": "Lost Duckling",
+    "description": "A lost duckling wanders in. Save it for a free duck pair next spring, or let it go.",
+    "probability": 0.03,
+    "cooldown_days": 20,
+    "conditions": { "season": "spring" },
+    "payload": { "spring_bonus": "duck-pair" }
+  },
+  {
+    "id": "bear-visit",
+    "name": "Bear Visit",
+    "description": "A bear passes through, eats 2 apples, leaves manure on path tiles.",
+    "probability": 0.03,
+    "cooldown_days": 15,
+    "payload": { "fruit_loss": 2.0, "manure_tiles": 4 }
+  },
+  {
+    "id": "salmon-scout",
+    "name": "Salmon Scout",
+    "description": "A single coho scouts the stream. Promises a salmon run if riparian health stays high.",
+    "probability": 0.03,
+    "cooldown_days": 25,
+    "conditions": { "season": "autumn" },
+    "payload": { "riparian_watch": true }
+  },
+  {
+    "id": "first-frost-whisper",
+    "name": "First Frost Whisper",
+    "description": "A two-day warning banner before autumn's first frost.",
+    "probability": 0.50,
+    "cooldown_days": 90,
+    "conditions": { "season": "autumn", "min_season_day": 20 },
+    "payload": { "warning_days": 2 }
+  },
+  {
+    "id": "rainbow-over-ruin",
+    "name": "Rainbow over the Ruin",
+    "description": "A rainbow arcs over the ruin. Fairies crowd around (+5 morale).",
+    "probability": 0.04,
+    "cooldown_days": 12,
+    "payload": { "morale_bonus": 5.0 }
+  },
+  {
+    "id": "windfall-apples",
+    "name": "Windfall Apples",
+    "description": "A wild crabapple drops a burst of fruit across nearby tiles.",
+    "probability": 0.05,
+    "cooldown_days": 10,
+    "payload": { "fruit_yield": 4.0 }
+  },
+  {
+    "id": "comfrey-bloom",
+    "name": "Comfrey Bloom",
+    "description": "Wild comfrey is K-charged today; chop-and-drop yields double.",
+    "probability": 0.04,
+    "cooldown_days": 15,
+    "conditions": { "season_any": ["spring", "summer"] },
+    "payload": { "chop_multiplier": 2.0 }
+  },
+  {
+    "id": "hummingbird-arrival",
+    "name": "Hummingbird Arrival",
+    "description": "Indicator species - the first hummingbird visits. Requires flower diversity 6+.",
+    "probability": 0.03,
+    "cooldown_days": 30,
+    "conditions": { "flower_diversity_min": 6 },
+    "payload": { "morale_bonus": 3.0 }
+  },
+  {
+    "id": "neighbors-lost-goat",
+    "name": "Neighbor's Lost Goat",
+    "description": "A neighbor's goat has wandered onto the farm. Return it for a trade favor, or keep it and accept a guilt debuff.",
+    "probability": 0.02,
+    "cooldown_days": 20,
+    "payload": { "choice": ["return-for-favor", "keep-for-debuff"] }
+  },
+  {
+    "id": "moss-bloom",
+    "name": "Moss Bloom",
+    "description": "Moisture + shade crosses a threshold - moss carpet spreads one tile.",
+    "probability": 0.05,
+    "cooldown_days": 12,
+    "conditions": { "shade_moisture_threshold": 0.6 },
+    "payload": { "tile_decor": "moss" }
+  },
+  {
+    "id": "chanterelle-sprout",
+    "name": "Chanterelle Sprout",
+    "description": "A wild chanterelle pushes up in an oak-hazel guild tile.",
+    "probability": 0.02,
+    "cooldown_days": 30,
+    "conditions": { "season": "autumn", "has_guild": "oak-hazel" },
+    "payload": { "mushroom_yield": 1.0 }
+  },
+  {
+    "id": "firefly-night",
+    "name": "Firefly Night",
+    "description": "Vitality above 0.7 at night conjures fireflies over the pond.",
+    "probability": 0.04,
+    "cooldown_days": 20,
+    "conditions": { "vitality_min": 0.7, "time_of_day": "night" },
+    "payload": { "morale_bonus": 4.0, "cosmetic": "fireflies" }
+  },
+  {
+    "id": "mason-bee-swarm",
+    "name": "Mason Bee Swarm",
+    "description": "A mason bee swarm finds the tubes - pollination rate spikes for a week.",
+    "probability": 0.03,
+    "cooldown_days": 25,
+    "conditions": { "has_building": "mason_bee_tubes" },
+    "payload": { "pollination_bonus_days": 7 }
+  },
+  {
+    "id": "bird-nest-found",
+    "name": "Bird Nest Discovery",
+    "description": "A foraging fairy finds a bird nest; no eggs, but the area is now a protected zone.",
+    "probability": 0.03,
+    "cooldown_days": 15,
+    "payload": { "protected_radius_tiles": 4 }
+  },
+  {
+    "id": "mushroom-flush",
+    "name": "Mushroom Flush",
+    "description": "Overnight rain triggers a burst of wild mushrooms at the forest edge.",
+    "probability": 0.05,
+    "cooldown_days": 12,
+    "conditions": { "recent_rain": true },
+    "payload": { "mushroom_yield": 3.0 }
+  },
+  {
+    "id": "honeybee-split",
+    "name": "Honeybee Split",
+    "description": "A hive splits; a swarm launches toward the oldest apple tree.",
+    "probability": 0.02,
+    "cooldown_days": 30,
+    "conditions": { "has_building": "hive" },
+    "payload": { "new_hive": 1 }
+  },
+  {
+    "id": "chipmunk-stash",
+    "name": "Chipmunk Stash",
+    "description": "A fairy spots a chipmunk seed stash; a small pile of assorted seeds appears at the stash tile.",
+    "probability": 0.04,
+    "cooldown_days": 12,
+    "payload": { "seed_yield": 3.0 }
+  },
+  {
+    "id": "owl-on-post",
+    "name": "Owl on Post",
+    "description": "An owl roosts on a fence post. Rodent pressure drops for a week.",
+    "probability": 0.03,
+    "cooldown_days": 18,
+    "payload": { "rodent_suppression_days": 7 }
+  },
+  {
+    "id": "truffle-whiff",
+    "name": "Truffle Whiff",
+    "description": "A truffle-hinting scent near an old hazel. Decades-mode only.",
+    "probability": 0.01,
+    "cooldown_days": 60,
+    "conditions": { "decades_mode": true },
+    "payload": { "reveals": "truffle-candidate" }
+  },
+  {
+    "id": "lightning-snag",
+    "name": "Lightning Snag",
+    "description": "A lightning strike turns an old tree into a snag. Cavity-nesters arrive in future weeks.",
+    "probability": 0.02,
+    "cooldown_days": 40,
+    "conditions": { "decades_mode": true },
+    "payload": { "snag_spawn": 1 }
+  },
+  {
+    "id": "migratory-flock",
+    "name": "Migratory Flock",
+    "description": "A migratory flock passes overhead; gives the day a cinematic bump.",
+    "probability": 0.04,
+    "cooldown_days": 10,
+    "conditions": { "season_any": ["spring", "autumn"] },
+    "payload": { "cosmetic": "flock-overhead" }
+  }
+]

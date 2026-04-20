@@ -1,0 +1,58 @@
+[gd_scene load_steps=6 format=3 uid="uid://fenced_plot_scene"]
+
+[ext_resource type="Script" path="res://scripts/fenced_plot.gd" id="1_fp"]
+
+[sub_resource type="CylinderMesh" id="fp_disc"]
+top_radius = 1.1
+bottom_radius = 1.25
+height = 0.12
+radial_segments = 16
+
+[sub_resource type="BoxMesh" id="fp_post"]
+size = Vector3(0.08, 0.30, 0.08)
+
+[sub_resource type="BoxMesh" id="fp_rail"]
+size = Vector3(1.0, 0.04, 0.04)
+
+[sub_resource type="BoxShape3D" id="fp_click"]
+size = Vector3(2.8, 0.6, 2.8)
+
+[node name="FencedPlot" type="Node3D"]
+script = ExtResource("1_fp")
+
+[node name="Disc" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+mesh = SubResource("fp_disc")
+
+[node name="Frame" type="Node3D" parent="."]
+
+[node name="PostA" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.20, 0.6)
+mesh = SubResource("fp_post")
+
+[node name="PostB" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.20, 0.6)
+mesh = SubResource("fp_post")
+
+[node name="PostC" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.20, -0.6)
+mesh = SubResource("fp_post")
+
+[node name="PostD" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.20, -0.6)
+mesh = SubResource("fp_post")
+
+[node name="RailA" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, 0.6)
+mesh = SubResource("fp_rail")
+
+[node name="RailB" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, -0.6)
+mesh = SubResource("fp_rail")
+
+[node name="ClickArea" type="StaticBody3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+shape = SubResource("fp_click")

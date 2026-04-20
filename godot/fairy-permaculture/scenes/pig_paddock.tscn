@@ -1,0 +1,39 @@
+[gd_scene load_steps=6 format=3 uid="uid://fp_pig_paddock_scene"]
+
+[ext_resource type="Script" path="res://scripts/pig_paddock.gd" id="1_pig_paddock"]
+
+[sub_resource type="BoxMesh" id="walls_mesh"]
+size = Vector3(1.8, 1.2, 1.6)
+
+[sub_resource type="PrismMesh" id="roof_mesh"]
+size = Vector3(2.1, 0.6, 1.9)
+
+[sub_resource type="CylinderMesh" id="wallow_mesh"]
+top_radius = 1.1
+bottom_radius = 1.1
+height = 0.08
+
+[sub_resource type="BoxShape3D" id="pig_paddock_click_shape"]
+size = Vector3(2.4, 2.2, 2.0)
+
+[node name="PigPaddock" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_pig_paddock")
+
+[node name="Walls" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("walls_mesh")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0)
+mesh = SubResource("roof_mesh")
+
+[node name="Wallow" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0.04, 0)
+mesh = SubResource("wallow_mesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("pig_paddock_click_shape")
+
+[node name="FencePosts" type="Node3D" parent="."]

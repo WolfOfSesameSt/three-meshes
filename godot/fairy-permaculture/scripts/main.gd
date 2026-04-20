@@ -52,10 +52,12 @@ func _ready() -> void:
 	# that follows can snap to the real ground height.
 	WorldGrid.attach_to_scene(self)
 	_camera_rig.set_target(Vector3(0, WorldGrid.sample_height(Vector3.ZERO), 0))
-	# New intro: bare ground + decor + ONE starter pile + wild pioneers
-	# + one fairy. No soil plots, no sprouting bed.
+	# New intro: bare ground + decor + wild pioneers + one fairy.
+	# The starter compost pile is NOT auto-spawned — the player places
+	# their own via right-click → Build Compost Pile. Teaches the build
+	# loop on day 1 and avoids spawning a pile in the middle of the
+	# stream when the seed happens to put the homestead on water.
 	_spawn_decor()
-	_spawn_pile()
 	_spawn_pioneer_plants()
 	_spawn_fairy()
 	_mount_nursery_panel()
@@ -561,6 +563,14 @@ func _handle_build_action(action: Dictionary) -> void:
 		Juice.pop(_ctx_ground_pos + Vector3(0, 2.0, 0), "NOT IMPLEMENTED", Palette.CORAL.darkened(0.1))
 		_clear_ctx()
 		return
+	# Water-tile guard — land buildings can't sit in the stream/pond.
+	# Buildings that explicitly want water (duck_pond_edge) set
+	# `action["water_ok"] = true` when surfacing.
+	if WorldGrid.is_water_tile(_ctx_ground_pos) and not bool(action.get("water_ok", false)):
+		Juice.pop(_ctx_ground_pos + Vector3(0, 2.0, 0), "CAN'T BUILD IN WATER", Palette.CORAL.darkened(0.1))
+		AudioManager.play("hover-tick", -4.0)
+		_clear_ctx()
+		return
 	if not Progression.spend_cost(cost):
 		Juice.pop(_ctx_ground_pos + Vector3(0, 2.0, 0), "NOT ENOUGH", Palette.CORAL.darkened(0.1))
 		_clear_ctx()
@@ -666,3 +676,67 @@ func _handle_dig_swale_action(action: Dictionary) -> void:
 	AudioManager.play("hover-tick", -4.0)
 	# Route through TaskQueue — priority 10, no pickup, no drop-off.
 	TaskQueue.queue_task(site, action, 10)
+
+
+# =====================================================================
+# UI-polish batch (appended 2026-04 — tech-tree + PopupMenu tooltips)
+#
+# Two features without editing any existing code:
+#   1. PopupMenu tooltip rendering — reads `description` off each action
+#      dict built by `_actions_for` / `_build_ground_actions` and calls
+#      `set_item_tooltip` on the matching row. Hooked via the menu's
+#      `about_to_popup` signal so it runs on every open without
+#      rewriting `_try_open_context_menu`.
+#   2. Keyboard shortcut `tech_tree` (Y by default) opens the panel that
+#      the HUD mounts. We reach into the HUD to toggle it.
+# =====================================================================
+
+@onready var _polish_main_init: bool = _polish_main_setup()
+
+
+func _polish_main_setup() -> bool:
+	call_deferred("_polish_main_wire_deferred")
+	return true
+
+
+func _polish_main_wire_deferred() -> void:
+	if _ctx_menu != null and not _ctx_menu.about_to_popup.is_connected(_polish_apply_tooltips):
+		_ctx_menu.about_to_popup.connect(_polish_apply_tooltips)
+
+
+## Re-scan `_ctx_actions` and set a tooltip on each PopupMenu row. The
+## first row is the disabled header (name of the clicked object) — skip
+## it. Subsequent rows map 1:1 onto `_ctx_actions` in insertion order.
+func _polish_apply_tooltips() -> void:
+	if _ctx_menu == null:
+		return
+	for i in range(_ctx_actions.size()):
+		var action: Dictionary = _ctx_actions[i]
+		var tooltip: String = String(action.get("description", ""))
+		if tooltip == "":
+			continue
+		# Menu rows: index 0 is the header. Action `i` is at menu row `i+1`.
+		var menu_row: int = i + 1
+		if menu_row < _ctx_menu.item_count:
+			_ctx_menu.set_item_tooltip(menu_row, tooltip)
+
+
+## Ctrl-key shortcut handler — forwards to the HUD's tech-tree toggle.
+## Uses the same action name as the HUD listener so the player feels
+## one unified shortcut. Never consumes input when the HUD panel is
+## missing (headless-boot edge).
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("tech_tree"):
+		return
+	if _hud == null:
+		return
+	var panel: Node = _hud.get_node_or_null("TechTreePanel")
+	if panel == null:
+		# HUD builds the panel lazily; fall back to scanning children.
+		for c in _hud.get_children():
+			if c.has_method("toggle") and c is Control:
+				panel = c
+				break
+	if panel != null and panel.has_method("toggle"):
+		panel.call("toggle")
+		get_viewport().set_input_as_handled()

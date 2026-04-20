@@ -344,6 +344,10 @@ func _on_work_complete(t: Dictionary) -> void:
 		cb.call(t)
 	if target != null and is_instance_valid(target) and target.has_method("complete"):
 		target.call("complete", action)
+	# complete() is allowed to refine action["yield"] (e.g. forage rolls the
+	# real find here, replacing the queue-time placeholder). Resync the
+	# task's cumulative_yield so the deposit stage ships the real roll.
+	t["cumulative_yield"] = action.get("yield", {}).duplicate()
 	emit_signal("task_completed", t)
 	GameLog.event("task_completed", {
 		"id": t["id"],

@@ -1,0 +1,37 @@
+[gd_scene load_steps=5 format=3 uid="uid://fp_kennel_scene"]
+
+[ext_resource type="Script" path="res://scripts/kennel.gd" id="1_kennel"]
+
+[sub_resource type="BoxMesh" id="walls_mesh"]
+size = Vector3(1.6, 1.0, 1.2)
+
+[sub_resource type="PrismMesh" id="roof_mesh"]
+size = Vector3(1.8, 0.5, 1.4)
+
+[sub_resource type="CylinderMesh" id="bowl_mesh"]
+top_radius = 0.18
+bottom_radius = 0.20
+height = 0.10
+
+[sub_resource type="BoxShape3D" id="kennel_click_shape"]
+size = Vector3(2.0, 1.8, 1.6)
+
+[node name="Kennel" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_kennel")
+
+[node name="Walls" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("walls_mesh")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+mesh = SubResource("roof_mesh")
+
+[node name="Bowl" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.05, 0.6)
+mesh = SubResource("bowl_mesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("kennel_click_shape")

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1sim_replayability"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_replayability.gd" id="1_srp"]
+
+[node name="SimReplayability" type="Node"]
+script = ExtResource("1_srp")

@@ -13,16 +13,24 @@
 ##     resource channels), a particle burst plays, and the node fades
 ##     itself out via a scale-down tween.
 ##
-## Living-forest extension (this pass):
-##   • Every tree carries a `species_id` (douglas_fir, red_alder, ...),
-##     an `age_days`, and a `max_age_days`. On the daily tick trees age,
-##     slowly scale up inside their tier, upgrade tier when a threshold
-##     is crossed (small→mature→old), and eventually die of old age and
-##     collapse into a deadwood_log.
-##   • Every mature/old tree also rolls a per-day branchfall chance.
-##     When it fires, we spawn a twigs_pile (70 %), deadwood_log (25 %),
-##     or — only during a storm — a big-branch windfall deadwood_log (5 %).
-##     Storm days multiply the drop chance ×5 via WeatherSystem.
+## Continuous-growth tree model (supersedes the 3-tier discrete system —
+## see docs/design/tree-growth-continuous.md):
+##   • Every tree carries a `species_id`, `age_days`, `max_age_days`, and
+##     a continuous `size_progress` (0..1) derived from a per-species
+##     sigmoid: progress = 1 - exp(-age_days / time_constant).
+##   • `size_scale` lerps between seedling_scale and max_scale. The node's
+##     visual scale follows, so each year produces a visible growth pulse.
+##   • `kind` (tree_small/mature/old) is a **visual label** derived from
+##     `size_progress`, not a gating mechanic. Mechanics use size_progress
+##     directly (yield scaling, branchfall chance, old-growth flourishes).
+##   • YEAR-END pulse fires at every day % 120 == 0: soft scale-pop +
+##     MEADOW juice glyph + soft chime. Between pulses, daily growth is
+##     a micro-interpolation so the player never sees a still tree.
+##   • Prune keeps the tree alive — cosmetic scale-pop + brief leaf-loss
+##     tween; twigs + plant_trim yielded. Aging continues normally.
+##   • Death at max_age_days → desaturate tween, collapse into a
+##     deadwood_log at the same XZ.
+##   • Branchfall rate scales with size_progress × size_scale.
 ##
 ## Emits `clicked` / `hover_changed` so the main scene can treat decor
 ## uniformly alongside plants and buildings.
@@ -38,6 +46,10 @@ var HIGHLIGHT: Color = Palette.HONEY
 ## Variant of decor. One of:
 ##   "tree_small", "tree_mature", "tree_old",
 ##   "rock", "deadwood_log", "twigs_pile"
+##
+## For trees, `kind` is a visual-label alias derived from `size_progress`.
+## All gameplay mechanics consult `size_progress` directly; the kind
+## string only drives silhouette choice + click-hitbox sizing.
 @export var kind: String = "tree_small"
 
 ## A single deterministic seed for this item's visual variation so the
@@ -58,30 +70,67 @@ var HIGHLIGHT: Color = Palette.HONEY
 ## `age_days >= max_age_days`, the tree collapses into a deadwood_log.
 @export var max_age_days: int = 0
 
-# ---- Species tempo table (DESIGN.md §Progression rings tempo).
-# Keys: [small→mature days, mature→old days, mean_max_age, sigma]
-const SPECIES_TEMPO: Dictionary = {
-	"red_alder":         [480,  1440, 3600,  600],
-	"big_leaf_maple":    [720,  1800, 5400,  800],
-	"bigleaf_maple":     [720,  1800, 5400,  800],     # alias
-	"pacific_crabapple": [600,  1800, 4800,  700],
-	"douglas_fir":       [1200, 2880, 14000, 1800],
-	"western_red_cedar": [1440, 3600, 18000, 2200],
+## Continuous growth progress (0..1), derived each day from a per-species
+## sigmoid. Public so the sim + inspector can read it.
+var size_progress: float = 0.0
+
+## Current visual scale (lerp between seedling_scale and max_scale on the
+## species row). Tween-tracked on year-end pulses.
+var size_scale: float = 1.0
+
+# ---- Species biology table — CONTINUOUS model.
+# See docs/design/tree-growth-continuous.md for full derivation.
+# growth_80pct_days = days to reach 80 % of max scale.
+# time_constant = growth_80pct_days / 1.6 (so progress ~ 0.8 at 80pct).
+# longevity_mean ± sigma in game days. Seedling/max scale pins the
+# visual stretch the sigmoid drives.
+const SPECIES_TABLE: Dictionary = {
+	"red_alder": {
+		"growth_80pct_days": 2400, "longevity_mean": 6000, "longevity_sigma": 900,
+		"seedling_scale": 0.25, "max_scale": 2.2,
+		"form": "broad_crown_fast", "trunk": "thin_smooth",
+	},
+	"pacific_crabapple": {
+		"growth_80pct_days": 1800, "longevity_mean": 4800, "longevity_sigma": 700,
+		"seedling_scale": 0.20, "max_scale": 1.4,
+		"form": "compact_fruit", "trunk": "knotted",
+	},
+	"big_leaf_maple": {
+		"growth_80pct_days": 3600, "longevity_mean": 9600, "longevity_sigma": 1200,
+		"seedling_scale": 0.30, "max_scale": 2.8,
+		"form": "palmate_large", "trunk": "thick_mossy",
+	},
+	"bigleaf_maple": {
+		"growth_80pct_days": 3600, "longevity_mean": 9600, "longevity_sigma": 1200,
+		"seedling_scale": 0.30, "max_scale": 2.8,
+		"form": "palmate_large", "trunk": "thick_mossy",
+	},
+	"douglas_fir": {
+		"growth_80pct_days": 6000, "longevity_mean": 24000, "longevity_sigma": 4800,
+		"seedling_scale": 0.20, "max_scale": 4.5,
+		"form": "conifer_cone", "trunk": "straight_deep_bark",
+	},
+	"western_red_cedar": {
+		"growth_80pct_days": 7200, "longevity_mean": 36000, "longevity_sigma": 6000,
+		"seedling_scale": 0.20, "max_scale": 4.2,
+		"form": "columnar_cedar", "trunk": "fibrous_red_brown",
+	},
 }
 
-# Spawn-age bands by tier — ensures the scattered forest is mixed-age.
-const AGE_BAND_SMALL: Array[int]  = [200, 720]
-const AGE_BAND_MATURE: Array[int] = [900, 1800]
-const AGE_BAND_OLD: Array[int]    = [2400, 3600]
+# Visual-label thresholds on size_progress.
+const LABEL_SAPLING_MAX: float = 0.25
+const LABEL_MATURE_MAX: float  = 0.70
 
-# Per-tier scale creep (start→end of tier).
-const SCALE_TIER_START: float = 0.85
-const SCALE_TIER_END: float   = 1.00
-const TIER_UPGRADE_TWEEN_SECONDS: float = 1.4
+# Spawn-age bands — each band maps to the sigmoid region that yields the
+# matching label. The scatter path still hands kind in as a hint; age is
+# rolled per-species so the resulting size_progress lands in the band.
+const AGE_BAND_SMALL: Array[int]  = [30, 400]
+const AGE_BAND_MATURE: Array[int] = [600, 2000]
+const AGE_BAND_OLD: Array[int]    = [2800, 4800]
 
-# Branchfall tuning.
-const BRANCHFALL_CHANCE_MATURE: float = 0.02
-const BRANCHFALL_CHANCE_OLD: float    = 0.04
+# Branchfall tuning. Per-day chance = BASE × size_progress × (size_scale / max_scale).
+# Storms multiply ×5. Windfall drop only happens during storms.
+const BRANCHFALL_BASE_CHANCE: float   = 0.05
 const STORM_MULTIPLIER: float         = 5.0
 const BRANCHFALL_OFFSET_MIN: float    = 0.8
 const BRANCHFALL_OFFSET_MAX: float    = 2.0
@@ -90,6 +139,11 @@ const BRANCHFALL_OFFSET_MAX: float    = 2.0
 const DROP_WEIGHT_TWIGS: float      = 0.70
 const DROP_WEIGHT_DEADWOOD: float   = 0.25
 const DROP_WEIGHT_WINDFALL: float   = 0.05
+
+# Year-end growth pulse cadence — 1 game year == 120 days.
+const YEAR_DAYS: int = 120
+# Year-end tween duration (scale-pop back-ease).
+const YEAR_PULSE_SECONDS: float = 1.2
 
 # Hard safety cap — don't balloon scene size if the player never gathers.
 ## Mutable at runtime (the headless forest-sim bumps it to keep producing
@@ -107,11 +161,18 @@ var _click_area: StaticBody3D
 var _completing: bool = false
 var _scale_tween: Tween
 var _spawn_parent: Node = null
+var _last_year_age: int = 0
 
 
 func _ready() -> void:
 	_rng.seed = variant_seed if variant_seed != 0 else hash(name)
 	_resolve_defaults_for_kind()
+	# Compute initial size_progress + label kind BEFORE building visuals so
+	# the silhouette matches the derived label (and the click area fits).
+	if _is_tree():
+		_recompute_size()
+		kind = _label_for_progress(size_progress)
+		_last_year_age = age_days
 	_build_visual()
 	_build_click_area()
 	add_to_group("decor")
@@ -167,19 +228,22 @@ func set_highlight(on: bool) -> void:
 ## dictionary (see `scripts/interactable.gd`). Yields are carried back
 ## to the nearest storage shed by the fairy; FarmTotals deposits happen
 ## AFTER the drop-off beat, not when `complete()` runs here.
+##
+## Yields scale with size_progress so a freshly-sprouted sapling gives
+## ~10 % while an old-growth gives ~90 % + a heartwood drop.
 func get_context_actions() -> Array:
 	var out: Array = []
 	match kind:
 		"tree_small":
 			out.append(Interactable.make_action(
-				"chop_small_tree", "Fell small tree", 40.0,
-				{}, {"wood": 2, "twigs": 3, "plant_trim": 4},
+				"chop_small_tree", "Fell sapling", 40.0,
+				{}, _scaled_yield({"wood": 2, "twigs": 3, "plant_trim": 4}),
 				"", Interactable.DROP_STORAGE, 3
 			))
 		"tree_mature":
 			out.append(Interactable.make_action(
 				"chop_mature_tree", "Fell mature tree", 120.0,
-				{}, {"wood": 8, "twigs": 5, "plant_trim": 10},
+				{}, _scaled_yield({"wood": 8, "twigs": 5, "plant_trim": 10}),
 				"", Interactable.DROP_STORAGE, 4
 			))
 			out.append(Interactable.make_action(
@@ -189,10 +253,20 @@ func get_context_actions() -> Array:
 			))
 			_append_forage_action(out, false)
 		"tree_old":
+			var base_old: Dictionary = {"wood": 20, "twigs": 8, "plant_trim": 12}
+			# Old-growth bonus — heartwood drop for rare, late-game crafting.
+			# Age floor gates it so early-spawned old-labels don't cheat in.
+			if size_progress >= 0.85:
+				base_old["heartwood"] = 1
 			out.append(Interactable.make_action(
 				"chop_old_tree", "Fell old-growth tree", 180.0,
-				{}, {"wood": 20, "twigs": 8, "plant_trim": 12},
+				{}, _scaled_yield(base_old),
 				"", Interactable.DROP_STORAGE, 6
+			))
+			out.append(Interactable.make_action(
+				"prune", "Prune", 30.0,
+				{}, {"twigs": 3, "plant_trim": 8},
+				"", Interactable.DROP_STORAGE, 2
 			))
 			_append_forage_action(out, true)
 		"rock":
@@ -216,11 +290,28 @@ func get_context_actions() -> Array:
 	return out
 
 
+## Scale each yield entry by size_progress. Saplings give ~10 %, old
+## growth gives ~90 % — matches the design doc exactly. Heartwood + other
+## non-scaling specials stay at 1 (they're rare drops, not volume).
+func _scaled_yield(base: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var p: float = clamp(size_progress, 0.10, 1.0)   # floor so a sapling still yields something
+	for k in base.keys():
+		var key: String = String(k)
+		if key == "heartwood":
+			out[key] = int(base[key])
+			continue
+		# Round at the last step so we don't lose e.g. 0.1 × 4 = 0.4 → 0.
+		var scaled: float = float(base[k]) * p
+		out[key] = max(1, int(round(scaled)))
+	return out
+
+
 ## Display label for the parchment menu header.
 func display_name() -> String:
 	match kind:
 		"tree_small":
-			return "Young Tree"
+			return "Sapling"
 		"tree_mature":
 			return "Mature Tree"
 		"tree_old":
@@ -242,7 +333,6 @@ func display_name() -> String:
 func complete(action: Dictionary) -> void:
 	if _completing:
 		return
-	_completing = true
 	var id: String = action.get("id", "")
 	# Day-0 forage branch — tree stays alive, just marks a cooldown so
 	# the same trunk can't be re-foraged for 14 game-days. Rewrites the
@@ -250,8 +340,14 @@ func complete(action: Dictionary) -> void:
 	# ships the rolled goods (wild_berries / wild_mushrooms / imo / seeds).
 	if id == "forage_understory":
 		_complete_forage_understory(action)
-		_completing = false
 		return
+	# Prune keeps the tree alive. Yield stays in the action (TaskQueue
+	# deposits to storage). Visual beat: cosmetic scale-pop + brief
+	# leaf-loss tween. Tree continues aging normally.
+	if id == "prune":
+		_complete_prune(action)
+		return
+	_completing = true
 	var label: String = action.get("label", id).to_upper()
 	Juice.pop(global_position + Vector3(0, 2.4, 0), label, HIGHLIGHT)
 	Juice.burst(global_position + Vector3(0, 0.6, 0), _burst_color(), 18)
@@ -260,16 +356,9 @@ func complete(action: Dictionary) -> void:
 	GameLog.info("decor action complete kind=%s id=%s" % [kind, id], "decor")
 	if AudioManager.has_method("play"):
 		AudioManager.play("biomass-chop")
-	# Prune leaves the tree standing; everything else removes the node.
-	if id == "prune":
-		var tw_p: Tween = create_tween()
-		tw_p.tween_property(self, "scale", Vector3.ONE * (visual_scale * 0.92), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw_p.tween_property(self, "scale", Vector3.ONE * visual_scale, 0.25).set_trans(Tween.TRANS_SINE)
-		_completing = false
-	else:
-		var tw: Tween = create_tween()
-		tw.tween_property(self, "scale", Vector3.ZERO, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-		tw.tween_callback(queue_free)
+	var tw: Tween = create_tween()
+	tw.tween_property(self, "scale", Vector3.ZERO, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_callback(queue_free)
 	GameLog.event("decor_harvested", {
 		"kind": kind,
 		"name": name_for_log,
@@ -277,11 +366,45 @@ func complete(action: Dictionary) -> void:
 	})
 
 
+## Prune completion — tree stays alive. Scale pops down, then a brief
+## leaf-loss tween ruffles the canopy opacity, then returns to base. All
+## aging continues normally on subsequent day-ticks.
+func _complete_prune(action: Dictionary) -> void:
+	var label: String = action.get("label", "PRUNE").to_upper()
+	if AudioManager.has_method("play"):
+		AudioManager.play("biomass-chop", -6.0)
+	Juice.pop(global_position + Vector3(0, 2.4, 0), "- " + label, Palette.MEADOW)
+	Juice.burst(global_position + Vector3(0, 1.4, 0), Palette.MEADOW.lerp(Palette.OLIVE_DARK, 0.4), 10)
+	GameLog.event("decor_pruned", {
+		"kind": kind,
+		"species": species_id,
+		"age_days": age_days,
+		"size_progress": size_progress,
+	})
+	# Scale pop — 0.92× then settle back. Small + quick.
+	var base_scale: Vector3 = Vector3.ONE * (visual_scale * size_scale)
+	var tw: Tween = create_tween()
+	tw.tween_property(self, "scale", base_scale * 0.92, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "scale", base_scale, 0.25).set_trans(Tween.TRANS_SINE)
+	# Brief leaf-loss — dim canopy materials a hair for ~0.6 s. We dim
+	# every material (trunk included; it's a tiny effect) and tween back.
+	for m in _materials:
+		var mat: StandardMaterial3D = m as StandardMaterial3D
+		if mat == null:
+			continue
+		var base_albedo: Color = mat.albedo_color
+		var dim: Color = Palette.clamp_happy(base_albedo.darkened(0.18))
+		var mt: Tween = create_tween()
+		mt.tween_property(mat, "albedo_color", dim, 0.2)
+		mt.tween_property(mat, "albedo_color", base_albedo, 0.5).set_trans(Tween.TRANS_SINE)
+
+
 # ==================================================================== #
-# Living-forest: age + growth + branchfall
+# Continuous-growth engine — sigmoid aging + year-end pulses
 # ==================================================================== #
 
-## Day-tick driver. Ages the tree, rolls tier-upgrade + branchfall.
+## Day-tick driver. Ages the tree, recomputes sigmoid scale, fires a
+## year-end pulse every 120 days, and rolls branchfall.
 ## Only runs for actual trees — rocks / deadwood / twigs ignore.
 func _on_day_advanced(_day: int, _season: String, _year: int) -> void:
 	if _completing:
@@ -295,87 +418,109 @@ func _on_day_advanced(_day: int, _season: String, _year: int) -> void:
 		_die_of_old_age()
 		return
 
-	# Tier thresholds per species.
-	var tempo: Array = SPECIES_TEMPO.get(species_id, SPECIES_TEMPO["red_alder"])
-	var small_to_mature: int = int(tempo[0])
-	var mature_to_old: int   = int(tempo[1])
+	# Recompute size_progress + size_scale from the sigmoid.
+	_recompute_size()
 
-	if kind == "tree_small" and age_days >= small_to_mature:
-		_upgrade_tier("tree_mature")
-	elif kind == "tree_mature" and age_days >= mature_to_old:
-		_upgrade_tier("tree_old")
+	# Label transitions: sapling → mature (celebration) → old-growth (rare).
+	var new_label: String = _label_for_progress(size_progress)
+	if new_label != kind:
+		_rebuild_for_label(new_label)
+
+	# Year-end pulse — visible scale-pop + MEADOW glyph + chime.
+	if (age_days % YEAR_DAYS) == 0 and age_days != _last_year_age:
+		_last_year_age = age_days
+		_year_end_pulse()
 	else:
-		_apply_tier_scale_creep(small_to_mature, mature_to_old)
+		# Micro-interpolation day-to-day so the tree never sits frozen.
+		scale = Vector3.ONE * (visual_scale * size_scale)
 
-	# Branchfall for mature + old trees.
-	if kind == "tree_mature" or kind == "tree_old":
+	# Branchfall for anything past sapling — chance scales with size.
+	if size_progress > LABEL_SAPLING_MAX:
 		_roll_branchfall()
 
 
-func _is_tree() -> bool:
-	return kind == "tree_small" or kind == "tree_mature" or kind == "tree_old"
+## Sigmoid growth per-species. size_progress = 1 - exp(-age / tau) with
+## tau = growth_80pct_days / 1.6 so progress ~0.8 at the 80pct mark.
+## size_scale lerps between seedling_scale and max_scale.
+func _recompute_size() -> void:
+	var row: Dictionary = SPECIES_TABLE.get(species_id, SPECIES_TABLE["red_alder"])
+	var tc: float = float(row["growth_80pct_days"]) / 1.6
+	var progress: float = 1.0 - exp(-float(age_days) / max(1.0, tc))
+	size_progress = clamp(progress, 0.0, 1.0)
+	var seedling: float = float(row["seedling_scale"])
+	var mx: float = float(row["max_scale"])
+	size_scale = lerp(seedling, mx, size_progress)
 
 
-## Within a tier, interpolate scale from SCALE_TIER_START at tier-start
-## to SCALE_TIER_END at tier-end. Purely cosmetic — the player sees a
-## slow creep upward rather than pop at threshold.
-func _apply_tier_scale_creep(small_to_mature: int, mature_to_old: int) -> void:
-	var tier_start: int = 0
-	var tier_end: int = 0
-	match kind:
-		"tree_small":
-			tier_end = small_to_mature
-		"tree_mature":
-			tier_start = small_to_mature
-			tier_end = mature_to_old
-		"tree_old":
-			tier_start = mature_to_old
-			# For old-growth we creep toward max_age for a tail of majesty.
-			tier_end = max(mature_to_old + 1, max_age_days)
-	if tier_end <= tier_start:
-		return
-	var t: float = clamp(float(age_days - tier_start) / float(tier_end - tier_start), 0.0, 1.0)
-	var creep: float = lerp(SCALE_TIER_START, SCALE_TIER_END, t)
-	scale = Vector3.ONE * (visual_scale * creep)
+func _label_for_progress(p: float) -> String:
+	if p < LABEL_SAPLING_MAX:
+		return "tree_small"
+	if p < LABEL_MATURE_MAX:
+		return "tree_mature"
+	return "tree_old"
 
 
-## Swap tier: rebuild the visual from scratch at the new silhouette,
-## then smooth-lerp the scale so the jump reads as growth not pop.
-## Tweens auto-kill previous runs to avoid zombies.
-func _upgrade_tier(new_kind: String) -> void:
-	var prev_kind: String = kind
-	kind = new_kind
-	# Kill previous tier's meshes — we own them because we built them in
-	# `_build_visual()`. Everything except the ClickArea can go.
+## Year-end pulse. Tween the visible scale to the newly-computed target
+## with a bouncy back-ease, spawn a MEADOW glyph pop + soft chime. The
+## player feels a growth beat once per game-year per tree.
+func _year_end_pulse() -> void:
+	var target: float = visual_scale * size_scale
+	# Start from a slightly compressed scale for a visible pop.
+	var start: float = visual_scale * size_scale * 0.92
+	scale = Vector3.ONE * start
+	if _scale_tween != null and _scale_tween.is_valid():
+		_scale_tween.kill()
+	_scale_tween = create_tween()
+	_scale_tween.tween_property(self, "scale", Vector3.ONE * target, YEAR_PULSE_SECONDS) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Juice.pop(global_position + Vector3(0, 2.4 + size_scale * 0.4, 0), "◊", Palette.MEADOW)
+	if AudioManager.has_method("play"):
+		AudioManager.play("seedling-sprout", -8.0)
+	GameLog.event("tree_year_grew", {
+		"species": species_id,
+		"age_days": age_days,
+		"size_progress": size_progress,
+		"size_scale": size_scale,
+	})
+
+
+## Label transition — silhouette choice swaps to match the new band.
+## Sapling → mature fires a celebration pop. Mature → old fires a rare
+## flourish (longer Juice.burst + honey glyph).
+func _rebuild_for_label(new_label: String) -> void:
+	var prev_label: String = kind
+	kind = new_label
+	# Rebuild meshes to match the new silhouette. Click area resizes too.
 	for child in get_children():
 		if child == _click_area:
 			continue
 		if child is MeshInstance3D:
 			child.queue_free()
 	_materials.clear()
-	# Start at a slightly-smaller silhouette so the lerp tweens up visibly.
-	scale = Vector3.ONE * (visual_scale * SCALE_TIER_START * 0.9)
 	_build_visual()
-	# Rebuild click area size for the new tier.
 	if _click_area != null:
 		_click_area.queue_free()
 		_click_area = null
 	_build_click_area()
-	_tween_scale_to(visual_scale * SCALE_TIER_START)
-	GameLog.event("tree_tier_upgrade", {
-		"from": prev_kind, "to": new_kind,
-		"species": species_id, "age_days": age_days,
+	# Keep the continuous scale pinned — no pop beyond the year-end pulse.
+	scale = Vector3.ONE * (visual_scale * size_scale)
+	GameLog.event("tree_label_changed", {
+		"from": prev_label, "to": new_label,
+		"species": species_id,
+		"age_days": age_days,
+		"size_progress": size_progress,
 	})
-	# Small unobtrusive growth pop.
-	Juice.pop(global_position + Vector3(0, 2.4, 0), "◊", Palette.MEADOW)
+	# Celebrations: mature-first tree is a meaningful moment; old-growth
+	# is rare. Both get a glyph pop, old-growth gets an extra burst.
+	if new_label == "tree_mature":
+		Juice.pop(global_position + Vector3(0, 2.4, 0), "MATURE", Palette.MEADOW)
+	elif new_label == "tree_old":
+		Juice.pop(global_position + Vector3(0, 2.4, 0), "OLD GROWTH", Palette.HONEY)
+		Juice.burst(global_position + Vector3(0, 1.8, 0), Palette.HONEY.lerp(Palette.MEADOW, 0.3), 24)
 
 
-func _tween_scale_to(target_mag: float) -> void:
-	if _scale_tween != null and _scale_tween.is_valid():
-		_scale_tween.kill()
-	_scale_tween = create_tween()
-	_scale_tween.tween_property(self, "scale", Vector3.ONE * target_mag, TIER_UPGRADE_TWEEN_SECONDS) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+func _is_tree() -> bool:
+	return kind == "tree_small" or kind == "tree_mature" or kind == "tree_old"
 
 
 ## Die of old age. Fade to desaturated, then replace with a deadwood_log.
@@ -425,8 +570,13 @@ func _replace_with_deadwood_log() -> void:
 
 # ---- Branchfall ------------------------------------------------------
 
+## Per-day branchfall chance. Scales with continuous size so older/larger
+## trees drop more debris than saplings. Storms multiply by STORM_MULTIPLIER.
 func _roll_branchfall() -> void:
-	var base: float = BRANCHFALL_CHANCE_MATURE if kind == "tree_mature" else BRANCHFALL_CHANCE_OLD
+	var row: Dictionary = SPECIES_TABLE.get(species_id, SPECIES_TABLE["red_alder"])
+	var mx_scale: float = max(0.01, float(row["max_scale"]))
+	var size_frac: float = clamp(size_scale / mx_scale, 0.0, 1.0)
+	var base: float = BRANCHFALL_BASE_CHANCE * size_progress * size_frac
 	var storm_on: bool = _storm_active()
 	var chance: float = base * (STORM_MULTIPLIER if storm_on else 1.0)
 	if _rng.randf() >= chance:
@@ -610,9 +760,9 @@ static func _roll_age_band_for_tier(p_kind: String, rng: RandomNumberGenerator) 
 
 
 static func _roll_max_age_for_species(species: String, seed_v: int) -> int:
-	var tempo: Array = SPECIES_TEMPO.get(species, SPECIES_TEMPO["red_alder"])
-	var mean: float = float(tempo[2])
-	var sigma: float = float(tempo[3])
+	var row: Dictionary = SPECIES_TABLE.get(species, SPECIES_TABLE["red_alder"])
+	var mean: float = float(row["longevity_mean"])
+	var sigma: float = float(row["longevity_sigma"])
 	var local_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	local_rng.seed = int(seed_v) if seed_v != 0 else int(Time.get_ticks_usec())
 	# Clamp a normal-ish draw inside [mean - 2σ, mean + 2σ].
@@ -621,15 +771,35 @@ static func _roll_max_age_for_species(species: String, seed_v: int) -> int:
 
 
 ## Static helper so other systems (lab preview / sim) can resolve
-## species tempo without instantiating a node.
+## species info without instantiating a node. Returns the full row dict.
+static func species_row(species: String) -> Dictionary:
+	return SPECIES_TABLE.get(species, SPECIES_TABLE["red_alder"])
+
+
+## Back-compat helper for the previous 4-element tempo array. Returns
+## [growth_80pct_days, longevity_mean, longevity_sigma, max_scale].
+## Preserved so any sim still importing the old API compiles; new code
+## should use `species_row()`.
 static func species_tempo(species: String) -> Array:
-	return SPECIES_TEMPO.get(species, SPECIES_TEMPO["red_alder"])
+	var row: Dictionary = species_row(species)
+	return [
+		int(row["growth_80pct_days"]),
+		int(row["longevity_mean"]),
+		int(row["longevity_sigma"]),
+		float(row["max_scale"]),
+	]
 
 
 # ---------- Visual construction ----------
 
 func _build_visual() -> void:
-	scale = Vector3.ONE * visual_scale
+	# For trees we honour the continuous size_scale alongside visual_scale
+	# so the silhouette actually reflects the computed growth. Non-trees
+	# use visual_scale only (rocks / logs / twigs).
+	if _is_tree():
+		scale = Vector3.ONE * (visual_scale * size_scale)
+	else:
+		scale = Vector3.ONE * visual_scale
 	rotate_y(_rng.randf() * TAU)
 	# Tree foliage bands come straight from the Palette meadow/sage/olive
 	# trio. Young trees lean brighter (MEADOW-to-SAGE), mature toward

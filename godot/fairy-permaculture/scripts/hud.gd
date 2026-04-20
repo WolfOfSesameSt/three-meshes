@@ -340,31 +340,34 @@ const _GROUP_GREENS: String  = "GREENS"
 const _GROUP_BROWNS: String  = "BROWNS"
 const _GROUP_OTHER: String   = "OTHER"
 const _INVENTORY_GROUPS: Array = [
-	{ "name": _GROUP_GREENS, "kinds": ["plant_trim", "fruit_scraps", "fruit"] },
-	{ "name": _GROUP_BROWNS, "kinds": ["wood_chips", "twigs", "wood", "dry_leaves"] },
-	{ "name": _GROUP_OTHER,  "kinds": ["stone", "seeds", "compost", "water"] },
+	{ "name": _GROUP_GREENS, "kinds": ["plant_trim", "fruit_scraps", "fruit", "wild_berries"] },
+	{ "name": _GROUP_BROWNS, "kinds": ["wood_chips", "twigs", "wood", "dry_leaves", "wild_mushrooms"] },
+	{ "name": _GROUP_OTHER,  "kinds": ["stone", "seeds", "compost", "water", "imo"] },
 ]
 
 # Flat order used by the legacy resource-bar refresh path (no grouping).
 # Kept in sync with _INVENTORY_GROUPS by construction.
 const _RESOURCE_ORDER: Array[String] = [
-	"plant_trim", "fruit_scraps", "fruit",
-	"wood_chips", "twigs", "wood", "dry_leaves",
-	"stone", "seeds", "compost", "water",
+	"plant_trim", "fruit_scraps", "fruit", "wild_berries",
+	"wood_chips", "twigs", "wood", "dry_leaves", "wild_mushrooms",
+	"stone", "seeds", "compost", "water", "imo",
 ]
 
 const _RESOURCE_NAMES: Dictionary = {
-	"plant_trim":   "Plant Trim",
-	"fruit_scraps": "Fruit Scraps",
-	"fruit":        "Fruit",
-	"wood_chips":   "Wood Chips",
-	"twigs":        "Twigs",
-	"wood":         "Wood",
-	"dry_leaves":   "Dry Leaves",
-	"stone":        "Stone",
-	"seeds":        "Seeds",
-	"compost":      "Compost",
-	"water":        "Water",
+	"plant_trim":     "Plant Trim",
+	"fruit_scraps":   "Fruit Scraps",
+	"fruit":          "Fruit",
+	"wood_chips":     "Wood Chips",
+	"twigs":          "Twigs",
+	"wood":           "Wood",
+	"dry_leaves":     "Dry Leaves",
+	"stone":          "Stone",
+	"seeds":          "Seeds",
+	"compost":        "Compost",
+	"water":          "Water",
+	"wild_berries":   "Wild Berries",
+	"wild_mushrooms": "Wild Mushrooms",
+	"imo":            "Forest Duff (IMO)",
 }
 
 # Per-item swatch tints. Hardcoded hex here so the StyleBox constants
@@ -383,6 +386,10 @@ const _RESOURCE_TINTS: Dictionary = {
 	"seeds":        Color(0.90, 0.82, 0.52),
 	"compost":      Color(0.42, 0.30, 0.22),   # COMPOST
 	"water":        Color(0.72, 0.85, 0.91),   # patched to Palette.SKY
+	# Forage finds — patched at runtime against Palette in _build_resource_bar.
+	"wild_berries":   Color(0.74, 0.38, 0.54),  # BERRY-ish
+	"wild_mushrooms": Color(0.76, 0.66, 0.48),  # PARCHMENT.lerp(WARM_STONE)
+	"imo":            Color(0.50, 0.45, 0.32),  # COMPOST.lerp(MEADOW)
 }
 
 # Category header tints. Greens → MEADOW, Browns → EARTH, Other →
@@ -615,6 +622,9 @@ func _build_resource_bar() -> void:
 	tints["seeds"]        = Palette.HONEY.lerp(Palette.PARCHMENT, 0.25)
 	tints["compost"]      = Palette.COMPOST
 	tints["water"]        = Palette.SKY
+	tints["wild_berries"]   = Palette.BERRY.lerp(Palette.CORAL, 0.35)
+	tints["wild_mushrooms"] = Palette.PARCHMENT.lerp(Palette.WARM_STONE, 0.45)
+	tints["imo"]            = Palette.COMPOST.lerp(Palette.MEADOW, 0.30)
 
 	# Render each category: tinted header row + its item rows.
 	for group in _INVENTORY_GROUPS:
@@ -726,3 +736,282 @@ func _on_storage_rejected(resource_type: String, amount: float) -> void:
 	_storage_full_banner.modulate.a = 1.0
 	_storage_full_timer = 2.0
 	AudioManager.play("hover-tick", -2.0)
+
+
+# =====================================================================
+# UI-polish batch (appended 2026-04 — intro/tech-tree/toast sweep)
+#
+# Adds three new HUD elements without editing any existing code:
+#   1. Parchment toast listener for WeatherSystem.warning_fired
+#   2. Parchment toast listener for CompostPile.turn_window_entered
+#   3. Small "Tech Tree" button mounted next to Lab/Settings
+#
+# Setup runs via `@onready` — the bottom-of-file var initializer fires
+# before _ready() completes, so every wiring lands in a single engine
+# tick alongside the original HUD init.
+# =====================================================================
+
+const _POLISH_TOAST_LIFETIME_S: float = 4.2
+const _POLISH_TECH_TREE_SCENE: String = "res://scenes/tech_tree_panel.tscn"
+
+var _polish_toast_stack: VBoxContainer
+var _polish_tech_tree_btn: Button
+var _polish_tech_tree_panel: Control
+var _polish_connected_piles: Array = []
+
+
+@onready var _polish_init_ok: bool = _polish_setup()
+
+
+func _polish_setup() -> bool:
+	# Called as an @onready initializer. Safe to call even if _ready()
+	# hasn't fired yet — we defer the heavier wiring to the next frame
+	# so $Hud's scene tree is fully settled.
+	call_deferred("_polish_wire_deferred")
+	return true
+
+
+func _polish_wire_deferred() -> void:
+	_polish_build_toast_stack()
+	_polish_build_tech_tree_button()
+	_polish_mount_tech_tree_panel()
+	_polish_connect_weather()
+	_polish_connect_piles()
+	_polish_connect_content_bundle()
+	# Watch for piles that spawn after the HUD (player-built compost piles).
+	get_tree().node_added.connect(_polish_on_node_added)
+	# Keyboard shortcut for the tech tree panel.
+	set_process_input(true)
+
+
+## Content-bundle signal wiring — Achievements + RandomEvents.
+## Both are optional autoloads; we null-check and no-op if absent so the
+## HUD still boots in scenes that don't register them.
+func _polish_connect_content_bundle() -> void:
+	var ach: Node = get_node_or_null("/root/Achievements")
+	if ach != null and ach.has_signal("achievement_unlocked") \
+			and not ach.is_connected("achievement_unlocked", _polish_on_achievement):
+		ach.connect("achievement_unlocked", _polish_on_achievement)
+	var events: Node = get_node_or_null("/root/RandomEvents")
+	if events != null and events.has_signal("event_triggered") \
+			and not events.is_connected("event_triggered", _polish_on_random_event):
+		events.connect("event_triggered", _polish_on_random_event)
+
+
+func _polish_on_achievement(id: String) -> void:
+	var label: String = "ACHIEVEMENT · " + id.replace("-", " ").replace("_", " ").to_upper()
+	_polish_push_toast(label, Palette.HONEY)
+	if AudioManager != null:
+		AudioManager.play("compost-finish", -4.0)
+
+
+func _polish_on_random_event(id: String, payload: Dictionary) -> void:
+	var name: String = String(payload.get("_event_name", id)) if payload else id
+	var desc: String = String(payload.get("_event_description", "")) if payload else ""
+	var text: String = name if desc == "" else name + " — " + desc
+	_polish_push_toast(text, Palette.CORAL)
+	if AudioManager != null:
+		AudioManager.play("hover-tick", -4.0)
+
+
+## Parchment toast stack — stacks at top-center below the day label.
+## Messages auto-expire after `_POLISH_TOAST_LIFETIME_S`.
+func _polish_build_toast_stack() -> void:
+	_polish_toast_stack = VBoxContainer.new()
+	_polish_toast_stack.name = "PolishToastStack"
+	_polish_toast_stack.anchor_left = 0.5
+	_polish_toast_stack.anchor_right = 0.5
+	_polish_toast_stack.anchor_top = 0.0
+	_polish_toast_stack.anchor_bottom = 0.0
+	_polish_toast_stack.offset_left = -280.0
+	_polish_toast_stack.offset_right = 280.0
+	_polish_toast_stack.offset_top = 200.0
+	_polish_toast_stack.offset_bottom = 380.0
+	_polish_toast_stack.add_theme_constant_override("separation", 6)
+	_polish_toast_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_polish_toast_stack)
+
+
+## Push a parchment toast message. `tint` color traces to Palette.*.
+func _polish_push_toast(text: String, tint: Color) -> void:
+	if _polish_toast_stack == null:
+		return
+	var panel: PanelContainer = PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Palette.PARCHMENT
+	style.border_color = Palette.clamp_happy(tint)
+	style.border_width_left = 3
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+	style.content_margin_left = 14.0
+	style.content_margin_right = 14.0
+	style.content_margin_top = 8.0
+	style.content_margin_bottom = 8.0
+	panel.add_theme_stylebox_override("panel", style)
+	var label: Label = Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", Palette.INK)
+	label.add_theme_font_size_override("font_size", 13)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(label)
+	_polish_toast_stack.add_child(panel)
+	# Auto-fade + free.
+	var tw: Tween = panel.create_tween().set_parallel(true)
+	tw.tween_property(panel, "modulate:a", 1.0, 0.0)
+	tw.chain().tween_interval(_POLISH_TOAST_LIFETIME_S - 0.8)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.8)
+	tw.chain().tween_callback(panel.queue_free)
+	AudioManager.play("hover-tick", -10.0)
+
+
+## Small "Tech Tree" button — mounted in the top-right column below the
+## existing Settings button so it shares the Lab / Settings cluster.
+func _polish_build_tech_tree_button() -> void:
+	_polish_tech_tree_btn = Button.new()
+	_polish_tech_tree_btn.name = "TechTreeButton"
+	_polish_tech_tree_btn.text = "Tech Tree"
+	_polish_tech_tree_btn.anchor_left = 1.0
+	_polish_tech_tree_btn.anchor_right = 1.0
+	_polish_tech_tree_btn.anchor_top = 0.0
+	_polish_tech_tree_btn.anchor_bottom = 0.0
+	_polish_tech_tree_btn.offset_left = -110.0
+	_polish_tech_tree_btn.offset_right = -14.0
+	_polish_tech_tree_btn.offset_top = 190.0
+	_polish_tech_tree_btn.offset_bottom = 222.0
+	_polish_tech_tree_btn.grow_horizontal = 0
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Palette.PARCHMENT
+	style.border_color = Palette.EARTH
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left = 10.0
+	style.content_margin_right = 10.0
+	style.content_margin_top = 6.0
+	style.content_margin_bottom = 6.0
+	_polish_tech_tree_btn.add_theme_stylebox_override("normal", style)
+	_polish_tech_tree_btn.add_theme_stylebox_override("hover", style)
+	_polish_tech_tree_btn.add_theme_stylebox_override("pressed", style)
+	_polish_tech_tree_btn.add_theme_color_override("font_color", Palette.INK)
+	_polish_tech_tree_btn.add_theme_font_size_override("font_size", 14)
+	_polish_tech_tree_btn.pressed.connect(_polish_on_tech_tree_pressed)
+	add_child(_polish_tech_tree_btn)
+
+
+func _polish_mount_tech_tree_panel() -> void:
+	if not ResourceLoader.exists(_POLISH_TECH_TREE_SCENE):
+		return
+	var scene: PackedScene = load(_POLISH_TECH_TREE_SCENE)
+	if scene == null:
+		return
+	_polish_tech_tree_panel = scene.instantiate() as Control
+	if _polish_tech_tree_panel == null:
+		return
+	add_child(_polish_tech_tree_panel)
+
+
+func _polish_on_tech_tree_pressed() -> void:
+	AudioManager.play("hover-tick", -6.0)
+	if _polish_tech_tree_panel != null and _polish_tech_tree_panel.has_method("toggle"):
+		_polish_tech_tree_panel.call("toggle")
+
+
+func _polish_connect_weather() -> void:
+	if has_node("/root/WeatherSystem"):
+		var ws: Node = get_node("/root/WeatherSystem")
+		if ws.has_signal("warning_fired") and not ws.is_connected("warning_fired", _polish_on_weather_warning):
+			ws.connect("warning_fired", _polish_on_weather_warning)
+
+
+func _polish_on_weather_warning(event_id: String, eta_days: int) -> void:
+	var text: String = _polish_weather_text(event_id, eta_days)
+	var tint: Color = Palette.HONEY
+	match event_id:
+		"drought": tint = Palette.CORAL
+		"storm": tint = Palette.SKY
+		"early_frost": tint = Palette.MIST
+		"heat_spike": tint = Palette.HONEY
+		"wet_week": tint = Palette.SKY
+	_polish_push_toast(text, tint)
+
+
+func _polish_weather_text(event_id: String, eta_days: int) -> String:
+	var eta: String = "today" if eta_days <= 0 else "in %d day%s" % [eta_days, "" if eta_days == 1 else "s"]
+	match event_id:
+		"drought":
+			return "Drought approaches %s — irrigate!" % eta
+		"storm":
+			return "Storm approaches %s — cover piles!" % eta
+		"early_frost":
+			return "Early frost %s — mulch tender plants!" % eta
+		"heat_spike":
+			return "Heat spike %s — water thirsty beds!" % eta
+		"wet_week":
+			return "Wet week approaches %s — cover piles!" % eta
+	return "Weather warning: %s %s" % [event_id, eta]
+
+
+func _polish_connect_piles() -> void:
+	# Existing piles in-scene.
+	for p in get_tree().get_nodes_in_group("compost_piles"):
+		_polish_hook_pile(p as Node)
+	# Fallback — the legacy compost_pile.gd doesn't `add_to_group`. Walk
+	# the current scene once, in case the piles are parented loose.
+	var main: Node = get_tree().current_scene
+	if main != null:
+		_polish_walk_for_piles(main)
+
+
+func _polish_on_node_added(n: Node) -> void:
+	# Piles spawned mid-run (player built a new one) — hook them up.
+	if n == null:
+		return
+	if n is Node3D and n.has_signal("turn_window_entered"):
+		_polish_hook_pile(n)
+
+
+func _polish_hook_pile(n: Node) -> void:
+	if n == null or not is_instance_valid(n):
+		return
+	if not n.has_signal("turn_window_entered"):
+		return
+	if _polish_connected_piles.has(n):
+		return
+	n.connect("turn_window_entered", _polish_on_pile_turn_window)
+	_polish_connected_piles.append(n)
+
+
+func _polish_walk_for_piles(root: Node) -> void:
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			if c.has_signal("turn_window_entered"):
+				_polish_hook_pile(c)
+			if c.get_child_count() > 0:
+				stack.append(c)
+
+
+func _polish_on_pile_turn_window(_pile_mesh: Node3D) -> void:
+	_polish_push_toast("Pile wants turning", Palette.HONEY)
+
+
+func _input(event: InputEvent) -> void:
+	# Guarded so the keyboard shortcut doesn't eat input when the panel
+	# isn't mounted yet (e.g. headless-boot parse).
+	if _polish_tech_tree_panel == null:
+		return
+	if event.is_action_pressed("tech_tree"):
+		_polish_on_tech_tree_pressed()
+		get_viewport().set_input_as_handled()

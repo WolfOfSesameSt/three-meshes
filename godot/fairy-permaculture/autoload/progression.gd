@@ -47,6 +47,24 @@ const BUILDING_BUTCHER_STATION: StringName = &"butcher_station"
 const BUILDING_KILN: StringName = &"kiln"
 # Day-0 Activities Engineer — cheap pollinator habitat, unlocked at start.
 const BUILDING_MASON_BEE_TUBES: StringName = &"mason_bee_tubes"
+# Animal Phase 2 — the rest of the livestock roster. Unlock chain:
+#   first coop built         → DUCK_POND_EDGE
+#   first egg collected      → GOAT_SHED
+#   storage + kiln available → COW_BARN + PIG_PADDOCK + KENNEL
+const BUILDING_DUCK_POND_EDGE: StringName = &"duck_pond_edge"
+const BUILDING_GOAT_SHED: StringName = &"goat_shed"
+const BUILDING_COW_BARN: StringName = &"cow_barn"
+const BUILDING_PIG_PADDOCK: StringName = &"pig_paddock"
+const BUILDING_KENNEL: StringName = &"kennel"
+# Garden bed variants (content bundle). Unlock chain:
+#   fenced_plot    — day-0 (cheap wooden border plot)
+#   raised_bed     — after first compost harvested (Ring 2)
+#   hugel_bed      — branch G mid-game (Ring 2.5)
+#   spiral_garden  — branch herbs / Ring 3
+const BUILDING_FENCED_PLOT: StringName = &"fenced_plot"
+const BUILDING_RAISED_BED: StringName = &"raised_bed"
+const BUILDING_HUGEL_BED: StringName = &"hugel_bed"
+const BUILDING_SPIRAL_GARDEN: StringName = &"spiral_garden"
 
 # Tutorial step constants.
 const STEP_HARVEST_BIOMASS: int = 0
@@ -175,6 +193,72 @@ const BUILD_CATALOG: Dictionary = {
 		"cost": { "wood": 2.0, "twigs": 4.0 },
 		"labor": 20.0,
 	},
+	# ---- Animal Phase 2 habitats ----
+	# Duck Pond Edge: open-fronted wooden shelter + thatched roof on the
+	# pond margin. Unlocks after the first coop so the player sees the
+	# expansion path as "another flock, a little trickier (water-gated)".
+	BUILDING_DUCK_POND_EDGE: {
+		"label": "Build Duck Pond Edge",
+		"scene": "res://scenes/duck_pond_edge.tscn",
+		"cost": { "wood": 5.0, "twigs": 4.0, "plant_trim": 3.0, "water": 2.0 },
+		"labor": 120.0,
+	},
+	# Goat Shed: A-frame + fenced paddock. Unlocks on first egg — once
+	# the coop loop is real, the player has the straw/seed supply to
+	# expand into a milk producer.
+	BUILDING_GOAT_SHED: {
+		"label": "Build Goat Shed",
+		"scene": "res://scenes/goat_shed.tscn",
+		"cost": { "wood": 10.0, "twigs": 6.0, "plant_trim": 4.0, "stone": 1.0 },
+		"labor": 180.0,
+	},
+	# Cow Barn: the big Dexter habitat + 12×12 paddock. Unlocks after
+	# storage + kiln so the player has bone_meal + OM for pasture.
+	BUILDING_COW_BARN: {
+		"label": "Build Cow Barn",
+		"scene": "res://scenes/cow_barn.tscn",
+		"cost": { "wood": 20.0, "twigs": 10.0, "stone": 4.0, "plant_trim": 6.0 },
+		"labor": 360.0,
+	},
+	# Pig Paddock: small A-frame + fenced rootle zone.
+	BUILDING_PIG_PADDOCK: {
+		"label": "Build Pig Paddock",
+		"scene": "res://scenes/pig_paddock.tscn",
+		"cost": { "wood": 8.0, "twigs": 8.0, "plant_trim": 4.0 },
+		"labor": 200.0,
+	},
+	# Kennel: LGD + Barn Cat shared habitat.
+	BUILDING_KENNEL: {
+		"label": "Build Kennel",
+		"scene": "res://scenes/kennel.tscn",
+		"cost": { "wood": 4.0, "twigs": 3.0, "plant_trim": 2.0 },
+		"labor": 90.0,
+	},
+	# ---- Garden bed variants (content bundle) ----
+	BUILDING_FENCED_PLOT: {
+		"label": "Build Fenced Plot",
+		"scene": "res://scenes/fenced_plot.tscn",
+		"cost": { "wood": 3.0 },
+		"labor": 40.0,
+	},
+	BUILDING_RAISED_BED: {
+		"label": "Build Raised Bed",
+		"scene": "res://scenes/raised_bed.tscn",
+		"cost": { "wood": 6.0, "plant_trim": 4.0 },
+		"labor": 60.0,
+	},
+	BUILDING_HUGEL_BED: {
+		"label": "Build Hugelkultur Bed",
+		"scene": "res://scenes/hugel_bed.tscn",
+		"cost": { "wood": 10.0, "twigs": 8.0, "plant_trim": 6.0 },
+		"labor": 180.0,
+	},
+	BUILDING_SPIRAL_GARDEN: {
+		"label": "Build Spiral Herb Garden",
+		"scene": "res://scenes/spiral_garden.tscn",
+		"cost": { "stone": 20.0, "plant_trim": 4.0 },
+		"labor": 120.0,
+	},
 }
 
 var unlocked_buildings: Array[StringName] = [
@@ -183,6 +267,7 @@ var unlocked_buildings: Array[StringName] = [
 	BUILDING_SPROUTING_BED,
 	BUILDING_WORM_BIN,       # Ring 0 R3 per DESIGN.md — unlocked alongside compost pile
 	BUILDING_MASON_BEE_TUBES,# Day-0 Activities Engineer — cheap pollinator habitat.
+	BUILDING_FENCED_PLOT,    # Day-0 growable bed — cheap wooden border.
 ]
 var tutorial_step: int = STEP_HARVEST_BIOMASS
 var storage_built: bool = false
@@ -261,6 +346,24 @@ func mark_structure_built(building_id: StringName) -> void:
 		storage_built = true
 	elif building_id == BUILDING_SPROUTING_BED:
 		sprouting_built = true
+	elif building_id == BUILDING_CHICKEN_COOP:
+		# First chicken coop → duck pond edge unlock (Animal Phase 2
+		# ring A). Ducks are a natural next-step: same flock loop the
+		# player just learned, with water-gating as the twist.
+		unlock(BUILDING_DUCK_POND_EDGE)
+	elif building_id == BUILDING_KILN:
+		# Kiln built — once the death→soil loop is real, the
+		# big-investment livestock unlocks. Also requires storage.
+		if storage_built:
+			unlock(BUILDING_COW_BARN)
+			unlock(BUILDING_PIG_PADDOCK)
+			unlock(BUILDING_KENNEL)
+	# Achievement signal — fires "first-hugel" / "spiral-built" / etc.
+	# Achievements autoload is registered by the content bundle; defensive
+	# node lookup so missing autoload doesn't break the build flow.
+	var ach: Node = get_node_or_null("/root/Achievements")
+	if ach != null and ach.has_method("report_signal"):
+		ach.call("report_signal", "structure_built:" + String(building_id))
 	GameLog.event("structure_built", { "building": String(building_id) })
 	_evaluate_step()
 
@@ -289,6 +392,10 @@ func mark_first_egg() -> void:
 	# Egg landed in storage → the flock-raise loop is real. Ring 3.0
 	# satisfied; butcher unlocks once a carcass spawns (Ring 3.1).
 	tutorial_step = max(tutorial_step, STEP_RAISE_FIRST_FLOCK)
+	# Animal Phase 2: first egg → Goat Shed unlocks. The player now
+	# has the feeder-supply loop down; goats introduce the milk +
+	# rotational-paddock loop (Salatin precursor).
+	unlock(BUILDING_GOAT_SHED)
 	GameLog.event("animal_milestone_first_egg", {})
 	_fire_milestone()
 

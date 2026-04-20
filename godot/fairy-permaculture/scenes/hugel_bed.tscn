@@ -1,0 +1,76 @@
+[gd_scene load_steps=6 format=3 uid="uid://hugel_bed_scene"]
+
+[ext_resource type="Script" path="res://scripts/hugel_bed.gd" id="1_hb"]
+
+[sub_resource type="SphereMesh" id="hb_mound"]
+radius = 1.20
+height = 1.00
+radial_segments = 16
+rings = 8
+
+[sub_resource type="CylinderMesh" id="hb_stick"]
+top_radius = 0.04
+bottom_radius = 0.05
+height = 0.55
+radial_segments = 6
+
+[sub_resource type="SphereMesh" id="hb_crown"]
+radius = 0.75
+height = 0.30
+radial_segments = 14
+rings = 6
+
+[sub_resource type="TorusMesh" id="hb_mulch"]
+inner_radius = 1.00
+outer_radius = 1.30
+
+[sub_resource type="BoxShape3D" id="hb_click"]
+size = Vector3(2.6, 1.4, 2.6)
+
+[node name="HugelBed" type="Node3D"]
+script = ExtResource("1_hb")
+
+[node name="Mound" type="MeshInstance3D" parent="."]
+transform = Transform3D(1.05, 0, 0, 0, 0.55, 0, 0, 0, 1.05, 0, 0.3, 0)
+mesh = SubResource("hb_mound")
+
+[node name="Sticks" type="Node3D" parent="."]
+
+[node name="StickA" type="MeshInstance3D" parent="Sticks"]
+transform = Transform3D(0.94, 0.30, -0.17, -0.34, 0.83, -0.44, 0, 0.47, 0.88, 0.25, 0.8, 0.20)
+mesh = SubResource("hb_stick")
+
+[node name="StickB" type="MeshInstance3D" parent="Sticks"]
+transform = Transform3D(0.87, -0.36, 0.35, 0.50, 0.65, -0.58, 0.05, 0.68, 0.73, -0.32, 0.75, 0.10)
+mesh = SubResource("hb_stick")
+
+[node name="StickC" type="MeshInstance3D" parent="Sticks"]
+transform = Transform3D(1.00, 0.10, 0.00, -0.10, 0.90, -0.42, 0.00, 0.42, 0.91, 0.10, 0.82, -0.30)
+mesh = SubResource("hb_stick")
+
+[node name="StickD" type="MeshInstance3D" parent="Sticks"]
+transform = Transform3D(0.76, 0.10, 0.64, -0.26, 0.94, 0.20, -0.60, -0.31, 0.73, -0.25, 0.70, -0.32)
+mesh = SubResource("hb_stick")
+
+[node name="StickE" type="MeshInstance3D" parent="Sticks"]
+transform = Transform3D(0.97, -0.23, 0.05, 0.24, 0.94, -0.25, 0, 0.25, 0.97, 0.05, 0.78, 0.35)
+mesh = SubResource("hb_stick")
+
+[node name="StickF" type="MeshInstance3D" parent="Sticks"]
+transform = Transform3D(0.75, 0.65, 0.12, -0.66, 0.75, 0, 0, 0, 1, 0, 0.85, 0.05)
+mesh = SubResource("hb_stick")
+
+[node name="Crown" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("hb_crown")
+
+[node name="MulchBand" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("hb_mulch")
+
+[node name="ClickArea" type="StaticBody3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("hb_click")

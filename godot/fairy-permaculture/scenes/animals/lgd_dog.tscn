@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fp_lgd_dog_scene"]
+
+[ext_resource type="Script" path="res://scripts/animals/lgd_dog.gd" id="1_lgd_dog"]
+
+[node name="LGDDog" type="Node3D"]
+script = ExtResource("1_lgd_dog")

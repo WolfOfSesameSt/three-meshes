@@ -1,0 +1,66 @@
+[gd_scene load_steps=6 format=3 uid="uid://raised_bed_scene"]
+
+[ext_resource type="Script" path="res://scripts/raised_bed.gd" id="1_rb"]
+
+[sub_resource type="BoxMesh" id="rb_interior"]
+size = Vector3(0.95, 0.26, 1.95)
+
+[sub_resource type="BoxMesh" id="rb_plank_long"]
+size = Vector3(0.04, 0.30, 2.00)
+
+[sub_resource type="BoxMesh" id="rb_plank_short"]
+size = Vector3(1.04, 0.30, 0.04)
+
+[sub_resource type="BoxMesh" id="rb_support"]
+size = Vector3(0.08, 0.40, 0.08)
+
+[sub_resource type="BoxShape3D" id="rb_click"]
+size = Vector3(1.2, 0.8, 2.2)
+
+[node name="RaisedBed" type="Node3D"]
+script = ExtResource("1_rb")
+
+[node name="Interior" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17, 0)
+mesh = SubResource("rb_interior")
+
+[node name="Frame" type="Node3D" parent="."]
+
+[node name="PlankLeft" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.50, 0.15, 0)
+mesh = SubResource("rb_plank_long")
+
+[node name="PlankRight" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.50, 0.15, 0)
+mesh = SubResource("rb_plank_long")
+
+[node name="PlankFront" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 1.00)
+mesh = SubResource("rb_plank_short")
+
+[node name="PlankBack" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -1.00)
+mesh = SubResource("rb_plank_short")
+
+[node name="SupportA" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52, 0.20, 1.00)
+mesh = SubResource("rb_support")
+
+[node name="SupportB" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52, 0.20, 1.00)
+mesh = SubResource("rb_support")
+
+[node name="SupportC" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52, 0.20, -1.00)
+mesh = SubResource("rb_support")
+
+[node name="SupportD" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52, 0.20, -1.00)
+mesh = SubResource("rb_support")
+
+[node name="ClickArea" type="StaticBody3D" parent="."]
+input_ray_pickable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ClickArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("rb_click")

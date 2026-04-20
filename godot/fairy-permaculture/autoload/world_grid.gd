@@ -158,6 +158,19 @@ func tile_material_at(world_pos: Vector3) -> String:
 	return t.material
 
 
+## Bump the organic-matter percent of the tile under `world_pos`. Used
+## by chop-and-drop to deposit mulch directly on the tile (instead of
+## carrying plant_trim back to storage). Returns the new OM value, or
+## 0.0 if the position is off-grid. Clamps to 20 % (climax ceiling).
+func add_tile_om(world_pos: Vector3, delta: float) -> float:
+	var t: Tile = _tile_at_world(world_pos)
+	if t == null:
+		return 0.0
+	t.om_pct = clamp(t.om_pct + delta, 0.0, 20.0)
+	emit_signal("tiles_updated")
+	return t.om_pct
+
+
 ## Pick a dry spawn position within `radius_m` of `center`. Returns
 ## `Vector3.ZERO` if no non-water tile was found in `attempts` tries.
 ## The returned position has its Y pre-snapped to terrain elevation, so
@@ -204,18 +217,23 @@ func average_om_pct() -> float:
 # ---------- Internals ----------
 
 func _generate_tiles() -> void:
+	# Seeds are channel-split via WorldSeed so a shared seed reproduces
+	# the same terrain + undulation + stream across runs. Defensive null-
+	# check lets headless sims that skip WorldSeed fall back to the old
+	# fixed seeds.
+	var ws: Node = get_node_or_null("/root/WorldSeed")
 	var noise: FastNoiseLite = FastNoiseLite.new()
-	noise.seed = 1337
+	noise.seed = ws.get_channel_seed("terrain") if (ws != null and ws.has_method("get_channel_seed")) else 1337
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	noise.frequency = 0.02
 
 	var undulation_noise: FastNoiseLite = FastNoiseLite.new()
-	undulation_noise.seed = 9173
+	undulation_noise.seed = ws.get_channel_seed("undulation") if (ws != null and ws.has_method("get_channel_seed")) else 9173
 	undulation_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	undulation_noise.frequency = 0.04
 
 	var stream_noise: FastNoiseLite = FastNoiseLite.new()
-	stream_noise.seed = 4242
+	stream_noise.seed = ws.get_channel_seed("stream") if (ws != null and ws.has_method("get_channel_seed")) else 4242
 	stream_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	stream_noise.frequency = 0.015
 

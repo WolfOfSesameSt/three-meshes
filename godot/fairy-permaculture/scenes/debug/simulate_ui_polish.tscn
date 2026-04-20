@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://sim_ui_polish"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_ui_polish.gd" id="1_sim_ui_polish"]
+
+[node name="SimUiPolish" type="Node"]
+script = ExtResource("1_sim_ui_polish")

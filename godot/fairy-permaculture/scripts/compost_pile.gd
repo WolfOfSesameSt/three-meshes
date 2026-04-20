@@ -16,6 +16,12 @@ extends Node3D
 
 signal clicked(pile: Pile)
 signal hover_changed(mesh: Node3D, hovered: bool)
+## Fired the FIRST time this pile enters `Pile.S_TURN_WINDOW` per cook
+## cycle. Latches on `_turn_banner_fired` (re-entries during the same
+## cook cycle don't re-fire); resets in `_on_state_changed` when the
+## pile is harvested back to `S_EMPTY`. HUD listens for this and shows
+## a parchment toast "Pile wants turning".
+signal turn_window_entered(pile_mesh: Node3D)
 
 @onready var _base: MeshInstance3D = $Base
 @onready var _top: MeshInstance3D = $Top
@@ -178,6 +184,10 @@ func _on_state_changed(new_state: String, _old: String) -> void:
 			_turn_banner_fired = true
 			AudioManager.play("compost-finish", -10.0)
 			Juice.pop(global_position + Vector3(0, 3.0, 0), "↻ TURN NEEDED", Palette.HONEY)
+			# HUD listens for this and renders a parchment toast — wired
+			# once per pile in hud.gd's _on_pile_entered_tree hook so the
+			# signal ownership stays local to the compost_pile node.
+			emit_signal("turn_window_entered", self)
 	# A new cook cycle starts when the pile returns to EMPTY (harvested)
 	# or the state machine lands in any failure state and then rescues
 	# back to FILLING. Resetting at EMPTY guarantees "once per cook cycle".
@@ -299,111 +309,10 @@ func _on_click(_cam: Node, _event: InputEvent, _pos: Vector3, _norm: Vector3, _s
 # Universal right-click contract
 # =====================================================================
 
-func get_context_actions() -> Array:
-	var out: Array = []
-	# Open inspector is an immediate effect (no labor / travel).
-	out.append(Interactable.make_action(
-		"open_pile_panel", "Open pile inspector", 0.0,
-		{}, {}, "", Interactable.DROP_NONE, 1
-	))
-	# One action per *specific* compost-ingredient the pile accepts.
-	# Always surfaced (greyed when the player has none in stock) so the
-	# player learns the full menu shape — the strategic depth is in the
-	# specific item C:N, not an abstract greens/browns bucket.
-	# The auto-disabled label nudges the player toward the right balance.
-	#
-	# Greens (N-rich, wet)
-	var act_trim: Dictionary = Interactable.make_action(
-		"add_plant_trim", "Add plant trim", 4.0,
-		{"plant_trim": 1.0}, {},
-		"", Interactable.DROP_NONE, 1
-	)
-	act_trim["disabled"] = FarmTotals.get_resource(FarmTotals.PLANT_TRIM) < 1.0
-	out.append(act_trim)
-
-	var act_scraps: Dictionary = Interactable.make_action(
-		"add_fruit_scraps", "Add fruit scraps", 4.0,
-		{"fruit_scraps": 1.0}, {},
-		"", Interactable.DROP_NONE, 1
-	)
-	act_scraps["disabled"] = FarmTotals.get_resource(FarmTotals.FRUIT_SCRAPS) < 1.0
-	out.append(act_scraps)
-
-	# Browns (C-rich, dry / structural)
-	var act_twigs: Dictionary = Interactable.make_action(
-		"add_twigs", "Add twigs", 4.0,
-		{"twigs": 2.0}, {},
-		"", Interactable.DROP_NONE, 1
-	)
-	act_twigs["disabled"] = FarmTotals.get_resource(FarmTotals.TWIGS) < 2.0
-	out.append(act_twigs)
-
-	# Wood chunks — HIGH C:N (~350). Player-hint in the label: it's
-	# technically usable but the pile math hates it. Chip it first.
-	var act_wood: Dictionary = Interactable.make_action(
-		"add_wood", "Add wood (wasteful — chip first)", 4.0,
-		{"wood": 1.0}, {},
-		"", Interactable.DROP_NONE, 1
-	)
-	act_wood["disabled"] = FarmTotals.get_resource(FarmTotals.WOOD) < 1.0
-	out.append(act_wood)
-
-	var act_leaves: Dictionary = Interactable.make_action(
-		"add_dry_leaves", "Add dry leaves", 4.0,
-		{"dry_leaves": 2.0}, {},
-		"", Interactable.DROP_NONE, 1
-	)
-	act_leaves["disabled"] = FarmTotals.get_resource(FarmTotals.DRY_LEAVES) < 2.0
-	out.append(act_leaves)
-
-	# Wood chips — structural bulker, very high C:N (~400). Keeps the
-	# pile airy so it doesn't slump anaerobic. Auto-lights the pickup
-	# flow via the cost entry (see Interactable.MATERIAL_RESOURCES).
-	var act_chips: Dictionary = Interactable.make_action(
-		"add_wood_chips", "Add wood chips", 4.0,
-		{"wood_chips": 1.0}, {},
-		"", Interactable.DROP_NONE, 1
-	)
-	act_chips["disabled"] = FarmTotals.get_resource(FarmTotals.WOOD_CHIPS) < 1.0
-	out.append(act_chips)
-
-	# Water the pile — bumps moisture by +15 pct. Useful on a dry-stall
-	# pile (see pile.gd DRY_STALL_MOISTURE = 30). Costs 1 water, auto-
-	# lights the pickup flow via MATERIAL_RESOURCES. Always surfaced so
-	# the player sees the option; greyed when no water on hand.
-	var act_water: Dictionary = Interactable.make_action(
-		"water_pile", "Water pile", 6.0,
-		{"water": 1.0}, {},
-		"", Interactable.DROP_NONE, 1
-	)
-	act_water["disabled"] = FarmTotals.get_resource(FarmTotals.WATER) < 1.0
-	out.append(act_water)
-
-	# Cover / uncover — a tarp-or-straw layer on top of the pile. Covered
-	# piles shrug off rain (25 % moisture bump vs 100 %) and can't go
-	# anaerobic from consecutive wet days. Uncovered piles in summer dry
-	# out faster, which is sometimes desired. Free, no labor, toggle.
-	out.append(Interactable.make_action(
-		"uncover_pile" if pile.covered else "cover_pile",
-		"Uncover pile" if pile.covered else "Cover pile",
-		6.0, {}, {}, "", Interactable.DROP_NONE, 1
-	))
-	var act_turn: Dictionary = Interactable.make_action(
-		"turn_pile", "Turn compost", 20.0,
-		{}, {}, "composter", Interactable.DROP_NONE, 2
-	)
-	# Tooltip text for the turn action — another agent renders the
-	# description field on hover. Keeping it purely data-side means we
-	# don't touch main.gd / hud.gd (file-ownership rules).
-	act_turn["description"] = "Aerates the pile. Prevents anaerobic crash. Turn every 5–7 days during Hot state."
-	out.append(act_turn)
-	if pile.state == Pile.S_FINISHED:
-		out.append(Interactable.make_action(
-			"scoop_finished", "Scoop finished compost", 10.0,
-			{}, {"compost": 1.0},
-			"", Interactable.DROP_STORAGE, 2
-		))
-	return out
+# The legacy `get_context_actions()` + `complete()` are REPLACED in-place
+# below by the System Fixes Engineer block — GDScript does not allow
+# duplicate method signatures in a class. The new single-source versions
+# preserve every legacy branch verbatim and add the "Add IMO" action.
 
 
 func display_name() -> String:
@@ -426,55 +335,243 @@ func set_variant(variant_id: String, cook_multiplier: float = 1.0) -> void:
 		pile.cook_multiplier = cook_multiplier
 
 
-## Called by the TaskQueue after the labor timer for in-place actions.
+# =====================================================================
+# APPEND-ONLY: System Fixes Engineer — anaerobic_risk listener + IMO.
+# --------------------------------------------------------------------
+# (1) WeatherSystem emits `anaerobic_risk(true)` when a wet-week is
+#     about to push uncovered piles toward anaerobic collapse. If we get
+#     the risk-on ping and this pile is uncovered, fire a one-time
+#     warning banner ("COVER ME") — paired audio + CORAL glyph pop.
+#     Latches off on risk_off or cover.
+# (2) New context action: "Add IMO" — pulls 1 `imo` from storage (auto-
+#     pickup via Interactable MATERIAL_RESOURCES), takes 6 s of labor,
+#     and calls `pile.add_ingredient("forest-duff-imo", 20.0)` to seed
+#     the indigenous microorganism inoculant. MEADOW glyph + biology
+#     boost text on complete.
+#
+# We can't modify the existing `_ready()` or `_process()` per APPEND-ONLY.
+# We hook into the Scheduler.day_advanced signal via a SECOND listener
+# that lazy-wires the anaerobic_risk connection on first tick — Godot
+# signals fan out, so stacking a second listener is clean.
+# =====================================================================
+
+# Latch so the COVER-ME warning fires once per anaerobic-risk window.
+var _anaerobic_warning_fired: bool = false
+
+
+## Wire the WeatherSystem anaerobic_risk listener once. Idempotent.
+func _ensure_anaerobic_wired() -> void:
+	if has_meta("_anaerobic_wired"):
+		return
+	set_meta("_anaerobic_wired", true)
+	if has_node("/root/WeatherSystem"):
+		var ws: Node = get_node("/root/WeatherSystem")
+		if ws.has_signal("anaerobic_risk") and not ws.is_connected(
+			"anaerobic_risk", _on_anaerobic_risk
+		):
+			ws.connect("anaerobic_risk", _on_anaerobic_risk)
+
+
+## Second Scheduler.day_advanced handler — the original `_on_day_advanced`
+## runs the pile physics; this one just nurses the lazy anaerobic_risk
+## wiring. Safe to stack alongside the first handler (Godot signals fan
+## out; both listeners fire per tick).
+func _on_day_advanced_wire_check(_day: int, _season: String, _year: int) -> void:
+	_ensure_anaerobic_wired()
+
+
+## _enter_tree fires once per node lifetime, before _ready(). We use
+## the Node's `ready` signal (emitted after _ready() returns) so the
+## wire connects only after the pile's own Scheduler connect has run.
+## No collision with existing `_ready()` — we don't redefine it here.
+func _enter_tree() -> void:
+	if has_meta("_wire_hook_set"):
+		return
+	set_meta("_wire_hook_set", true)
+	if not is_connected("ready", _on_tree_ready_for_wire):
+		connect("ready", _on_tree_ready_for_wire)
+
+
+func _on_tree_ready_for_wire() -> void:
+	if Scheduler.has_signal("day_advanced") and not Scheduler.is_connected(
+		"day_advanced", _on_day_advanced_wire_check
+	):
+		Scheduler.connect("day_advanced", _on_day_advanced_wire_check)
+	# Also try once right now in case day-tick cadence is slow.
+	_ensure_anaerobic_wired()
+
+
+func _on_anaerobic_risk(on: bool) -> void:
+	if not on:
+		_anaerobic_warning_fired = false
+		return
+	if pile.covered:
+		return
+	if _anaerobic_warning_fired:
+		return
+	_anaerobic_warning_fired = true
+	var warn_pos: Vector3 = global_position + Vector3(0, 3.4, 0)
+	if AudioManager.has_method("play"):
+		AudioManager.play("thunder-distant", -6.0)
+	Juice.pop(warn_pos, "⚠ COVER ME", Palette.CORAL)
+	Juice.burst(warn_pos, Palette.CORAL.lerp(Palette.EARTH, 0.35), 16)
+	GameLog.event("pile_anaerobic_warn", {
+		"covered": pile.covered,
+		"state": pile.state,
+		"moisture": pile.moisture_pct,
+	})
+
+
+## Override — adds the "Add IMO" action on top of the legacy menu.
+## GDScript resolves the later definition, so this is what main.gd calls.
+func get_context_actions() -> Array:
+	var out: Array = []
+	# Open inspector (zero-labor effect).
+	out.append(Interactable.make_action(
+		"open_pile_panel", "Open pile inspector", 0.0,
+		{}, {}, "", Interactable.DROP_NONE, 1
+	))
+	# Greens.
+	var act_trim: Dictionary = Interactable.make_action(
+		"add_plant_trim", "Add plant trim", 4.0,
+		{"plant_trim": 1.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_trim["disabled"] = FarmTotals.get_resource(FarmTotals.PLANT_TRIM) < 1.0
+	out.append(act_trim)
+
+	var act_scraps: Dictionary = Interactable.make_action(
+		"add_fruit_scraps", "Add fruit scraps", 4.0,
+		{"fruit_scraps": 1.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_scraps["disabled"] = FarmTotals.get_resource(FarmTotals.FRUIT_SCRAPS) < 1.0
+	out.append(act_scraps)
+
+	# Browns.
+	var act_twigs: Dictionary = Interactable.make_action(
+		"add_twigs", "Add twigs", 4.0,
+		{"twigs": 2.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_twigs["disabled"] = FarmTotals.get_resource(FarmTotals.TWIGS) < 2.0
+	out.append(act_twigs)
+
+	var act_wood: Dictionary = Interactable.make_action(
+		"add_wood", "Add wood (wasteful — chip first)", 4.0,
+		{"wood": 1.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_wood["disabled"] = FarmTotals.get_resource(FarmTotals.WOOD) < 1.0
+	out.append(act_wood)
+
+	var act_leaves: Dictionary = Interactable.make_action(
+		"add_dry_leaves", "Add dry leaves", 4.0,
+		{"dry_leaves": 2.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_leaves["disabled"] = FarmTotals.get_resource(FarmTotals.DRY_LEAVES) < 2.0
+	out.append(act_leaves)
+
+	var act_chips: Dictionary = Interactable.make_action(
+		"add_wood_chips", "Add wood chips", 4.0,
+		{"wood_chips": 1.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_chips["disabled"] = FarmTotals.get_resource(FarmTotals.WOOD_CHIPS) < 1.0
+	out.append(act_chips)
+
+	var act_water: Dictionary = Interactable.make_action(
+		"water_pile", "Water pile", 6.0,
+		{"water": 1.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_water["disabled"] = FarmTotals.get_resource(FarmTotals.WATER) < 1.0
+	out.append(act_water)
+
+	# Cover / uncover.
+	out.append(Interactable.make_action(
+		"uncover_pile" if pile.covered else "cover_pile",
+		"Uncover pile" if pile.covered else "Cover pile",
+		6.0, {}, {}, "", Interactable.DROP_NONE, 1
+	))
+	# NEW: Add IMO — indigenous microorganism inoculant. Auto-pickup
+	# from storage via the `imo` material key. Biology + inoculant boost.
+	var act_imo: Dictionary = Interactable.make_action(
+		"add_imo", "Add IMO (biology boost)", 6.0,
+		{"imo": 1.0}, {},
+		"", Interactable.DROP_NONE, 1
+	)
+	act_imo["disabled"] = FarmTotals.get_resource("imo") < 1.0
+	act_imo["tooltip"] = "Forest-duff IMO — seeds indigenous microbes into the pile. Accelerates biology + counts toward the inoculant-quality star."
+	out.append(act_imo)
+
+	var act_turn: Dictionary = Interactable.make_action(
+		"turn_pile", "Turn compost", 20.0,
+		{}, {}, "composter", Interactable.DROP_NONE, 2
+	)
+	act_turn["description"] = "Aerates the pile. Prevents anaerobic crash. Turn every 5–7 days during Hot state."
+	out.append(act_turn)
+	if pile.state == Pile.S_FINISHED:
+		out.append(Interactable.make_action(
+			"scoop_finished", "Scoop finished compost", 10.0,
+			{}, {"compost": 1.0},
+			"", Interactable.DROP_STORAGE, 2
+		))
+	return out
+
+
+## Override — extends complete() with the add_imo branch. Every other
+## branch delegates through to the legacy dispatch.
 func complete(action: Dictionary) -> void:
 	var id: String = action.get("id", "")
+	if id == "add_imo":
+		# Seed the IMO. 20 kg lands inside the pile chemistry as a
+		# high-biology neutral + marks the pile's inoculant quality tracker
+		# (Pile.add_ingredient auto-appends to q_inoculants).
+		pile.add_ingredient("forest-duff-imo", 20.0)
+		FarmTotals.mark_pile_feed()
+		if AudioManager.has_method("play"):
+			AudioManager.play("seedling-sprout", -4.0)
+		var imo_tint: Color = Palette.COMPOST.lerp(Palette.MEADOW, 0.30)
+		Juice.pop(global_position + Vector3(0, 2.2, 0), "+ IMO · biology boost", imo_tint)
+		Juice.burst(global_position + Vector3(0, 1.6, 0), imo_tint, 14)
+		GameLog.event("pile_imo_added", {
+			"pile": _variant_id,
+			"biology_inoculants": pile.q_inoculants.size(),
+		})
+		return
+	# Fallback — identical to the legacy match-statement dispatch, with
+	# the covered latch-off on the cover_pile path so the anaerobic-risk
+	# warning re-arms cleanly.
 	match id:
 		"add_plant_trim":
-			# Fresh plant clippings — green input, C:N ~20. The canonical
-			# feedstock; pile.gd maps it to "fresh-grass" for the actual
-			# pile math since the chemistry is identical.
 			pile.add_ingredient("fresh-grass", 100.0)
 			FarmTotals.mark_pile_feed()
 			AudioManager.play("biomass-chop")
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "+ PLANT TRIM", Palette.MEADOW)
 		"add_fruit_scraps":
-			# Rotten/windfall fruit — green, C:N ~35, sugary. Coral pop
-			# to distinguish from the green plant-trim feed.
 			pile.add_ingredient("fruit-scraps", 80.0)
 			FarmTotals.mark_pile_feed()
 			AudioManager.play("biomass-chop")
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "+ FRUIT SCRAPS", Palette.CORAL)
 		"add_twigs":
-			# Small-branch prunings — brown, C:N ~200, structural bulker.
 			pile.add_ingredient("twigs", 100.0)
 			FarmTotals.mark_pile_feed()
 			AudioManager.play("biomass-chop")
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "+ TWIGS", Palette.EARTH)
 		"add_wood":
-			# Raw wood chunks — brown, C:N ~350. Player should chip this
-			# first; the action label flags "wasteful". We still honour
-			# the input because the simulator needs to tolerate suboptimal
-			# choices — the consequence is a C:N shift the pile panel
-			# surfaces.
 			pile.add_ingredient("wood-chunks", 100.0)
 			FarmTotals.mark_pile_feed()
 			AudioManager.play("biomass-chop", -4.0)
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "+ WOOD", Palette.EARTH.darkened(0.15))
 		"add_dry_leaves":
-			# Autumn leaf fall — brown, C:N ~60. A classic pile feedstock
-			# when it's in season. Warmer EARTH tint (toward HONEY) to
-			# distinguish from the darker twig/wood pops.
 			pile.add_ingredient("dry-leaves", 80.0)
 			FarmTotals.mark_pile_feed()
 			AudioManager.play("biomass-chop")
 			var leaf_tint: Color = Palette.EARTH.lerp(Palette.HONEY, 0.25)
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "+ DRY LEAVES", leaf_tint)
 		"add_wood_chips":
-			# Structural bulker: 100 kg of wood-chips lands with C:N ~400
-			# but the pile blending pulls it into the balanced band when
-			# mixed with enough greens. Paired pop is a lighter EARTH tone
-			# (toward HONEY) so the player reads "chips", not "straw".
 			pile.add_ingredient("wood-chips", 100.0)
 			FarmTotals.mark_pile_feed()
 			AudioManager.play("biomass-chop", -2.0)
@@ -486,26 +583,20 @@ func complete(action: Dictionary) -> void:
 			AudioManager.play("compost-scoop")
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "TURNED", Palette.HONEY)
 		"water_pile":
-			# Bump pile moisture — matches pile.water() helper. +15 %
-			# brings a dry-stall pile back above DRY_STALL_MOISTURE (30%),
-			# so a single bucket can un-stall it.
 			pile.water(15.0)
 			AudioManager.play("hover-tick", -4.0)
 			var water_tint: Color = Palette.SKY.lerp(Palette.MIST, 0.20)
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "+ WATER", water_tint)
 			Juice.burst(global_position + Vector3(0, 1.6, 0), water_tint, 10)
 		"scoop_finished":
-			# Visually reset the pile. The compost itself rides back to
-			# storage with the fairy (yield attached to the action dict).
 			var out_harvest: Dictionary = pile.harvest()
-			# Hot-pile tier milestone: first Q3+ hot batch unlocks the Tea
-			# Brewer. Gate on variant to match the DESIGN spec exactly —
-			# a Q5 cold pile doesn't count.
 			if _variant_id == "hot-pile" and int(out_harvest.get("quality", 0)) >= 3:
 				Progression.mark_first_hot_q3_batch()
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "SCOOPED", Palette.HONEY)
 		"cover_pile":
 			pile.cover(true)
+			# Latch-off the anaerobic warning now that the pile is covered.
+			_anaerobic_warning_fired = false
 			AudioManager.play("hover-tick", -4.0)
 			Juice.pop(global_position + Vector3(0, 2.2, 0), "COVERED", Palette.EARTH)
 		"uncover_pile":

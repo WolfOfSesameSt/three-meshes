@@ -931,3 +931,77 @@ func cover_crop_state() -> Dictionary:
 		"species": cover_crop_active,
 		"days": cover_crop_days,
 	}
+
+
+# =====================================================================
+# APPEND-ONLY: System Fixes Engineer — drought listener.
+# --------------------------------------------------------------------
+# When WeatherSystem is in the "drought" event, this plot's daily
+# moisture decay doubles (on top of the existing random -2..+3 drift
+# in `_on_day`). We wire a second Scheduler.day_advanced listener that
+# runs AFTER the base handler and skims moisture if drought is active.
+# We also darken the plot edge (its rim on the disc material) slightly
+# so the player sees the drought-stressed tile without opening a panel.
+# =====================================================================
+
+# Darker edge tint applied to the disc rim uniform while drought is on.
+# Held at a low value so the tile reads "drier", not "burning".
+const DROUGHT_EDGE_DARKEN: float = 0.10
+# Fraction of today's moisture removed as the drought-extra decay (so a
+# plot with moisture 60 loses ~3-4 additional points per drought day).
+const DROUGHT_EXTRA_DECAY_FRACTION: float = 0.06
+# Floor so we never push a plot below the "crunchy clay" band visually.
+const DROUGHT_MOISTURE_FLOOR: float = 8.0
+
+
+func _ensure_drought_wired() -> void:
+	if has_meta("_drought_wired"):
+		return
+	set_meta("_drought_wired", true)
+	# Extra daily tick that only fires the drought penalty. Fine to
+	# stack with the existing `_on_day` connection — Scheduler fan-outs.
+	if Scheduler.has_signal("day_advanced") and not Scheduler.is_connected(
+		"day_advanced", _on_drought_day_tick
+	):
+		Scheduler.connect("day_advanced", _on_drought_day_tick)
+
+
+func _on_drought_day_tick(_day: int, _season: String, _year: int) -> void:
+	var ws: Node = get_node_or_null("/root/WeatherSystem")
+	if ws == null:
+		return
+	if not ws.has_method("is_active"):
+		return
+	var drought_on: bool = false
+	var res: Variant = ws.call("is_active", "drought")
+	drought_on = res is bool and (res as bool)
+	if not drought_on:
+		# Clear any lingering drought tint when the event ends.
+		if has_meta("_drought_rim_on"):
+			remove_meta("_drought_rim_on")
+			_refresh_soil_appearance()
+		return
+	# Double the daily decay — we approximate by skimming a fraction of
+	# the current moisture on top of whatever `_on_day` already drifted.
+	var before: float = moisture_pct
+	var extra: float = before * DROUGHT_EXTRA_DECAY_FRACTION
+	moisture_pct = max(DROUGHT_MOISTURE_FLOOR, before - extra)
+	# Visibly darken the rim a touch so the tile reads drought-stressed.
+	set_meta("_drought_rim_on", true)
+	if _disc_mat != null:
+		_disc_mat.rim_enabled = true
+		_disc_mat.rim = max(_disc_mat.rim, 0.55)
+		_disc_mat.rim_tint = 0.9
+		# A warm drought-edge — Earth tinted slightly darker. Keeps the
+		# palette compliance (no cold-grey/blue slip).
+		var edge: Color = Palette.clamp_happy(Palette.EARTH.darkened(DROUGHT_EDGE_DARKEN))
+		_disc_mat.emission_enabled = true
+		_disc_mat.emission = edge
+		_disc_mat.emission_energy_multiplier = 0.08
+	_refresh_soil_appearance()
+
+
+func _process(_delta: float) -> void:
+	# Wire the drought listener lazily — same pattern as the plant
+	# frost listener. Idempotent + cheap once set_meta flag is in place.
+	_ensure_drought_wired()

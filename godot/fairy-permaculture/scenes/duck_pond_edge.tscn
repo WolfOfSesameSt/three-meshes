@@ -1,0 +1,43 @@
+[gd_scene load_steps=6 format=3 uid="uid://fp_duck_pond_edge_scene"]
+
+[ext_resource type="Script" path="res://scripts/duck_pond_edge.gd" id="1_duck_pond_edge"]
+
+[sub_resource type="BoxMesh" id="walls_mesh"]
+size = Vector3(1.8, 1.2, 1.4)
+
+[sub_resource type="PrismMesh" id="roof_mesh"]
+size = Vector3(2.0, 0.55, 1.6)
+
+[sub_resource type="BoxMesh" id="reeds_mesh"]
+size = Vector3(2.2, 0.45, 0.2)
+
+[sub_resource type="SphereMesh" id="egg_badge_mesh"]
+radius = 0.10
+height = 0.16
+
+[sub_resource type="BoxShape3D" id="pond_edge_click_shape"]
+size = Vector3(2.4, 2.4, 1.9)
+
+[node name="DuckPondEdge" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_duck_pond_edge")
+
+[node name="Walls" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("walls_mesh")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.85, 0)
+mesh = SubResource("roof_mesh")
+
+[node name="Reeds" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22, 0.95)
+mesh = SubResource("reeds_mesh")
+
+[node name="EggBadge" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, -0.55)
+mesh = SubResource("egg_badge_mesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("pond_edge_click_shape")

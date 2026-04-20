@@ -1,0 +1,30 @@
+[gd_scene load_steps=5 format=3 uid="uid://fp_goat_shed_scene"]
+
+[ext_resource type="Script" path="res://scripts/goat_shed.gd" id="1_goat_shed"]
+
+[sub_resource type="BoxMesh" id="walls_mesh"]
+size = Vector3(2.4, 1.8, 2.0)
+
+[sub_resource type="PrismMesh" id="roof_mesh"]
+size = Vector3(2.8, 1.0, 2.3)
+
+[sub_resource type="BoxShape3D" id="goat_shed_click_shape"]
+size = Vector3(3.0, 3.0, 2.4)
+
+[node name="GoatShed" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_goat_shed")
+
+[node name="Walls" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("walls_mesh")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.35, 0)
+mesh = SubResource("roof_mesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("goat_shed_click_shape")
+
+[node name="FencePosts" type="Node3D" parent="."]

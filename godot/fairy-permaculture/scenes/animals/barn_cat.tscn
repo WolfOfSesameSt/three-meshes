@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fp_barn_cat_scene"]
+
+[ext_resource type="Script" path="res://scripts/animals/barn_cat.gd" id="1_barn_cat"]
+
+[node name="BarnCat" type="Node3D"]
+script = ExtResource("1_barn_cat")

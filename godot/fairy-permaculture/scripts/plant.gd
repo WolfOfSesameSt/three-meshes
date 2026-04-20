@@ -443,11 +443,45 @@ func _seed_yield_roll() -> int:
 	return clamp(n, 1, 3)
 
 
-## Surface the seed-harvest row if the plant is in a seed-bearing stage.
-## We override the earlier `get_context_actions()` — Godot's method
-## resolution picks the later definition, so this append-only extension
-## is what gets called. We still defer to the legacy logic by building
-## the same actions the parent produced, then appending our row.
+# The original Day-0 append block's `get_context_actions()` + `complete()`
+# are REPLACED in-place below by the System Fixes Engineer block —
+# GDScript does not allow duplicate method signatures in a class, so the
+# earlier overrides are removed here and the new single source of truth
+# lives in the block further down. The seed-harvest + forage + legacy
+# branches are preserved verbatim in the new `complete()`.
+
+
+# =====================================================================
+# APPEND-ONLY: System Fixes Engineer — chop-and-drop tile-OM model +
+# early-frost listener.
+# --------------------------------------------------------------------
+# Two behaviour corrections:
+#
+# (1) Chop-and-drop is now a SOIL-building action — the biomass is laid
+#     on the tile instead of shipped to storage. The *intent* is to bump
+#     the host tile's OM by +0.15 via `WorldGrid.add_tile_om(pos, +0.15)`
+#     — but no such helper exists on the current WorldGrid (confirmed
+#     2026-04-19, and WorldGrid is in the FORBIDDEN list for this pass).
+#     The designed fallback is: still yield plant_trim to storage, log a
+#     follow-up so the soil-engineer agent picks it up, AND consume the
+#     plant (queue_free) instead of regressing it to a seedling. That
+#     last part captures the "cut it down, lay it on the ground" feel —
+#     the plant is gone, even if OM credit hasn't wired through yet.
+#
+# (2) Early-frost (WeatherSystem.event_active "early_frost") damages
+#     tender (non-pioneer) plants: ripe_count drops 50 %, visual wilt
+#     for ~3 game days. Pioneers (nettle / dandelion / yarrow / plantain)
+#     are frost-hardy and skip the damage.
+# =====================================================================
+
+var _frost_damaged_until_day: int = -1
+var _pre_frost_body_albedo: Color = Color(0, 0, 0, 0)
+var _pre_frost_scale_y: float = 1.0
+
+
+## Override — re-emits the standard action set, but re-flags `chop_drop`
+## so the player sees "Chop-and-drop" clearly labelled + so the yield
+## pipeline keeps its storage drop (fallback while tile-OM API ships).
 func get_context_actions() -> Array:
 	var out: Array = []
 	var s: Variant = DataStore.get_plant(species_id)
@@ -455,11 +489,13 @@ func get_context_actions() -> Array:
 		s != null and (s["roles"] as Array).has("biomass")
 	)
 	if is_biomass_plant:
-		out.append(Interactable.make_action(
+		var act_cd: Dictionary = Interactable.make_action(
 			"chop_drop", "Chop-and-drop", 8.0,
 			{}, {"plant_trim": _biomass_yield_amount()},
 			"", Interactable.DROP_STORAGE, 2
-		))
+		)
+		act_cd["tooltip"] = "Cut the plant + lay it on the tile. Plant is consumed; biomass feeds soil OM (follow-up: wire WorldGrid.add_tile_om)."
+		out.append(act_cd)
 	else:
 		var ripe: int = max(1, ripe_count if ripe_count > 0 else int(ceil(ripe_amount)))
 		out.append(Interactable.make_action(
@@ -467,11 +503,13 @@ func get_context_actions() -> Array:
 			{}, {"fruit": float(ripe)},
 			"", Interactable.DROP_STORAGE, 2
 		))
-		out.append(Interactable.make_action(
+		var act_cd2: Dictionary = Interactable.make_action(
 			"chop_drop", "Chop-and-drop", 8.0,
 			{}, {"plant_trim": 3.0},
 			"", Interactable.DROP_STORAGE, 2
-		))
+		)
+		act_cd2["tooltip"] = "Cut the plant + lay it on the tile. Plant is consumed; biomass feeds soil OM (follow-up: wire WorldGrid.add_tile_om)."
+		out.append(act_cd2)
 	# Day-0 addition: Harvest seeds — only when the plant is in a
 	# seed-bearing stage. Plant stays alive; seed-state resets on
 	# complete() so the player can't spam it.
@@ -485,42 +523,140 @@ func get_context_actions() -> Array:
 	return out
 
 
-## Extend the TaskQueue completion hook with the seed-harvest beat.
-## Original cases (harvest_all / chop_drop) still ride through the legacy
-## logic — we only add the new branch for `harvest_seeds`.
+## Override — final word on complete(). Keeps every earlier branch but
+## rewrites chop_drop to CONSUME the plant (queue_free) instead of
+## regressing it. Logs a follow-up for WorldGrid.add_tile_om so the soil
+## engineer agent can wire the +0.15 OM bump when the API ships.
 func complete(action: Dictionary) -> void:
 	var id: String = action.get("id", "")
 	if id == "harvest_seeds":
-		# Reset seed-bearing state back to FLOWERING so the player can't
-		# farm the same bush infinitely in a single day. Age stays — the
-		# plant is still mature, it just needs to re-form its seed heads.
 		growth_stage = VisualState.STAGE_FLOWERING
 		_refresh_visual_state()
 		if AudioManager.has_method("play"):
 			AudioManager.play("seedling-sprout", -4.0)
-		# Paired visual pop — MEADOW-toned "+ SEEDS" glyph.
 		var seeds_yielded: float = float((action.get("yield", {}) as Dictionary).get("seeds", 0.0))
 		Juice.pop(global_position + Vector3(0, 1.8, 0),
 			"+ %d SEEDS" % int(seeds_yielded), Palette.MEADOW)
 		Juice.burst(global_position + Vector3(0, 1.3, 0),
 			Palette.MEADOW.lerp(Palette.HONEY, 0.35), 10)
 		return
-	# Fallback: dispatch to the original logic by duplicating its body
-	# inline. Original `complete()` handled harvest_all + chop_drop.
 	if id == "harvest_all":
 		ripe_count = 0
 		ripe_amount = 0.0
 		_sync_fruit_cluster_meshes()
 		AudioManager.play("berry-pick")
 		Juice.burst(global_position + Vector3(0, 1.6, 0), _fruit_color, 12)
-	elif id == "chop_drop":
-		stage = "seedling"
-		age_days = 0
-		growth_stage = VisualState.STAGE_SEED
-		ripe_count = 0
-		ripe_amount = 0.0
-		_sync_fruit_cluster_meshes()
-		scale = Vector3(0.6, 0.6, 0.6)
-		var tw: Tween = create_tween()
-		tw.tween_property(self, "scale", Vector3.ONE, 20.0).set_trans(Tween.TRANS_SINE)
+		return
+	if id == "chop_drop":
+		# Best-effort tile-OM bump — uses the helper if WorldGrid ever
+		# gains it (forward-compat). No-op otherwise; the follow-up log
+		# below tracks the debt so the soil engineer wires it later.
+		if has_node("/root/WorldGrid"):
+			var wg: Node = get_node("/root/WorldGrid")
+			if wg.has_method("add_tile_om"):
+				wg.call("add_tile_om", global_position, 0.15)
+				GameLog.info("chop_drop: tile OM +0.15 at %s" % global_position, "plant")
+			else:
+				GameLog.info("chop_drop: WorldGrid.add_tile_om MISSING — follow-up to wire tile-OM +0.15 at %s" % global_position, "plant")
 		AudioManager.play("biomass-chop")
+		Juice.pop(global_position + Vector3(0, 1.6, 0), "CHOP-AND-DROP", Palette.MEADOW)
+		Juice.burst(global_position + Vector3(0, 0.8, 0),
+			Palette.MEADOW.lerp(Palette.OLIVE_DARK, 0.3), 14)
+		GameLog.event("plant_chop_dropped", {
+			"species": species_id,
+			"is_pioneer": is_pioneer,
+			"age_days": age_days,
+		})
+		# Plant is consumed — "cut it and lay it down". Scale-to-zero
+		# tween for the visible beat, then deferred queue_free so the
+		# node actually leaves the scene whether or not the tween ran to
+		# completion (headless / fast-forward robustness).
+		var tw: Tween = create_tween()
+		tw.tween_property(self, "scale", Vector3.ZERO, 0.45) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_callback(queue_free)
+		# Belt-and-braces: also schedule a deferred free after ~0.5 s.
+		# If the tween finished first, queue_free is a no-op the second
+		# time. If the tween was killed / never ran, this ensures the
+		# plant still leaves the scene.
+		get_tree().create_timer(0.5).timeout.connect(queue_free)
+
+
+## Frost-damage wiring — connects once in _process after Scheduler is
+## ready. We hook WeatherSystem.event_active and trigger damage on the
+## first tick of an early_frost. Pioneers are hardy and skip damage.
+func _ensure_frost_wired() -> void:
+	if has_meta("_frost_wired"):
+		return
+	set_meta("_frost_wired", true)
+	if has_node("/root/WeatherSystem"):
+		var ws: Node = get_node("/root/WeatherSystem")
+		if ws.has_signal("event_active") and not ws.is_connected("event_active", _on_weather_event_active):
+			ws.connect("event_active", _on_weather_event_active)
+
+
+func _process(_delta: float) -> void:
+	# Idempotent; cheap — only wires the signal once.
+	_ensure_frost_wired()
+	# Recover from frost wilt after the visible window (~3 game-days).
+	if _frost_damaged_until_day > 0:
+		var cur: int = 0
+		if has_node("/root/Scheduler"):
+			cur = int(get_node("/root/Scheduler").get("day"))
+		if cur >= _frost_damaged_until_day:
+			_recover_from_frost()
+
+
+func _on_weather_event_active(event_id: String, _day_remaining: int) -> void:
+	if event_id != "early_frost":
+		return
+	if is_pioneer:
+		return   # hardy pioneers shrug it off
+	# Re-entering the listener while still wilted: don't double-damage.
+	if _frost_damaged_until_day > 0:
+		return
+	# Drop ripe_count by 50 % (round down, min 0).
+	var lost: int = 0
+	if ripe_count > 0:
+		lost = ripe_count - int(ripe_count / 2)
+		ripe_count = int(ripe_count / 2)
+		ripe_amount = float(ripe_count)
+		_sync_fruit_cluster_meshes()
+	# Visual wilt — dim body albedo + squish scale_y for ~3 game days.
+	if _body_mat != null:
+		_pre_frost_body_albedo = _body_mat.albedo_color
+		_body_mat.albedo_color = Palette.clamp_happy(
+			_body_mat.albedo_color.lerp(Palette.SKY.lerp(Palette.MIST, 0.5), 0.35)
+		)
+	_pre_frost_scale_y = _body.scale.y if _body != null else 1.0
+	if _body != null:
+		var tw: Tween = _body.create_tween()
+		tw.tween_property(_body, "scale", Vector3(_body.scale.x, _pre_frost_scale_y * 0.7, _body.scale.z), 0.5) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var cur_day: int = 0
+	if has_node("/root/Scheduler"):
+		cur_day = int(get_node("/root/Scheduler").get("day"))
+	_frost_damaged_until_day = cur_day + 3
+	# Paired feedback — sky-tinted wilt pop + soft tick.
+	if AudioManager.has_method("play"):
+		AudioManager.play("hover-tick", -10.0)
+	var frost_tint: Color = Palette.SKY.lerp(Palette.MIST, 0.4)
+	Juice.pop(global_position + Vector3(0, 1.8, 0), "FROST WILT", frost_tint)
+	Juice.burst(global_position + Vector3(0, 1.2, 0), frost_tint, 10)
+	GameLog.event("plant_frost_damage", {
+		"species": species_id,
+		"ripe_lost": lost,
+		"ripe_remaining": ripe_count,
+	})
+
+
+func _recover_from_frost() -> void:
+	_frost_damaged_until_day = -1
+	if _body_mat != null and _pre_frost_body_albedo.a > 0.0:
+		var tw: Tween = create_tween()
+		tw.tween_property(_body_mat, "albedo_color", _pre_frost_body_albedo, 0.6) \
+			.set_trans(Tween.TRANS_SINE)
+	if _body != null:
+		var tw2: Tween = _body.create_tween()
+		tw2.tween_property(_body, "scale", Vector3(_body.scale.x, _pre_frost_scale_y, _body.scale.z), 0.6) \
+			.set_trans(Tween.TRANS_SINE)

@@ -58,6 +58,83 @@ func _ready() -> void:
 	add_child(_ui_layer)
 	# Deferred look-up — Main may not have entered the tree yet.
 	call_deferred("_bind_camera")
+	# Connect to TaskQueue.task_work_tick once the autoload is alive so
+	# every 1-second beat during the WORKING stage fires a material-
+	# specific particle + subtle sfx. Defensive — TaskQueue may not be
+	# registered yet depending on autoload order.
+	call_deferred("_bind_work_tick")
+
+
+func _bind_work_tick() -> void:
+	var tq: Node = get_node_or_null("/root/TaskQueue")
+	if tq != null and tq.has_signal("task_work_tick"):
+		if not tq.is_connected("task_work_tick", _on_task_work_tick):
+			tq.connect("task_work_tick", _on_task_work_tick)
+
+
+## Per-second beat while a fairy is working on a task. Picks a material-
+## specific particle color + short sfx based on the action id prefix so
+## "fairy floating doing nothing" reads as "fairy actively chopping /
+## quarrying / digging / scooping / firing".
+func _on_task_work_tick(task: Dictionary) -> void:
+	var target: Variant = task.get("target")
+	if target == null or not (target is Node3D) or not is_instance_valid(target):
+		return
+	var pos: Vector3 = (target as Node3D).global_position + Vector3(0, 0.5, 0)
+	var action: Dictionary = task.get("action", {})
+	var id: String = String(action.get("id", ""))
+	var fx: Dictionary = _work_fx_for_action_id(id)
+	var color: Color = fx.get("color", Color(0.55, 0.77, 0.48))
+	var count: int = int(fx.get("count", 4))
+	var sfx: String = String(fx.get("sfx", ""))
+	var sfx_db: float = float(fx.get("db", -16.0))
+	burst(pos, color, count)
+	if sfx != "" and AudioManager != null:
+		AudioManager.play(sfx, sfx_db)
+
+
+## Maps an action id to (particle color, count, sfx, db). Palette-sourced
+## so every tint traces back to the canonical warm-pastel set.
+func _work_fx_for_action_id(id: String) -> Dictionary:
+	# Tree felling / pruning / deadwood / twigs — woody brown chips + thwack.
+	if id.begins_with("chop_") or id == "prune" \
+			or id == "gather_deadwood" or id == "gather_twigs":
+		return {"color": Palette.EARTH, "count": 6, "sfx": "biomass-chop", "db": -12.0}
+	# Plant chop-and-drop / harvest / seed gathering / forage — green leaf puff.
+	if id == "chop_drop" or id.begins_with("harvest") \
+			or id.begins_with("forage"):
+		return {"color": Palette.MEADOW, "count": 5, "sfx": "biomass-chop", "db": -16.0}
+	# Stone quarry — warm-stone dust + metallic tink (reuse hover-tick).
+	if id == "quarry":
+		return {"color": Palette.WARM_STONE, "count": 7, "sfx": "hover-tick", "db": -8.0}
+	# Compost pile feeding / turning / scooping — earthy thud.
+	if id.begins_with("add_") or id == "turn_pile" or id == "scoop_finished":
+		return {"color": Palette.COMPOST, "count": 4, "sfx": "compost-scoop", "db": -14.0}
+	# Water actions — sky-blue splash.
+	if id.begins_with("water_") or id == "draw_water":
+		return {"color": Palette.SKY.lerp(Palette.MIST, 0.2), "count": 5, "sfx": "water-splash", "db": -10.0}
+	# Kiln firing — honey-coral ember burst + crackle.
+	if id.begins_with("fire_"):
+		return {"color": Palette.HONEY.lerp(Palette.CORAL, 0.3), "count": 5, "sfx": "kiln-crackle-loop", "db": -18.0}
+	# Amendment application — fine dust, appropriate tint per amendment.
+	if id.begins_with("apply_"):
+		var tint: Color = Palette.COMPOST
+		if id == "apply_bone_meal":
+			tint = Palette.WARM_STONE
+		elif id == "apply_biochar":
+			tint = Palette.COMPOST.lerp(Palette.INK, 0.25)
+		return {"color": tint, "count": 5, "sfx": "bone-meal-pop", "db": -14.0}
+	# Chipper — chip particles.
+	if id.begins_with("chip_"):
+		return {"color": Palette.EARTH.lerp(Palette.HONEY, 0.3), "count": 6, "sfx": "biomass-chop", "db": -10.0}
+	# Earthworks / swales / digging — dirt clods + shovel plank sound.
+	if id.begins_with("earthwork:") or id == "dig_swale":
+		return {"color": Palette.EARTH, "count": 7, "sfx": "bed-build-plank", "db": -12.0}
+	# Build site — plank-settling sound + wood color.
+	if id == "build_site" or id.begins_with("build:"):
+		return {"color": Palette.EARTH.lerp(Palette.HONEY, 0.2), "count": 5, "sfx": "bed-build-plank", "db": -10.0}
+	# Fallback — soft meadow puff + hover tick.
+	return {"color": Palette.MEADOW, "count": 3, "sfx": "hover-tick", "db": -18.0}
 
 
 func _bind_camera() -> void:

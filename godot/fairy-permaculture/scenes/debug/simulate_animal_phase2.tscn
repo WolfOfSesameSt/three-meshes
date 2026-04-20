@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fp_sim_animal_phase2"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_animal_phase2.gd" id="1_sim_animal_phase2"]
+
+[node name="SimAnimalPhase2" type="Node3D"]
+script = ExtResource("1_sim_animal_phase2")
