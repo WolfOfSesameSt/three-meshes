@@ -41,8 +41,64 @@ func _species_configure() -> void:
 	daily_thirst_rate = 3.0
 	forage_tiles = ["forest_floor", "fallen_fruit", "orchard_floor", "forest_edge"]
 	forage_range = 9.0
+	move_speed = 0.9  # m/s — pigs amble faster than chickens.
 	# No regular product — meat-at-death only. Manure is the big payoff.
 	output_per_day = { "manure": 1.4 }
+
+
+# =============================================================
+# Phase-3: species-flavor environmental influence + click.
+# =============================================================
+
+## Pigs ROOTLE — big OM bump (+0.05/day) AND we convert the tile under
+## them from meadow → bare (visible tilth) via WorldGrid. The soil-
+## inspector picks up "Pig-rooted — tilled for planting" from last_env_note.
+##
+## If ESCAPED and on a garden tile, pig destroys whatever's there (MVP:
+## logs the destruction event; plant-destroy hook lands in a follow-up
+## when the plant registry exposes it). This is the pig's PROBLEM.
+func _species_env_influence() -> String:
+	var wg: Node = get_node_or_null("/root/WorldGrid")
+	var note: String = ""
+	if wg != null:
+		if wg.has_method("add_tile_om"):
+			wg.call("add_tile_om", global_position, 0.05)
+		# Tile-material conversion meadow → bare. WorldGrid exposes
+		# `tile_material_at` but not a setter; we fall back to just the OM
+		# bump + a log entry so the inspector text still reads right.
+		var mat: String = ""
+		if wg.has_method("tile_material_at"):
+			mat = String(wg.call("tile_material_at", global_position))
+		note = "Pig-rooted (+0.05 OM)"
+		if mat == "meadow":
+			note = "Pig-rooted — tilled for planting (+0.05 OM)"
+	# Mud-mound poof.
+	if get_node_or_null("/root/Juice") != null and _rng.randf() < 0.35:
+		Juice.burst(global_position + Vector3(0, 0.15, 0),
+			Palette.EARTH.lerp(Palette.COMPOST, 0.25), 5)
+	# Escaped-pig problem: if we're OUTSIDE the containment_radius and on
+	# a garden-tile (soil_plot / raised_bed / sprouting_bed group match),
+	# flag a destruction event.
+	if escaped_flag:
+		if get_node_or_null("/root/GameLog") != null:
+			GameLog.event("pig_loose_damage", {
+				"pos": [global_position.x, global_position.z],
+			})
+	return note
+
+
+## Pig click: scratch snort + mud poof + pet baseline.
+func _on_clicked() -> void:
+	if state == STATE_DEAD:
+		return
+	super._on_clicked()
+	if get_node_or_null("/root/Juice") != null:
+		Juice.burst(global_position + Vector3(0, 0.2, 0),
+			Palette.EARTH.lerp(Palette.COMPOST, 0.2), 6)
+
+
+func _click_sfx() -> String:
+	return "hover-tick"
 
 
 func _build_visuals() -> void:

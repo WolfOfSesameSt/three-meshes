@@ -171,9 +171,18 @@ func pop(world_pos: Vector3, text: String, color: Color = Color(0.95, 0.76, 0.31
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(lbl)
 
+	# Scale lifetime by current game speed so floating text stays readable
+	# at 4×/10× when the world is moving fast around it. Capped at 3× so
+	# 1×/2× look unchanged.
+	var sched: Node = get_node_or_null("/root/Scheduler")
+	var sched_speed: int = 1
+	if sched != null:
+		sched_speed = max(1, int(sched.get("speed")))
+	var speed_mul: float = clamp(float(sched_speed) / 2.0, 1.0, 3.0)
+	var rise_dur: float = 1.1 * speed_mul
 	var tween: Tween = lbl.create_tween().set_parallel(true)
-	tween.tween_property(lbl, "position:y", lbl.position.y - 90.0, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(lbl, "modulate:a", 0.0, 1.1).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(lbl, "position:y", lbl.position.y - 90.0, rise_dur).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(lbl, "modulate:a", 0.0, rise_dur).set_trans(Tween.TRANS_CUBIC)
 	tween.tween_property(lbl, "scale", Vector2(1.15, 1.15), 0.1)
 	tween.chain().tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.25)
 	tween.finished.connect(lbl.queue_free)

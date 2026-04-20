@@ -23,6 +23,14 @@ const HERD_CAP: int = 3
 const STARTER_HERD_SIZE: int = 1
 const FEEDER_CAPACITY: float = 18.0
 
+# Phase-3 containment. Pigs have a strong fence baseline BUT their
+# nose-root behavior (data/animals.json fence_strength_bias +0.1 with a
+# "roots through weak fence" problem) makes escape still possible under
+# low-strength fences.
+@export var containment_radius: float = 6.0
+@export var containment_strength: float = 1.05  # clamped to 1.0 at read
+var escaped_animals: Array = []
+
 
 var _wall_mat: StandardMaterial3D
 var _roof_mat: StandardMaterial3D

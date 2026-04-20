@@ -1,0 +1,119 @@
+[gd_scene load_steps=3 format=3 uid="uid://farm_legacy_panel_scene"]
+
+[ext_resource type="Script" path="res://scripts/farm_legacy_panel.gd" id="1_flp"]
+
+[sub_resource type="StyleBoxFlat" id="parchment_style"]
+bg_color = Color(0.95, 0.9, 0.79, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.79, 0.72, 0.54, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 16.0
+
+[node name="FarmLegacyPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 0
+script = ExtResource("1_flp")
+
+[node name="Dim" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 0
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -270.0
+offset_right = 210.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Farm Legacy"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="Close" type="Button" parent="Panel/VBox/Header"]
+layout_mode = 2
+text = "X"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+
+[node name="AgeLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Day 1 · Spring Y1"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+
+[node name="Divider1" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="StatsHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "TALLIES"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="StatsGrid" type="GridContainer" parent="Panel/VBox"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+
+[node name="Divider2" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="FirstsHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "FIRSTS"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="FirstsScroll" type="ScrollContainer" parent="Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 140)
+
+[node name="FirstsList" type="VBoxContainer" parent="Panel/VBox/FirstsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="EmptyLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "The scribe has not yet begun her record."
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+visible = false

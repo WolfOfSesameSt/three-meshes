@@ -60,7 +60,24 @@ func _species_configure() -> void:
 	# to the feeder path which we override below.
 	forage_tiles = []
 	forage_range = 20.0
+	move_speed = 1.6  # m/s — patrol trot.
 	output_per_day = {}
+
+
+# Phase-3 env influence: dogs leave a paw-path marker along their patrol
+# (log entry for now). Main mechanic is the `lgd_protects` signal emitted
+# in _process — predator events within PROTECT_RADIUS clip. No tile change.
+func _species_env_influence() -> String:
+	return "LGD-patrolled (predator events clipped within %dm)" % int(PROTECT_RADIUS)
+
+
+func _on_clicked() -> void:
+	if state == STATE_DEAD: return
+	super._on_clicked()
+	# Guard-radius glow: a burst sized to the protect radius.
+	if get_node_or_null("/root/Juice") != null:
+		Juice.burst(global_position + Vector3(0, 1.0, 0),
+			Palette.HONEY.lerp(Palette.CORAL, 0.25), 14)
 
 
 func _build_visuals() -> void:

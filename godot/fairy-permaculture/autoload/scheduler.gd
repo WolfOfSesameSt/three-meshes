@@ -1,9 +1,9 @@
 ## Fairy Permaculture — day-tick scheduler (ported from `core/day-tick.js`).
 ##
-## Drives the world clock in real time. 60 s per in-game day at 1× speed;
-## scaling via `set_speed(0/1/2/4)` (0 = paused). Emits `day_advanced`
-## each day, `season_changed` at season boundaries, `year_advanced` at
-## year boundaries.
+## Drives the world clock in real time. 20 min per in-game day at 1× speed;
+## scaling via `set_speed(0/1/2/4/10)` (0 = paused, 10 = turbo). Emits
+## `day_advanced` each day, `season_changed` at season boundaries,
+## `year_advanced` at year boundaries.
 extends Node
 
 signal day_advanced(day: int, season: String, year: int)
@@ -34,7 +34,7 @@ func pause() -> void:
 
 
 func set_speed(new_speed: int) -> void:
-	if new_speed not in [0, 1, 2, 4]:
+	if new_speed not in [0, 1, 2, 4, 10]:
 		push_warning("Scheduler.set_speed: invalid %d" % new_speed)
 		return
 	speed = new_speed
@@ -52,7 +52,7 @@ func _process(delta: float) -> void:
 		return
 	_day_timer += delta * speed
 	var steps := 0
-	while _day_timer >= SECONDS_PER_DAY and steps < 4:
+	while _day_timer >= SECONDS_PER_DAY and steps < 10:
 		_day_timer -= SECONDS_PER_DAY
 		_advance_one_day()
 		steps += 1

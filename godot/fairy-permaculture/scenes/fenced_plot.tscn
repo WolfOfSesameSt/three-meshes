@@ -2,17 +2,14 @@
 
 [ext_resource type="Script" path="res://scripts/fenced_plot.gd" id="1_fp"]
 
-[sub_resource type="CylinderMesh" id="fp_disc"]
-top_radius = 1.1
-bottom_radius = 1.25
-height = 0.12
-radial_segments = 16
+[sub_resource type="BoxMesh" id="fp_disc"]
+size = Vector3(2.2, 0.12, 2.2)
 
 [sub_resource type="BoxMesh" id="fp_post"]
-size = Vector3(0.08, 0.30, 0.08)
+size = Vector3(0.10, 0.42, 0.10)
 
 [sub_resource type="BoxMesh" id="fp_rail"]
-size = Vector3(1.0, 0.04, 0.04)
+size = Vector3(1.20, 0.05, 0.05)
 
 [sub_resource type="BoxShape3D" id="fp_click"]
 size = Vector3(2.8, 0.6, 2.8)
@@ -27,27 +24,51 @@ mesh = SubResource("fp_disc")
 [node name="Frame" type="Node3D" parent="."]
 
 [node name="PostA" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.20, 0.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.26, 0.6)
 mesh = SubResource("fp_post")
 
 [node name="PostB" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.20, 0.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.26, 0.6)
 mesh = SubResource("fp_post")
 
 [node name="PostC" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.20, -0.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.26, -0.6)
 mesh = SubResource("fp_post")
 
 [node name="PostD" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.20, -0.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.26, -0.6)
 mesh = SubResource("fp_post")
 
-[node name="RailA" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, 0.6)
+[node name="RailTopN" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.40, 0.6)
 mesh = SubResource("fp_rail")
 
-[node name="RailB" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, -0.6)
+[node name="RailTopS" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.40, -0.6)
+mesh = SubResource("fp_rail")
+
+[node name="RailTopE" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.6, 0.40, 0)
+mesh = SubResource("fp_rail")
+
+[node name="RailTopW" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -0.6, 0.40, 0)
+mesh = SubResource("fp_rail")
+
+[node name="RailBotN" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16, 0.6)
+mesh = SubResource("fp_rail")
+
+[node name="RailBotS" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16, -0.6)
+mesh = SubResource("fp_rail")
+
+[node name="RailBotE" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.6, 0.16, 0)
+mesh = SubResource("fp_rail")
+
+[node name="RailBotW" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -0.6, 0.16, 0)
 mesh = SubResource("fp_rail")
 
 [node name="ClickArea" type="StaticBody3D" parent="."]

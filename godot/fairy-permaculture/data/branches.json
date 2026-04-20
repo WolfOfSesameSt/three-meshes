@@ -44,6 +44,16 @@
           "roles": ["digger"],
           "actions": ["dig-swale"]
         }
+      },
+      {
+        "id": "r5",
+        "name": "Wildlife Habitat Starter Pack",
+        "description": "Brush pile, rock pile, owl box — three day-0 habitats that start the self-balancing ecology. Slug, rodent, and aphid pressure get predators if you make room for them.",
+        "prerequisites": ["r1"],
+        "unlocks": {
+          "buildings": ["brush_pile", "rock_pile", "owl_box"],
+          "wildlife_gated": ["ground-beetle", "garter-snake", "northwestern-salamander", "barn-owl", "song-sparrow", "ladybug", "green-lacewing"]
+        }
       }
     ]
   },
@@ -54,8 +64,8 @@
     "description": "Path to HONEY.",
     "fairy_food_gated": "HONEY",
     "nodes": [
-      { "id": "a1", "name": "Mason Bee Tubes", "description": "BC-native mason bees colonize the tubes and pollinate.", "prerequisites": ["r2"], "unlocks": { "animals": ["mason-bee"], "roles": ["beekeeper"] } },
-      { "id": "a2", "name": "Bumblebee Nest Boxes", "description": "Bumblebees pollinate cool-season flowers.", "prerequisites": ["a1"], "unlocks": { "animals": ["bumblebee"] } },
+      { "id": "a1", "name": "Mason Bee Tubes", "description": "BC-native mason bees colonize the tubes and pollinate.", "prerequisites": ["r2"], "unlocks": { "animals": ["mason-bee"], "roles": ["beekeeper"], "buildings": ["mason_bee_tubes"] } },
+      { "id": "a2", "name": "Bumblebee Nest Boxes", "description": "Bumblebees pollinate cool-season flowers.", "prerequisites": ["a1"], "unlocks": { "animals": ["bumblebee"], "habitats": ["hedgerow"] } },
       { "id": "a3", "name": "Native-Bee Corridor", "description": "Flowering corridor of continuous bloom.", "prerequisites": ["a2"], "unlocks": {} },
       { "id": "a4", "name": "Honeybee Warré Hive", "description": "HONEY production begins.", "prerequisites": ["a3"], "unlocks": { "animals": ["honeybee"], "buildings": ["warre-hive"] }, "product": "HONEY" },
       { "id": "a5", "name": "Hive Multiplication", "description": "Split colonies to grow honey throughput.", "prerequisites": ["a4"], "unlocks": {} },
@@ -84,8 +94,8 @@
     "description": "Path to MILK.",
     "fairy_food_gated": "MILK",
     "nodes": [
-      { "id": "c1", "name": "Chicken Tractor", "description": "Eggs + pest scratch.", "prerequisites": ["r2"], "unlocks": { "animals": ["chicken-layer"], "roles": ["shepherd"] } },
-      { "id": "c2", "name": "Duck Patrol", "description": "Slugs + aphid patrol.", "prerequisites": ["c1"], "unlocks": { "animals": ["duck"] } },
+      { "id": "c1", "name": "Chicken Tractor", "description": "Eggs + pest scratch. Build an owl box or a fox-proof fence — the forest edge is watching.", "prerequisites": ["r2"], "unlocks": { "animals": ["chicken-layer"], "roles": ["shepherd"], "buildings": ["chicken_coop", "owl_box"], "wildlife_gated": ["barn-owl", "red-fox", "red-tailed-hawk", "raccoon"] } },
+      { "id": "c2", "name": "Duck Patrol", "description": "Slugs + aphid patrol. Duck flock also deters herons from the pond.", "prerequisites": ["c1"], "unlocks": { "animals": ["duck"], "wildlife_gated": ["great-blue-heron"] } },
       { "id": "c3", "name": "Dairy Goat", "description": "MILK production begins.", "prerequisites": ["c2"], "unlocks": { "animals": ["dairy-goat"] }, "product": "MILK" },
       { "id": "c4", "name": "Dexter Cattle", "description": "Heritage dual-purpose breed.", "prerequisites": ["c3"], "unlocks": { "animals": ["dexter-cow"] } },
       { "id": "c5", "name": "Silvopasture Pigs", "description": "Forest-finished pigs on mast.", "prerequisites": ["c4"], "unlocks": { "animals": ["pig-silvopasture"] } },
@@ -164,6 +174,87 @@
       { "id": "cx-mob-grazing", "name": "Mob-Grazing Mastery", "description": "Leader-follower rotation at farm scale.", "prerequisites": ["c6", "e1", "g2"], "unlocks": {} },
       { "id": "cx-seed-vault", "name": "Seed Vault & Landrace Network", "description": "Export-quality genetics.", "prerequisites": ["b5", "e6", "f4"], "unlocks": {} },
       { "id": "cx-watershed", "name": "Watershed Regeneration", "description": "Whole-catchment health.", "prerequisites": ["g6"], "unlocks": {} }
+    ]
+  },
+  {
+    "id": "branch-biodiversity",
+    "kind": "biodiversity",
+    "name": "Biodiversity Emergence",
+    "description": "Unlocks that fire automatically as species diversity grows. Passive nodes: the more distinct species your farm hosts (owned + wildlife), the more permaculture tools open up. 3 / 5 / 8 / 12 species thresholds gate companion planting, guild design, climax polyculture, and the grand convergence.",
+    "fairy_food_gated": "NONE",
+    "nodes": [
+      {
+        "id": "companion_planting",
+        "name": "Companion Planting",
+        "description": "Plants gain a local +10% yield when grown next to a compatible neighbor.",
+        "prerequisites": [],
+        "biodiversity_gate": { "distinct_species": 3 },
+        "unlocks": { "mechanics": ["companion-planting"] }
+      },
+      {
+        "id": "guild_design",
+        "name": "Guild Design",
+        "description": "Right-click 'Design Guild' on a patch of planted beds pins a multi-plant guild card.",
+        "prerequisites": ["companion_planting"],
+        "biodiversity_gate": { "distinct_species": 5 },
+        "unlocks": { "mechanics": ["guild-design"] }
+      },
+      {
+        "id": "climax_polyculture",
+        "name": "Climax Polyculture",
+        "description": "7-layer food-forest assembly opens up; plants stop competing and start cooperating.",
+        "prerequisites": ["guild_design"],
+        "biodiversity_gate": { "distinct_species": 8 },
+        "unlocks": { "mechanics": ["climax-polyculture"] }
+      },
+      {
+        "id": "climax_convergence",
+        "name": "Climax Convergence",
+        "description": "The grand convergence — 12 distinct species present. A golden season begins, visible across the whole farm.",
+        "prerequisites": ["climax_polyculture"],
+        "biodiversity_gate": { "distinct_species": 12 },
+        "unlocks": { "mechanics": ["golden-season-aura"] }
+      },
+      {
+        "id": "egg_recipes",
+        "name": "Egg Recipes",
+        "description": "Your first chicken opens the egg-recipes + coop-upgrade tier.",
+        "prerequisites": [],
+        "biodiversity_gate": { "has_species": "chicken" },
+        "unlocks": { "mechanics": ["egg-recipes", "coop-upgrades"] }
+      },
+      {
+        "id": "pond_tech",
+        "name": "Pond Tech",
+        "description": "Your first duck unlocks pond-building and duckweed cultivation.",
+        "prerequisites": [],
+        "biodiversity_gate": { "has_species": "duck" },
+        "unlocks": { "mechanics": ["pond-building", "duckweed"] }
+      },
+      {
+        "id": "pollination_branch",
+        "name": "Pollination Focus",
+        "description": "Your first pollinator (owned or wildlife) opens the dedicated pollination path.",
+        "prerequisites": [],
+        "biodiversity_gate": { "any_species": ["mason-bee", "bumblebee", "honeybee"] },
+        "unlocks": { "mechanics": ["pollination-branch"] }
+      },
+      {
+        "id": "dairy_branch",
+        "name": "Dairy Branch",
+        "description": "Your first goat unlocks the dairy branch proper.",
+        "prerequisites": [],
+        "biodiversity_gate": { "has_species": "goat" },
+        "unlocks": { "mechanics": ["dairy-branch"] }
+      },
+      {
+        "id": "hugel_muscle",
+        "name": "Hugel-Muscle Bonus",
+        "description": "Your first cow grants the hugel-muscle bonus — cow-hauled hugel beds get +25% build speed.",
+        "prerequisites": [],
+        "biodiversity_gate": { "has_species": "cow" },
+        "unlocks": { "mechanics": ["hugel-muscle-bonus"] }
+      }
     ]
   }
 ]

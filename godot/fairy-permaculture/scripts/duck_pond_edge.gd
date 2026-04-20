@@ -27,6 +27,11 @@ const FLOCK_CAP: int = 5
 const STARTER_FLOCK_SIZE: int = 2
 const FEEDER_CAPACITY: float = 10.0
 
+# Phase-3 containment — ducks are fine with a loose pond-edge margin.
+@export var containment_radius: float = 8.0
+@export var containment_strength: float = 0.9
+var escaped_animals: Array = []
+
 
 # ---- Materials ----
 var _wall_mat: StandardMaterial3D
@@ -53,6 +58,7 @@ func _ready() -> void:
 	input_ray_pickable = true
 	add_to_group("duck_pond_edges")
 	add_to_group("animal_habitats")
+	add_to_group("wildlife_habitats")
 	_build_materials()
 	mouse_entered.connect(_on_mouse_enter)
 	mouse_exited.connect(_on_mouse_exit)

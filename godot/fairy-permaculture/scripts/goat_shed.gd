@@ -23,6 +23,12 @@ const HERD_CAP: int = 4
 const STARTER_HERD_SIZE: int = 1
 const FEEDER_CAPACITY: float = 15.0
 
+# Phase-3 containment. Goats are ESCAPE-PRONE (-0.3 fence_strength_bias
+# vs chicken baseline) — the daily escape roll fires noticeably more.
+@export var containment_radius: float = 7.0
+@export var containment_strength: float = 0.75
+var escaped_animals: Array = []
+
 
 var _wall_mat: StandardMaterial3D
 var _roof_mat: StandardMaterial3D

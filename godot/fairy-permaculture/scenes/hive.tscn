@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://d0fphivew1"]
+
+[ext_resource type="Script" path="res://scripts/hive.gd" id="1_hive"]
+
+[node name="Hive" type="StaticBody3D"]
+collision_layer = 1
+collision_mask = 0
+input_ray_pickable = true
+script = ExtResource("1_hive")

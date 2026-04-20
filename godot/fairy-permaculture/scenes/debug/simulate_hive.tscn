@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://d1simhive1"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_hive.gd" id="1_shv"]
+
+[node name="SimHive" type="Node"]
+script = ExtResource("1_shv")

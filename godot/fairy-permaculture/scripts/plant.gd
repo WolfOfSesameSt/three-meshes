@@ -154,6 +154,11 @@ func _on_day(_day: int, season: String, _year: int) -> void:
 	# that the player notices over many game-days without having to tend.
 	if growth_stage == VisualState.STAGE_FRUITING and _has_fruit(s) and randf() < 0.012:
 		_try_wild_spread()
+	# Rot evaluation — must run each day so the scrap-drop fires on
+	# time even when the player ignores a ripe bush for a week.
+	# Uses the Scheduler calendar day (parameter _day) as the
+	# deterministic clock so tests can assert day counts directly.
+	_evaluate_rot(_day)
 
 
 func _on_season_changed(new_season: String, _year: int) -> void:
@@ -498,9 +503,17 @@ func get_context_actions() -> Array:
 		out.append(act_cd)
 	else:
 		var ripe: int = max(1, ripe_count if ripe_count > 0 else int(ceil(ripe_amount)))
+		# Harvest co-yield: 0.2× the fruit count becomes `fruit_scraps`
+		# (stems, bruised, culls). This closes the
+		#   fruit → chickens → manure → compost
+		# loop the VISION doc describes by giving every harvest a tiny
+		# scrap drop that feeds back into the C/N economy. Rounded up to
+		# at least 1 scrap when there's any harvest so the player always
+		# sees the producer path fire.
+		var scraps_co: int = max(1, int(ceil(float(ripe) * 0.2)))
 		out.append(Interactable.make_action(
 			"harvest_all", "Harvest all ripe", 10.0,
-			{}, {"fruit": float(ripe)},
+			{}, {"fruit": float(ripe), "fruit_scraps": float(scraps_co)},
 			"", Interactable.DROP_STORAGE, 2
 		))
 		var act_cd2: Dictionary = Interactable.make_action(
@@ -541,11 +554,33 @@ func complete(action: Dictionary) -> void:
 			Palette.MEADOW.lerp(Palette.HONEY, 0.35), 10)
 		return
 	if id == "harvest_all":
+		# Route harvested fruit into fairy_food.fruit so the spawn math
+		# actually sees food arrive — before this fix, fruit harvest
+		# only bumped FarmTotals.stocks[FRUIT] and fairies starved even
+		# with a full pantry. Only the primary FRUIT yield flows through
+		# fairy_food; fruit_scraps is a compost input, NOT food.
+		# FarmTotals.stocks increment still happens via the normal
+		# TaskQueue deposit_yield path that runs AFTER this complete().
+		var y_out: Dictionary = action.get("yield", {})
+		var fruit_amt: float = float(y_out.get("fruit", 0.0))
+		if fruit_amt > 0.0:
+			FarmTotals.add_food("fruit", fruit_amt)
+			# Reset rot timer on this plant — the player just cleared
+			# the ripe cluster, so the rot window restarts fresh.
+			_rot_started_day = -1
+			_overripe = false
 		ripe_count = 0
 		ripe_amount = 0.0
 		_sync_fruit_cluster_meshes()
 		AudioManager.play("berry-pick")
 		Juice.burst(global_position + Vector3(0, 1.6, 0), _fruit_color, 12)
+		var scrap_amt: float = float(y_out.get("fruit_scraps", 0.0))
+		if scrap_amt > 0.0:
+			Juice.pop(
+				global_position + Vector3(0, 2.0, 0),
+				"+ %d SCRAPS" % int(scrap_amt),
+				Palette.CORAL.darkened(0.15)
+			)
 		return
 	if id == "chop_drop":
 		# Best-effort tile-OM bump — uses the helper if WorldGrid ever
@@ -660,3 +695,138 @@ func _recover_from_frost() -> void:
 		var tw2: Tween = _body.create_tween()
 		tw2.tween_property(_body, "scale", Vector3(_body.scale.x, _pre_frost_scale_y, _body.scale.z), 0.6) \
 			.set_trans(Tween.TRANS_SINE)
+
+
+# =====================================================================
+# APPEND-ONLY: Ripe-fruit rot path.
+# --------------------------------------------------------------------
+# Closes the `fruit_scraps` producer orphan flagged by the resource-flow
+# audit. If ripe fruit sits on the plant unharvested for ROT_DELAY_DAYS
+# game-days, the fruit overripens (visible tint shift + droop), and then
+# after ROT_DROP_DAYS the overripe fruit falls as scraps onto the tile —
+# we deposit directly into FarmTotals.fruit_scraps (bypassing storage
+# capacity, since the scraps are literally lying on the ground).
+#
+# Visible state changes per `feedback_visible_state_changes.md`:
+#   RIPE        (normal fruit color)
+#   OVERRIPE    (fruit cluster darkens + droops via Y-scale shrink)
+#   FALLEN      (cluster vanishes, scrap-brown particle burst, deposit)
+#
+# Wire-in:
+#   _on_day(day, season, year) — already ticks each game day. We
+#   piggyback on its existing ripening logic; rot is evaluated AFTER
+#   the ripening branch so a just-ripened fruit doesn't rot the same
+#   day it appears.
+# =====================================================================
+
+const ROT_DELAY_DAYS: int = 6        # days ripe before overripe begins
+const ROT_DROP_DAYS: int = 10        # days ripe before scraps fall
+
+var _rot_started_day: int = -1        # Scheduler.day when ripe cluster first seen
+var _overripe: bool = false
+var _pre_rot_fruit_color: Color = Color(0, 0, 0, 0)
+
+
+## Called from the end of the existing _on_day tick. We evaluate rot
+## progression each game-day. Deterministic — no RNG — so the test
+## harness can assert exact day counts.
+func _evaluate_rot(day: int) -> void:
+	# Pioneers + biomass plants have no fruit, skip.
+	if is_pioneer:
+		return
+	var s: Variant = DataStore.get_plant(species_id)
+	if s == null or not _has_fruit(s):
+		return
+	# No ripe fruit yet → no rot window open.
+	if ripe_count <= 0:
+		_rot_started_day = -1
+		_overripe = false
+		return
+	# Start the rot window the first game-day fruit is seen ripe.
+	if _rot_started_day < 0:
+		_rot_started_day = day
+		return
+	var days_ripe: int = day - _rot_started_day
+	# Stage 1 — overripe: darken the fruit cluster + droop the cluster Y.
+	if not _overripe and days_ripe >= ROT_DELAY_DAYS:
+		_enter_overripe_state()
+	# Stage 2 — drop scraps on the tile + reset ripe cluster.
+	if days_ripe >= ROT_DROP_DAYS:
+		_drop_as_scraps()
+
+
+func _enter_overripe_state() -> void:
+	_overripe = true
+	if _fruit_mat != null:
+		_pre_rot_fruit_color = _fruit_mat.albedo_color
+		# Shift toward COMPOST/EARTH for "dulling fruit" read, clamped
+		# by the happy-palette rule so we never go ashy-grey.
+		var rot_tint: Color = _fruit_mat.albedo_color.lerp(
+			Palette.COMPOST.lerp(Palette.EARTH, 0.35), 0.55
+		)
+		if Palette.has_method("clamp_happy"):
+			rot_tint = Palette.clamp_happy(rot_tint)
+		var tw: Tween = create_tween()
+		tw.tween_property(_fruit_mat, "albedo_color", rot_tint, 1.2) \
+			.set_trans(Tween.TRANS_SINE)
+	# Droop the cluster — Y-scale shrink + slight sag.
+	if _fruit_cluster != null:
+		var tw2: Tween = _fruit_cluster.create_tween()
+		tw2.tween_property(_fruit_cluster, "scale",
+			Vector3(_fruit_cluster.scale.x, _fruit_cluster.scale.y * 0.6, _fruit_cluster.scale.z),
+			1.2).set_trans(Tween.TRANS_SINE)
+	# Paired feedback — soft "overripe" pop + low-volume tick.
+	if has_node("/root/Juice"):
+		Juice.pop(global_position + Vector3(0, 2.0, 0),
+			"OVERRIPE",
+			Palette.EARTH.lerp(Palette.CORAL, 0.30))
+	if has_node("/root/AudioManager") and AudioManager.has_method("play"):
+		AudioManager.play("hover-tick", -14.0)
+	if has_node("/root/GameLog"):
+		GameLog.event("plant_overripe", {
+			"species": species_id,
+			"ripe_count": ripe_count,
+		})
+
+
+## The overripe cluster falls. We deposit fruit_scraps DIRECTLY into
+## FarmTotals (bypassing storage capacity) since the scraps are lying
+## on the ground on the plant's tile — they're already "deposited"
+## ecologically. The yield is 1 scrap per ripe unit, rounded to int.
+##
+## Visual: scrap-brown particle burst + cluster vanishes, plant reverts
+## to non-fruiting visual so the player sees the fruit literally fell.
+func _drop_as_scraps() -> void:
+	var scraps: int = max(1, ripe_count)
+	ripe_count = 0
+	ripe_amount = 0.0
+	_sync_fruit_cluster_meshes()
+	if _fruit_mat != null and _pre_rot_fruit_color.a > 0.0:
+		# Reset the color for future ripening cycles.
+		_fruit_mat.albedo_color = _pre_rot_fruit_color
+	if _fruit_cluster != null:
+		# Restore cluster scale for future ripening cycles.
+		_fruit_cluster.scale = Vector3.ONE
+	_rot_started_day = -1
+	_overripe = false
+	# Deposit — add_resource respects storage cap, but scraps that
+	# overflow just "stay on the ground" (rejected). This is fine; the
+	# feedback still fires so the player sees the drop.
+	var deposited: float = FarmTotals.add_resource(FarmTotals.FRUIT_SCRAPS, float(scraps))
+	# Paired visual — scrap-brown burst + CORAL-darkened pop. Uses the
+	# same Palette.CORAL.darkened tint as the harvest scrap-co-yield pop
+	# so the player's eye associates the two paths.
+	if has_node("/root/Juice"):
+		var scrap_tint: Color = Palette.CORAL.darkened(0.18)
+		Juice.pop(global_position + Vector3(0, 2.0, 0),
+			"+ %d FRUIT SCRAPS" % int(deposited), scrap_tint)
+		Juice.burst(global_position + Vector3(0, 0.3, 0),
+			Palette.EARTH.lerp(Palette.CORAL, 0.30), 14)
+	if has_node("/root/AudioManager") and AudioManager.has_method("play"):
+		AudioManager.play("biomass-chop", -10.0)
+	if has_node("/root/GameLog"):
+		GameLog.event("plant_fruit_rotted", {
+			"species": species_id,
+			"scraps_deposited": deposited,
+			"scraps_rolled": scraps,
+		})

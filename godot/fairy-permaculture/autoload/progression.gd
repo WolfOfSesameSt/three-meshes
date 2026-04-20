@@ -61,10 +61,18 @@ const BUILDING_KENNEL: StringName = &"kennel"
 #   raised_bed     — after first compost harvested (Ring 2)
 #   hugel_bed      — branch G mid-game (Ring 2.5)
 #   spiral_garden  — branch herbs / Ring 3
+const BUILDING_SOIL_PLOT: StringName = &"soil_plot"
 const BUILDING_FENCED_PLOT: StringName = &"fenced_plot"
 const BUILDING_RAISED_BED: StringName = &"raised_bed"
 const BUILDING_HUGEL_BED: StringName = &"hugel_bed"
 const BUILDING_SPIRAL_GARDEN: StringName = &"spiral_garden"
+# Wildlife habitat placeables — passive attractors consumed by the
+# `Wildlife` autoload. All day-0 unlockable, all cheap, all essential
+# to the self-balancing ecology rule. The POIs themselves are silent;
+# the `species_arrived` paired feedback lives in wildlife.gd.
+const BUILDING_OWL_BOX: StringName = &"owl_box"
+const BUILDING_ROCK_PILE: StringName = &"rock_pile"
+const BUILDING_BRUSH_PILE: StringName = &"brush_pile"
 
 # Tutorial step constants.
 const STEP_HARVEST_BIOMASS: int = 0
@@ -132,12 +140,13 @@ const BUILD_CATALOG: Dictionary = {
 		"cost": { "stone": 6.0, "wood": 4.0, "twigs": 2.0 },
 		"labor": 120.0,
 	},
-	# Hive: Warré wooden box, stacked frames.
+	# Hive: Warré wooden box, 4 stacked tiers + sloped roof on a plinth.
+	# Late-game honey scaler — production gated by flora richness in range.
 	BUILDING_HIVE: {
 		"label": "Build Hive",
-		"scene": "",
-		"cost": { "wood": 4.0 },
-		"labor": 50.0,
+		"scene": "res://scenes/hive.tscn",
+		"cost": { "wood": 6.0, "twigs": 2.0 },
+		"labor": 80.0,
 	},
 	# Worm Bin: small wooden crate + bedding.
 	BUILDING_WORM_BIN: {
@@ -235,6 +244,16 @@ const BUILD_CATALOG: Dictionary = {
 		"labor": 90.0,
 	},
 	# ---- Garden bed variants (content bundle) ----
+	# Plain dirt plot — the day-0 "I dug a hole and made it a garden" verb.
+	# Labor-only so sowing / transplanting isn't gated behind first compost
+	# cook. Upgrade paths (fenced / raised / hugel / spiral) layer cost +
+	# mechanical benefit on top.
+	BUILDING_SOIL_PLOT: {
+		"label": "Build Soil Plot",
+		"scene": "res://scenes/soil_plot.tscn",
+		"cost": {},
+		"labor": 20.0,
+	},
 	BUILDING_FENCED_PLOT: {
 		"label": "Build Fenced Plot",
 		"scene": "res://scenes/fenced_plot.tscn",
@@ -259,6 +278,35 @@ const BUILD_CATALOG: Dictionary = {
 		"cost": { "stone": 20.0, "plant_trim": 4.0 },
 		"labor": 120.0,
 	},
+	# ---- Wildlife habitats (passive attractors) ----
+	# Owl Box: pole-mounted wooden box. Once placed + rodent pressure
+	# crosses 20, a barn owl cohort immigrates in spring/summer/autumn.
+	# Drains rodent pressure by 12/day. The "quiet orchard at night"
+	# endgame arrives with one of these in the middle distance.
+	BUILDING_OWL_BOX: {
+		"label": "Build Owl Box",
+		"scene": "res://scenes/owl_box.tscn",
+		"cost": { "wood": 3.0, "twigs": 2.0 },
+		"labor": 40.0,
+	},
+	# Rock Pile: stacked warm stones. Garter snakes + salamanders. Also
+	# a thermal-mass microclimate feature (zone-bump on downwind tiles —
+	# future biome-engineer pass).
+	BUILDING_ROCK_PILE: {
+		"label": "Build Rock Pile",
+		"scene": "res://scenes/rock_pile.tscn",
+		"cost": { "stone": 6.0 },
+		"labor": 30.0,
+	},
+	# Brush Pile: stacked twigs + prunings. Ground beetles, lacewings,
+	# overwintering salamanders. The cheapest habitat in the game —
+	# reuses scraps the player has to dump somewhere anyway.
+	BUILDING_BRUSH_PILE: {
+		"label": "Build Brush Pile",
+		"scene": "res://scenes/brush_pile.tscn",
+		"cost": { "twigs": 3.0 },
+		"labor": 15.0,
+	},
 }
 
 var unlocked_buildings: Array[StringName] = [
@@ -267,7 +315,11 @@ var unlocked_buildings: Array[StringName] = [
 	BUILDING_SPROUTING_BED,
 	BUILDING_WORM_BIN,       # Ring 0 R3 per DESIGN.md — unlocked alongside compost pile
 	BUILDING_MASON_BEE_TUBES,# Day-0 Activities Engineer — cheap pollinator habitat.
+	BUILDING_SOIL_PLOT,      # Day-0 bare garden plot — labor-only, transplant target.
 	BUILDING_FENCED_PLOT,    # Day-0 growable bed — cheap wooden border.
+	BUILDING_BRUSH_PILE,     # Day-0 wildlife habitat — cheapest in the game (scraps).
+	BUILDING_ROCK_PILE,      # Day-0 wildlife habitat — stonework intro.
+	BUILDING_OWL_BOX,        # Day-0 wildlife habitat — rodent control investment.
 ]
 var tutorial_step: int = STEP_HARVEST_BIOMASS
 var storage_built: bool = false
@@ -280,6 +332,23 @@ func _ready() -> void:
 	# player completes steps without any manual "tell me" calls.
 	FarmTotals.changed.connect(_evaluate_step)
 	_evaluate_step()
+	# Phase-3 biodiversity unlocks — Wildlife autoload is registered AFTER
+	# Progression in project.godot, so defer the connect by one frame so
+	# /root/Wildlife is live by the time we touch it.
+	call_deferred("_wire_biodiversity_hooks")
+
+
+func _wire_biodiversity_hooks() -> void:
+	var wildlife: Node = get_node_or_null("/root/Wildlife")
+	if wildlife != null and wildlife.has_signal("species_arrived"):
+		# Guard against double-connect (defensive — Engine only calls
+		# _ready once per autoload, but the connect is cheap).
+		if not wildlife.species_arrived.is_connected(_on_wildlife_arrived):
+			wildlife.species_arrived.connect(_on_wildlife_arrived)
+	var sched: Node = get_node_or_null("/root/Scheduler")
+	if sched != null and sched.has_signal("day_advanced"):
+		if not sched.day_advanced.is_connected(_on_progression_day_advanced):
+			sched.day_advanced.connect(_on_progression_day_advanced)
 
 
 ## Re-check and advance the tutorial step based on current totals.
@@ -540,3 +609,124 @@ func current_nudge() -> String:
 
 func dismiss_current_nudge() -> void:
 	_nudge_dismissed_for_step = tutorial_step
+
+
+# =====================================================================
+# Phase-3: Biodiversity-keyed progression unlocks.
+#
+# Additive to the linear tutorial-step flow. Each biodiversity node is
+# a one-shot — once fired, the `biodiversity_unlocks` set records it so
+# we don't fire twice on save/load. The unlocks surface via a parchment
+# banner + paired SFX; the actual branch nodes they reveal live in
+# data/branches.json (see companion_planting / guild_design / climax_
+# polyculture / climax_convergence).
+# =====================================================================
+
+const BIODIVERSITY_NODE_COMPANION: StringName       = &"companion_planting"
+const BIODIVERSITY_NODE_GUILD_DESIGN: StringName    = &"guild_design"
+const BIODIVERSITY_NODE_CLIMAX_POLY: StringName     = &"climax_polyculture"
+const BIODIVERSITY_NODE_CLIMAX_CONV: StringName     = &"climax_convergence"
+# Specific-species unlocks — not in BUILD_CATALOG; these tag into the
+# tech-tree UI via `is_biodiversity_unlocked(id)` so the branch node can
+# light up. They piggy-back the wildlife arrival + mark_structure_built
+# hooks.
+const BIODIVERSITY_NODE_EGG_RECIPES: StringName     = &"egg_recipes"
+const BIODIVERSITY_NODE_POND_TECH: StringName       = &"pond_tech"
+const BIODIVERSITY_NODE_POLLINATION: StringName     = &"pollination_branch"
+const BIODIVERSITY_NODE_DAIRY: StringName           = &"dairy_branch"
+const BIODIVERSITY_NODE_HUGEL_MUSCLE: StringName    = &"hugel_muscle"
+
+## One-shot set of biodiversity node ids that have already fired. Saved
+## via additive save/load hooks.
+var biodiversity_unlocks: Dictionary = {}
+
+## Daily probe for biodiversity thresholds. Cheap — just reads
+## LifetimeStats.distinct_species_count() which itself is O(animals +
+## wildlife cohorts).
+func _on_progression_day_advanced(_day: int, _season: String, _year: int) -> void:
+	_check_biodiversity_thresholds()
+
+
+## Called from Wildlife.species_arrived — new wildlife can push us over
+## a threshold same day. `species_id` is the animal def id ("barn-owl",
+## "ladybug", "mason-bee", etc.).
+func _on_wildlife_arrived(species_id: String, _pos: Vector3, _count: int) -> void:
+	# First-bee arrival (wildlife OR owned) → pollination branch.
+	if species_id in ["mason-bee", "bumblebee", "honeybee"]:
+		_fire_biodiversity(BIODIVERSITY_NODE_POLLINATION,
+			"Biodiversity unlock: Pollination Branch",
+			"%s has arrived — pollination branch open" % species_id.capitalize())
+	_check_biodiversity_thresholds()
+
+
+## Evaluate species count + specific-species unlocks. Idempotent —
+## already-fired nodes short-circuit in `_fire_biodiversity`.
+func _check_biodiversity_thresholds() -> void:
+	var ls: Node = get_node_or_null("/root/LifetimeStats")
+	var count: int = 0
+	if ls != null and ls.has_method("distinct_species_count"):
+		count = int(ls.call("distinct_species_count"))
+	if count >= 3:
+		_fire_biodiversity(BIODIVERSITY_NODE_COMPANION,
+			"Biodiversity unlock: Companion Planting",
+			"3 species — companion planting is now available.")
+	if count >= 5:
+		_fire_biodiversity(BIODIVERSITY_NODE_GUILD_DESIGN,
+			"Biodiversity unlock: Guild Design",
+			"5 species — guild design tier unlocked.")
+	if count >= 8:
+		_fire_biodiversity(BIODIVERSITY_NODE_CLIMAX_POLY,
+			"Biodiversity unlock: Climax Polyculture",
+			"8 species — climax polyculture tier unlocked.")
+	if count >= 12:
+		_fire_biodiversity(BIODIVERSITY_NODE_CLIMAX_CONV,
+			"Biodiversity convergence",
+			"12 species — your farm has reached climax. A golden season begins.")
+	# Specific-species unlocks. `has_species()` covers owned stock AND
+	# wildlife cohorts.
+	if ls != null and ls.has_method("has_species"):
+		if bool(ls.call("has_species", "chicken")):
+			_fire_biodiversity(BIODIVERSITY_NODE_EGG_RECIPES,
+				"Egg recipes unlocked",
+				"Your first chicken unlocks egg-recipes + coop upgrades.")
+		if bool(ls.call("has_species", "duck")):
+			_fire_biodiversity(BIODIVERSITY_NODE_POND_TECH,
+				"Pond-tech branch unlocked",
+				"Your first duck unlocks pond-building + duckweed.")
+		if bool(ls.call("has_species", "goat")):
+			_fire_biodiversity(BIODIVERSITY_NODE_DAIRY,
+				"Dairy branch unlocked",
+				"Your first goat unlocks the dairy branch.")
+		if bool(ls.call("has_species", "cow")):
+			_fire_biodiversity(BIODIVERSITY_NODE_HUGEL_MUSCLE,
+				"Hugel-muscle bonus unlocked",
+				"Your first cow grants the hugel-muscle bonus.")
+
+
+## Fire a biodiversity unlock once. Paired parchment banner + SFX +
+## golden sparkle per the game-feedback philosophy.
+func _fire_biodiversity(id: StringName, _banner_title: String, banner_body: String) -> void:
+	if biodiversity_unlocks.has(String(id)):
+		return
+	biodiversity_unlocks[String(id)] = true
+	GameLog.event("biodiversity_unlock", { "id": String(id) })
+	emit_signal("unlocks_changed")
+	# Paired feedback — Juice banner + warm SFX. Shape-matches the
+	# existing milestone fire.
+	if get_node_or_null("/root/Juice") != null:
+		Juice.pop(Vector3(0, 3.0, 0), banner_body, Palette.HONEY)
+	if get_node_or_null("/root/AudioManager") != null and AudioManager.has_method("play"):
+		AudioManager.play("compost-finish", -3.0)
+	# Climax convergence: spawn a farm-wide golden aura. We log + flag
+	# here; the shader-expert agent subscribes to `unlocks_changed` +
+	# `biodiversity_unlocks.climax_convergence` to run the season-long
+	# golden aura shader pass (out of scope tonight).
+	if id == BIODIVERSITY_NODE_CLIMAX_CONV:
+		if get_node_or_null("/root/WorldState") != null:
+			GameLog.event("climax_convergence_reached", {})
+
+
+## Public — true if a biodiversity node has already fired. UI reads this
+## to light up a tech-tree node.
+func is_biodiversity_unlocked(id: StringName) -> bool:
+	return biodiversity_unlocks.has(String(id))

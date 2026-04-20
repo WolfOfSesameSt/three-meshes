@@ -26,10 +26,12 @@ const TAB_SOIL := "Soil"
 const TAB_SHADERS := "Shaders"
 const TAB_WEATHER := "Weather"
 const TAB_WATER := "Water"
+const TAB_EARTHWORKS := "Earthworks"
 
 const TABS: Array[String] = [
 	TAB_BIOMES, TAB_PLANTS, TAB_ANIMALS, TAB_FUNGI,
-	TAB_INSECTS, TAB_SOIL, TAB_SHADERS, TAB_WEATHER, TAB_WATER
+	TAB_INSECTS, TAB_SOIL, TAB_SHADERS, TAB_WEATHER, TAB_WATER,
+	TAB_EARTHWORKS
 ]
 
 const WATER_PREF_PATH := "user://water_preference.txt"
@@ -226,6 +228,7 @@ func _entities_for_tab(tab: String) -> Array:
 		TAB_SHADERS: return _synthetic_shader_entries()
 		TAB_WEATHER: return _synthetic_weather_entries()
 		TAB_WATER: return _synthetic_water_variations()
+		TAB_EARTHWORKS: return _synthetic_earthwork_entries()
 		_: return []
 
 
@@ -293,6 +296,28 @@ func _synthetic_water_variations() -> Array:
 			"gpu_cost": "medium-high",
 			"best_use": "magical set-piece ponds + streams",
 			"approach": "Layered translucent base + flowing white sparkle cells + fog fade at the bank edge.",
+		},
+	]
+
+
+## Earthwork entries — player-placeable landforms that re-plumb water
+## (swales, check dams, terraces, keyline patterns, hugelkultur ridges).
+## Currently only the swale is shipping; others are scaffolded for when
+## the full earthworks suite lands. Each entry shows intent + how the
+## design reads in-world, so the agents can iterate on the shape against
+## a live preview instead of against the running farm.
+func _synthetic_earthwork_entries() -> Array:
+	return [
+		{
+			"id": "swale",
+			"name": "Swale (contour trench + berm)",
+			"category": "earthwork",
+			"visual_states": ["finished", "wet", "dry"],
+			"animations": [],
+			"gpu_cost": "low",
+			"intent": "On-contour trench with a downhill berm. Catches uphill runoff so summer rain infiltrates instead of running off. Sediment builds the berm into prime planting ground — berm gets constant sub-irrigation.",
+			"reads_as": "Curved earthen line across the slope. Trench pools visibly in wet weather; berm is clearly taller, clearly planted (guild of fruit + chop-and-drop companions).",
+			"fails_when": "Drawn as straight axis-aligned boxes on flat ground — looks like random dirt strips. Fix: follow contour (sample heightfield), make berm visibly taller + planted, make trench pool water.",
 		},
 	]
 
@@ -628,6 +653,7 @@ func _rebuild_preview(entity: Dictionary) -> void:
 		TAB_SHADERS: kind = "shader"
 		TAB_WEATHER: kind = "weather"
 		TAB_WATER: kind = "water"
+		TAB_EARTHWORKS: kind = "earthwork"
 	# `LabPreviewFactory` is declared via `class_name`. Static methods
 	# are dispatched through the class name directly.
 	var preview: Node3D = LabPreviewFactory.build(kind, entity, _current_state)

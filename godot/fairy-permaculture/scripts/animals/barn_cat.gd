@@ -47,7 +47,30 @@ func _species_configure() -> void:
 	daily_thirst_rate = 1.0
 	forage_tiles = []
 	forage_range = HUNT_RADIUS
+	move_speed = 1.4  # m/s — stalk-speed.
 	output_per_day = {}
+
+
+# Phase-3 env influence: cats leave a dead-rodent pellet decor at barn
+# door (just the log for now — decor hook lands later). Drains rodent
+# pressure AND songbird count (the cat's PROBLEM — indicator species
+# decline). No tile change.
+func _species_env_influence() -> String:
+	var wildlife: Node = get_node_or_null("/root/Wildlife")
+	if wildlife != null and wildlife.has_method("bump_pest_pressure"):
+		wildlife.call("bump_pest_pressure", "rodent", -1.0)
+	return "Cat-patrolled (-rodent pressure; songbird disturbance)"
+
+
+func _on_clicked() -> void:
+	if state == STATE_DEAD: return
+	super._on_clicked()
+	# Pet-purr: a longer heart trail + soft aura chime (morale aura
+	# hook for nearby fairies lands when fairy behavior lets us poke
+	# their mood — for now it's the visual beat).
+	if get_node_or_null("/root/Juice") != null:
+		Juice.burst(global_position + Vector3(0, 0.6, 0),
+			Palette.CORAL.lerp(Palette.MOON, 0.45), 10)
 
 
 func _build_visuals() -> void:

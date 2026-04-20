@@ -11,7 +11,7 @@
 ##  - Day transitions play a subtle wooden tick SFX.
 extends CanvasLayer
 
-const SPEED_VALUES: Array = [0, 1, 2, 4]
+const SPEED_VALUES: Array = [0, 1, 2, 4, 10]
 const COLOR_DONE := Color(0.45, 0.60, 0.35)
 const COLOR_PENDING := Color(0.23, 0.16, 0.08)
 
@@ -411,8 +411,11 @@ func _build_queue_panel() -> void:
 	_queue_panel.anchor_bottom = 0.0
 	_queue_panel.offset_left = -260.0
 	_queue_panel.offset_right = -14.0
-	_queue_panel.offset_top = 190.0
-	_queue_panel.offset_bottom = 390.0
+	# Right column stack: LabButton (110-142), SettingsButton (150-182),
+	# TechTree (190-222), Saves (230-262), Legacy (270-302). QueuePanel
+	# sits below the button cluster.
+	_queue_panel.offset_top = 314.0
+	_queue_panel.offset_bottom = 514.0
 	_queue_panel.grow_horizontal = 0
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = Color(0.95, 0.90, 0.79, 0.95)
@@ -510,6 +513,11 @@ func _on_goals_toggle() -> void:
 	if _goal_header != null:
 		var tag: String = "▸" if _goals_collapsed else "▾"
 		_goal_header.text = "%s FIRST GOALS" % tag
+	# Goals panel has a fixed offset_bottom in the .tscn (180), so hiding
+	# children alone leaves a giant empty parchment box. Shrink the panel
+	# itself when collapsed so only the header strip shows.
+	if _goals_panel != null:
+		_goals_panel.offset_bottom = 50.0 if _goals_collapsed else 180.0
 	AudioManager.play("hover-tick", -8.0)
 
 
@@ -778,6 +786,8 @@ func _polish_wire_deferred() -> void:
 	_polish_connect_weather()
 	_polish_connect_piles()
 	_polish_connect_content_bundle()
+	# Overnight batch (2026-04-20) — Saves + Farm Legacy HUD buttons.
+	_overnight_build_saves_cluster()
 	# Watch for piles that spawn after the HUD (player-built compost piles).
 	get_tree().node_added.connect(_polish_on_node_added)
 	# Keyboard shortcut for the tech tree panel.
@@ -861,10 +871,16 @@ func _polish_push_toast(text: String, tint: Color) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(label)
 	_polish_toast_stack.add_child(panel)
-	# Auto-fade + free.
+	# Auto-fade + free. At higher game-speeds the world is moving fast,
+	# so we extend the toast lifetime proportionally — otherwise a key
+	# event banner is gone before the player can read it. Cap at 3× so
+	# pause / 1× / 2× stay at the base lifetime and 10× tops out.
+	var sched_speed: int = max(1, Scheduler.speed)
+	var speed_mul: float = clamp(float(sched_speed) / 2.0, 1.0, 3.0)
+	var lifetime: float = _POLISH_TOAST_LIFETIME_S * speed_mul
 	var tw: Tween = panel.create_tween().set_parallel(true)
 	tw.tween_property(panel, "modulate:a", 1.0, 0.0)
-	tw.chain().tween_interval(_POLISH_TOAST_LIFETIME_S - 0.8)
+	tw.chain().tween_interval(lifetime - 0.8)
 	tw.tween_property(panel, "modulate:a", 0.0, 0.8)
 	tw.chain().tween_callback(panel.queue_free)
 	AudioManager.play("hover-tick", -10.0)
@@ -1015,3 +1031,98 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("tech_tree"):
 		_polish_on_tech_tree_pressed()
 		get_viewport().set_input_as_handled()
+
+
+# =====================================================================
+# Overnight batch (2026-04-20) — named save-slot + Farm Legacy panels.
+#
+# Mounts two new HUD buttons ("Saves", "Legacy") under the existing Lab/
+# Settings/Tech-Tree cluster and instantiates the paired panels as
+# children of the HUD canvas layer. Everything here is additive — the
+# original HUD layout is untouched. DESIGN-CHECK: all fills, borders,
+# and font colors trace to Palette.* constants through the parchment
+# stylebox on the scenes.
+# =====================================================================
+
+const _OVERNIGHT_SAVES_SCENE: String = "res://scenes/save_slots_panel.tscn"
+const _OVERNIGHT_LEGACY_SCENE: String = "res://scenes/farm_legacy_panel.tscn"
+
+var _overnight_saves_btn: Button
+var _overnight_legacy_btn: Button
+var _overnight_saves_panel: Control
+var _overnight_legacy_panel: Control
+
+
+func _overnight_build_saves_cluster() -> void:
+	_overnight_saves_btn = _overnight_make_button("Saves", 230.0, 262.0)
+	_overnight_saves_btn.pressed.connect(_overnight_on_saves_pressed)
+	add_child(_overnight_saves_btn)
+
+	_overnight_legacy_btn = _overnight_make_button("Legacy", 270.0, 302.0)
+	_overnight_legacy_btn.pressed.connect(_overnight_on_legacy_pressed)
+	add_child(_overnight_legacy_btn)
+
+	_overnight_saves_panel = _overnight_mount_panel(_OVERNIGHT_SAVES_SCENE)
+	_overnight_legacy_panel = _overnight_mount_panel(_OVERNIGHT_LEGACY_SCENE)
+
+
+func _overnight_make_button(label: String, y_top: float, y_bot: float) -> Button:
+	var btn: Button = Button.new()
+	btn.text = label
+	btn.anchor_left = 1.0
+	btn.anchor_right = 1.0
+	btn.anchor_top = 0.0
+	btn.anchor_bottom = 0.0
+	btn.offset_left = -110.0
+	btn.offset_right = -14.0
+	btn.offset_top = y_top
+	btn.offset_bottom = y_bot
+	btn.grow_horizontal = 0
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Palette.PARCHMENT
+	style.border_color = Palette.EARTH
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left = 10.0
+	style.content_margin_right = 10.0
+	style.content_margin_top = 6.0
+	style.content_margin_bottom = 6.0
+	btn.add_theme_stylebox_override("normal", style)
+	btn.add_theme_stylebox_override("hover", style)
+	btn.add_theme_stylebox_override("pressed", style)
+	btn.add_theme_color_override("font_color", Palette.INK)
+	btn.add_theme_font_size_override("font_size", 14)
+	return btn
+
+
+func _overnight_mount_panel(scene_path: String) -> Control:
+	if not ResourceLoader.exists(scene_path):
+		return null
+	var scene: PackedScene = load(scene_path)
+	if scene == null:
+		return null
+	var inst: Control = scene.instantiate() as Control
+	if inst == null:
+		return null
+	add_child(inst)
+	return inst
+
+
+func _overnight_on_saves_pressed() -> void:
+	if AudioManager != null:
+		AudioManager.play("hover-tick", -6.0)
+	if _overnight_saves_panel != null and _overnight_saves_panel.has_method("toggle"):
+		_overnight_saves_panel.call("toggle")
+
+
+func _overnight_on_legacy_pressed() -> void:
+	if AudioManager != null:
+		AudioManager.play("hover-tick", -6.0)
+	if _overnight_legacy_panel != null and _overnight_legacy_panel.has_method("toggle"):
+		_overnight_legacy_panel.call("toggle")

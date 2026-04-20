@@ -24,6 +24,13 @@ const LGD_SCENE: PackedScene = preload("res://scenes/animals/lgd_dog.tscn")
 const CAT_SCENE: PackedScene = preload("res://scenes/animals/barn_cat.tscn")
 const FLOCK_CAP: int = 2
 
+# Phase-3 containment — cats + dogs are FREE-RANGING. Zero radius means
+# AnimalEntity skips the clamp entirely (its guard is `radius > 0.1`).
+# They patrol a wide territory (cat: 8m rodent hunt; dog: 8m LGD protect).
+@export var containment_radius: float = 0.0
+@export var containment_strength: float = 0.0
+var escaped_animals: Array = []
+
 
 var _wall_mat: StandardMaterial3D
 var _roof_mat: StandardMaterial3D

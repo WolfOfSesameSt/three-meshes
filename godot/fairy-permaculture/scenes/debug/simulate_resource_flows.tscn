@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1sim_resource_flows"]
+
+[ext_resource type="Script" path="res://scripts/debug/simulate_resource_flows.gd" id="1_srf"]
+
+[node name="SimResourceFlows" type="Node"]
+script = ExtResource("1_srf")

@@ -1,0 +1,74 @@
+[gd_scene load_steps=3 format=3 uid="uid://habitat_tooltip_scene"]
+
+[ext_resource type="Script" path="res://scripts/habitat_tooltip.gd" id="1_ht"]
+
+[sub_resource type="StyleBoxFlat" id="parchment_style"]
+bg_color = Color(0.961, 0.922, 0.835, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.79, 0.72, 0.54, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+shadow_color = Color(0.16, 0.11, 0.06, 0.35)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
+
+[node name="HabitatTooltip" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_ht")
+
+[node name="Panel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(220, 0)
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 260.0
+offset_bottom = 140.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("parchment_style")
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+text = "Habitat"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
+theme_override_font_sizes/font_size = 15
+
+[node name="SubHeader" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+text = "Home of:"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="SpeciesList" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Sep" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+visible = false
+
+[node name="Drains" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+text = ""
+visible = false
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
+theme_override_font_sizes/font_size = 11

@@ -42,9 +42,53 @@ func _species_configure() -> void:
 	daily_thirst_rate = 2.5
 	forage_tiles = ["meadow", "forest_edge", "bare"]
 	forage_range = 8.0
+	move_speed = 0.8  # m/s — chicken default from the Phase-3 spec.
 	# Eggs feed fairies (routed via coop.on_egg_laid → FarmTotals.fairy_food
 	# fruit channel in phase 1). Manure silently bumps tile OM.
 	output_per_day = { "eggs": 0.8, "manure": 0.4 }
+
+
+# =============================================================
+# Phase-3: species-flavor environmental influence + click.
+# =============================================================
+
+## Chickens scratch +0.01 OM per day under them AND emit a scattered
+## feather particle. Churned-earth tint is visible via the soil-inspector
+## panel's per-tile history. Reduces local rodent/insect pressure (we
+## drain from Wildlife's pressure map if exposed).
+func _species_env_influence() -> String:
+	var wg: Node = get_node_or_null("/root/WorldGrid")
+	if wg != null and wg.has_method("add_tile_om"):
+		wg.call("add_tile_om", global_position, 0.01)
+	# Reduce local rodent + insect pest pressure (tiny amount per hen).
+	var wildlife: Node = get_node_or_null("/root/Wildlife")
+	if wildlife != null and wildlife.has_method("bump_pest_pressure"):
+		wildlife.call("bump_pest_pressure", "rodent", -0.4)
+		wildlife.call("bump_pest_pressure", "aphid", -0.2)
+	# Scatter a feather particle now and then — not every day, to keep
+	# the world quiet.
+	if get_node_or_null("/root/Juice") != null and _rng.randf() < 0.3:
+		Juice.burst(global_position + Vector3(0, 0.25, 0),
+			Palette.STRAW_DRY.lerp(Palette.HONEY, 0.3), 3)
+	return "Chicken-scratched (+0.01 OM today)"
+
+
+## Chicken-specific click: a cluck SFX + small wing-flutter burst +
+## baseline pet (bond / heart-pop comes from super).
+func _on_clicked() -> void:
+	if state == STATE_DEAD:
+		return
+	super._on_clicked()
+	# Extra feather puff so chickens feel springy vs a barn cat's purr.
+	if get_node_or_null("/root/Juice") != null:
+		Juice.burst(global_position + Vector3(0, 0.6, 0),
+			Palette.STRAW_DRY.lerp(Palette.MOON, 0.2), 8)
+
+
+func _click_sfx() -> String:
+	# Falls back to hover-tick if cluck isn't baked yet — sound-designer
+	# will register a dedicated chicken-cluck SFX in a follow-up.
+	return "hover-tick"
 
 
 ## Build a recognizable chicken silhouette with primitive meshes. No

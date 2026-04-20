@@ -27,6 +27,7 @@ const SoilPlotScene = preload("res://scenes/soil_plot.tscn")
 const SproutingBedScene = preload("res://scenes/sprouting_bed.tscn")
 const StorageShedScene = preload("res://scenes/storage_shed.tscn")
 const NurseryPanelScene = preload("res://scenes/nursery_panel.tscn")
+const HabitatTooltipScene = preload("res://scenes/habitat_tooltip.tscn")
 const DecorScript = preload("res://scripts/decor.gd")
 ## HUD-button "new compost pile" shortcut — costs plant_trim (direct
 ## successor to the old biomass stand-in). The full right-click Build
@@ -44,6 +45,7 @@ var _piles: Array = []        # all piles (including _pile_instance)
 var _fairy_instance: Node3D
 var _plants: Array = []
 var _nursery_panel: Control
+var _habitat_tooltip: Control
 var _started: bool = false
 
 
@@ -61,6 +63,7 @@ func _ready() -> void:
 	_spawn_pioneer_plants()
 	_spawn_fairy()
 	_mount_nursery_panel()
+	_mount_habitat_tooltip()
 	_wire_hud_build_pile()
 	Scheduler.day_advanced.connect(_on_day_advanced)
 	Scheduler.season_changed.connect(_on_season_changed)
@@ -86,6 +89,15 @@ func _mount_nursery_panel() -> void:
 	_nursery_panel = NurseryPanelScene.instantiate()
 	_nursery_panel.visible = false
 	_hud.add_child(_nursery_panel)
+
+
+## Mount the shared parchment tooltip used for wildlife-habitat hovers
+## (owl box, rock pile, brush pile, mason bee tubes, duck pond edge,
+## any future habitat in group `wildlife_habitats`). One instance lives
+## on the HUD CanvasLayer and is shown/hidden on hover signals.
+func _mount_habitat_tooltip() -> void:
+	_habitat_tooltip = HabitatTooltipScene.instantiate()
+	_hud.add_child(_habitat_tooltip)
 
 
 func _input(event: InputEvent) -> void:
@@ -221,10 +233,20 @@ func _fade(player: AudioStreamPlayer, target_linear: float) -> void:
 
 
 ## Interactable hover — each object toggles its own rim highlight
-## inside `set_highlight()`. This handler stays connected for any
-## side effects (cursor change, audio ticks) we might add later.
-func _on_interactable_hover(_node: Node3D, _hovered: bool) -> void:
-	pass
+## inside `set_highlight()`. This handler is also the router for the
+## shared habitat tooltip: if the hovered node is in group
+## `wildlife_habitats`, we show the parchment card; on exit we hide.
+## Non-habitat interactables (piles, plants, sheds) fall through —
+## their existing hover behaviors stay untouched.
+func _on_interactable_hover(node: Node3D, hovered: bool) -> void:
+	if _habitat_tooltip == null or node == null:
+		return
+	if not node.is_in_group("wildlife_habitats"):
+		return
+	if hovered:
+		_habitat_tooltip.show_for(node)
+	else:
+		_habitat_tooltip.hide_tooltip()
 
 
 func _on_pile_clicked(pile: Pile) -> void:

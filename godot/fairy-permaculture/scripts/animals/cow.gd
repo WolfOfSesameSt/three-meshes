@@ -39,9 +39,39 @@ func _species_configure() -> void:
 	daily_thirst_rate = 5.0
 	forage_tiles = ["pasture", "meadow", "forest_edge"]
 	forage_range = 16.0
+	move_speed = 0.5  # m/s — slow, heavy grazer.
 	# Milk → fairy_food.milk; manure OM king. Phase 1 approximates
 	# lactation as continuous (same pattern as goat).
 	output_per_day = { "milk": 8.0, "manure": 2.2 }
+
+
+# Phase-3 env influence: cows deposit +0.03 OM per day. Wet tiles pick up
+# a compaction penalty flag we log for the soil inspector (drainage -%
+# for 7 days; the soil engine agent will wire the flag read in a follow-
+# up). Wear tracks appear as cow-path decor in a future art pass.
+func _species_env_influence() -> String:
+	var wg: Node = get_node_or_null("/root/WorldGrid")
+	var suffix: String = ""
+	if wg != null:
+		if wg.has_method("add_tile_om"):
+			wg.call("add_tile_om", global_position, 0.03)
+		# Check surface water — wet tile = compaction event.
+		var mat: String = ""
+		if wg.has_method("tile_material_at"):
+			mat = String(wg.call("tile_material_at", global_position))
+		var is_wet: bool = mat == "pond" or mat == "stream_bed" or mat == "bank"
+		if is_wet and get_node_or_null("/root/GameLog") != null:
+			GameLog.event("cow_compaction", { "pos": [global_position.x, global_position.z] })
+			suffix = "; compaction flagged (wet)"
+	return "Cow-grazed (+0.03 OM)%s" % suffix
+
+
+func _on_clicked() -> void:
+	if state == STATE_DEAD: return
+	super._on_clicked()
+	if get_node_or_null("/root/Juice") != null:
+		Juice.burst(global_position + Vector3(0, 1.2, 0),
+			Palette.WARM_STONE, 6)
 
 
 func _build_visuals() -> void:

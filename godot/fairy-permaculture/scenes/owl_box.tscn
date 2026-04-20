@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://fp_owl_box"]
+
+[ext_resource type="Script" path="res://scripts/owl_box.gd" id="1_owl"]
+
+[node name="OwlBox" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_owl")

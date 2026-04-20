@@ -83,8 +83,71 @@
     ],
     "mitigations": [
       { "type": "canopy-cover", "params": { "fraction_min": 0.3 }, "reduces_severity_by": 0.8 },
-      { "type": "guard-animal-nearby", "params": { "species": ["guard-goose"] }, "reduces_severity_by": 0.6 },
+      { "type": "guard-animal-nearby", "params": { "species": ["goose-embden", "lgd_dog"] }, "reduces_severity_by": 0.7 },
       { "type": "chicken-tractor-under-canopy", "params": {}, "reduces_severity_by": 0.9 }
+    ],
+    "duration_days_range": [1, 1]
+  },
+  {
+    "id": "fox-at-dawn",
+    "name": "Fox at Dawn",
+    "description": "A red fox probes the chicken yard in the pre-dawn hour.",
+    "trigger": {
+      "type": "forest-edge-adjacent",
+      "params": { "unfenced_coop": true, "min_forest_edge_tiles": 6 },
+      "season_any": ["spring", "autumn", "winter"],
+      "probability": 0.04
+    },
+    "severity": "real-loss",
+    "effects": [
+      { "type": "lose-animals", "params": { "min": 1, "max": 2, "species": ["chicken-layer", "duck"] } }
+    ],
+    "mitigations": [
+      { "type": "fenced-coop", "params": {}, "reduces_severity_by": 0.85 },
+      { "type": "closed-coop-at-night", "params": {}, "reduces_severity_by": 0.75 },
+      { "type": "guard-animal-nearby", "params": { "species": ["lgd_dog", "goose-embden"] }, "reduces_severity_by": 0.9 }
+    ],
+    "duration_days_range": [1, 1]
+  },
+  {
+    "id": "raccoon-raid",
+    "name": "Raccoon Raid",
+    "description": "A raccoon reaches into the coop at night for eggs or young chicks.",
+    "trigger": {
+      "type": "night-coop-open",
+      "params": { "open_compost_nearby": true },
+      "season_any": ["summer", "autumn"],
+      "probability": 0.06
+    },
+    "severity": "real-loss",
+    "effects": [
+      { "type": "lose-animals", "params": { "min": 1, "max": 2, "species": ["chicken-layer", "duck"] } },
+      { "type": "lose-resource", "params": { "kind": "eggs", "min": 1, "max": 3 } }
+    ],
+    "mitigations": [
+      { "type": "closed-coop-at-night", "params": {}, "reduces_severity_by": 0.90 },
+      { "type": "fenced-coop", "params": {}, "reduces_severity_by": 0.65 },
+      { "type": "guard-animal-nearby", "params": { "species": ["lgd_dog"] }, "reduces_severity_by": 0.80 }
+    ],
+    "duration_days_range": [1, 1]
+  },
+  {
+    "id": "heron-visit",
+    "name": "Great Blue Heron Visit",
+    "description": "A heron fishes the pond; small trout stock drops.",
+    "trigger": {
+      "type": "pond-with-fish",
+      "params": { "min_fish_stock": 2 },
+      "season_any": ["spring", "summer", "autumn"],
+      "probability": 0.05
+    },
+    "severity": "real-loss",
+    "effects": [
+      { "type": "lose-animals", "params": { "min": 1, "max": 2, "species": ["rainbow-trout"] } }
+    ],
+    "mitigations": [
+      { "type": "duck-flock", "params": { "min_ducks": 3 }, "reduces_severity_by": 0.6 },
+      { "type": "heron-deterrent", "params": {}, "reduces_severity_by": 0.85 }
     ],
     "duration_days_range": [1, 1]
   }

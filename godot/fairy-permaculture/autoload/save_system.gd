@@ -117,6 +117,7 @@ func save(slot: String = AUTOSAVE_SLOT) -> bool:
 		"world_grid": _capture_world_grid(),
 		"tasks": _capture_tasks(),
 		"objects": _capture_world_objects(),
+		"lifetime_stats": _capture_lifetime_stats(),
 	}
 	var ok: bool = _write_payload(slot, payload)
 	GameLog.event("save_%s" % ("ok" if ok else "fail"), {
@@ -164,6 +165,7 @@ func load(slot: String = AUTOSAVE_SLOT) -> bool:
 	_restore_world_state(payload.get("world_state", {}))
 	_restore_world_grid(payload.get("world_grid", {}))
 	_restore_world_objects(main, payload.get("objects", []))
+	_restore_lifetime_stats(payload.get("lifetime_stats", {}))
 	# Defer task restore by a frame so the new spawn's _ready() hooks
 	# (StorageIndex.register_shed, TaskQueue.register_fairy) run first.
 	call_deferred("_restore_tasks_deferred", payload.get("tasks", []))
@@ -260,6 +262,10 @@ func _capture_progression() -> Dictionary:
 	var unlocks: Array[String] = []
 	for id in Progression.unlocked_buildings:
 		unlocks.append(String(id))
+	# Phase-3 biodiversity unlocks: flat dict, each key fires once.
+	var biod: Dictionary = {}
+	if Progression.get("biodiversity_unlocks") is Dictionary:
+		biod = (Progression.biodiversity_unlocks as Dictionary).duplicate()
 	return {
 		"tutorial_step": Progression.tutorial_step,
 		"unlocked_buildings": unlocks,
@@ -269,6 +275,7 @@ func _capture_progression() -> Dictionary:
 		"first_carcass_spawned": Progression.first_carcass_spawned,
 		"first_butcher_done": Progression.first_butcher_done,
 		"first_bone_meal_fired": Progression.first_bone_meal_fired,
+		"biodiversity_unlocks": biod,
 	}
 
 
@@ -431,6 +438,14 @@ func _capture_plant_fields(n: Node3D, d: Dictionary) -> void:
 	d["ripe_amount"]  = float(n.get("ripe_amount"))
 	d["ripe_count"]   = int(n.get("ripe_count"))
 	d["is_pioneer"]   = bool(n.get("is_pioneer"))
+	# Rot state — added 2026-04 with the fruit_scraps producer path.
+	# Default to -1/false for saves written before this field existed.
+	var rot_started: Variant = n.get("_rot_started_day")
+	if rot_started != null:
+		d["rot_started_day"] = int(rot_started)
+	var overripe: Variant = n.get("_overripe")
+	if overripe != null:
+		d["overripe"] = bool(overripe)
 
 
 func _capture_soil_plot_fields(n: Node3D, d: Dictionary) -> void:
@@ -507,12 +522,36 @@ func _capture_animal_fields(n: Node3D, d: Dictionary) -> void:
 	d["max_age_days"]  = int(n.get("max_age_days"))
 	d["hunger"]        = float(n.get("hunger"))
 	d["thirst"]        = float(n.get("thirst"))
+	# Phase-3 additive fields — bond, thriving, escape, containment.
+	# Routed through `serialize_phase3()` on AnimalEntity. Missing method
+	# (e.g. old class files) falls back to blank payload gracefully.
+	if n.has_method("serialize_phase3"):
+		d["phase3"] = n.call("serialize_phase3")
 
 
 func _capture_carcass_fields(_n: Node3D, _d: Dictionary) -> void:
 	# Carcass schema isn't shipped yet; header-only capture until the
 	# animal loop lands it. Missing fields are tolerated on restore.
 	pass
+
+
+## Phase-3: LifetimeStats autoload capture. Empty on first-run saves that
+## predate the autoload (file still loads on older builds because the
+## restore tolerates missing sections).
+func _capture_lifetime_stats() -> Dictionary:
+	var ls: Node = get_node_or_null("/root/LifetimeStats")
+	if ls == null or not ls.has_method("serialize"):
+		return {}
+	return ls.call("serialize")
+
+
+func _restore_lifetime_stats(data: Dictionary) -> void:
+	if data.is_empty():
+		return
+	var ls: Node = get_node_or_null("/root/LifetimeStats")
+	if ls == null or not ls.has_method("hydrate"):
+		return
+	ls.call("hydrate", data)
 
 
 # =====================================================================
@@ -575,6 +614,11 @@ func _restore_progression(data: Dictionary) -> void:
 	for u in unlocks:
 		typed_unlocks.append(StringName(String(u)))
 	Progression.unlocked_buildings = typed_unlocks
+	# Phase-3 biodiversity unlocks — additive; missing key in old saves
+	# reverts to empty dict so the day-tick probe re-fires them.
+	var biod: Variant = data.get("biodiversity_unlocks", null)
+	if biod is Dictionary and Progression.get("biodiversity_unlocks") is Dictionary:
+		Progression.biodiversity_unlocks = (biod as Dictionary).duplicate()
 	Progression.emit_signal("unlocks_changed")
 
 
@@ -679,6 +723,10 @@ func _restore_plant_fields(n: Node3D, o: Dictionary, main: Node) -> void:
 	n.set("ripe_amount",  float(o.get("ripe_amount", 0.0)))
 	n.set("ripe_count",   int(o.get("ripe_count", 0)))
 	n.set("is_pioneer",   bool(o.get("is_pioneer", false)))
+	# Rot state — see _capture_plant_fields. Default -1/false for
+	# migrated saves that predate the rot fields.
+	n.set("_rot_started_day", int(o.get("rot_started_day", -1)))
+	n.set("_overripe",        bool(o.get("overripe", false)))
 	# Register with the main scene so hover + click signals connect.
 	if main != null and main.has_method("register_plant"):
 		main.call("register_plant", n)
@@ -758,6 +806,10 @@ func _restore_animal_fields(n: Node3D, o: Dictionary) -> void:
 	n.set("max_age_days", int(o.get("max_age_days", 1080)))
 	n.set("hunger",       float(o.get("hunger", 0.0)))
 	n.set("thirst",       float(o.get("thirst", 0.0)))
+	# Phase-3 round-trip.
+	var p3: Variant = o.get("phase3", null)
+	if p3 is Dictionary and n.has_method("hydrate_phase3"):
+		n.call("hydrate_phase3", p3)
 
 
 func _restore_tasks_deferred(tasks: Array) -> void:

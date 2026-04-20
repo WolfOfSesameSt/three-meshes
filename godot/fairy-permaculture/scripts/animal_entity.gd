@@ -27,14 +27,35 @@ class_name AnimalEntity
 
 signal died(entity: AnimalEntity)
 signal state_changed(new_state: String, old_state: String)
+## Escape event — the containment roll failed. `challenge-designer`
+## listens to fire a banner; the right-click "Round up" task targets
+## this animal via habitat's `escaped_animals` array.
+signal escaped(entity: AnimalEntity)
+## Bond milestone — fires at 3 (animal walks toward approaching fairies)
+## and 5 (procgen name stamped). UX/ux-engineer listens to paint the
+## bond meter in the animal inspector.
+signal bond_changed(entity: AnimalEntity, new_level: int)
+## Thriving tier transition — THRIVING / content / stressed / suffering.
+## Visible mesh shift happens in `_apply_tint`; this signal carries the
+## enum + old-tier name so event listeners can log transitions.
+signal thriving_tier_changed(entity: AnimalEntity, tier: String, old_tier: String)
+## Animal was clicked (pet). Forwarded to UX for the on-world hover
+## and to Juice for the heart-pop.
+signal clicked(entity: AnimalEntity)
 
 
 # ---- Lifecycle states ----
 const STATE_IDLE: String      = "idle"
 const STATE_FORAGING: String  = "foraging"
+const STATE_EATING: String    = "eating"
 const STATE_DRINKING: String  = "drinking"
+const STATE_RESTING: String   = "resting"
 const STATE_RETURNING: String = "returning"
 const STATE_SLEEPING: String  = "sleeping"
+const STATE_HUNGRY: String    = "hungry"
+const STATE_STARVING: String  = "starving"
+const STATE_PANIC: String     = "panic"
+const STATE_BONDED: String    = "bonded"
 const STATE_DEAD: String      = "dead"
 
 
@@ -104,6 +125,71 @@ var _elder_applied: bool = false
 ## Current per-frame render tint (state × mood). Lerps toward target.
 var _tint_current: Color = Color(1, 1, 1, 1)
 var _tint_target: Color = Color(1, 1, 1, 1)
+
+# ---- Phase-3 Animal AI: locomotion / thriving / bond / containment ----
+##
+## NOTE — these fields are all ADDITIVE. The existing day-tick sim and
+## subclass overrides (barn_cat.day_tick, lgd_dog.day_tick) keep working
+## as before; the new behavior only kicks in on _process(delta) and on
+## the new post-day thriving+environment step at the end of day_tick.
+##
+## Per-species walking speed, assigned by subclass in _species_configure.
+@export var move_speed: float = 0.8  # m/s, chicken default
+## Current per-frame steering target in world space. Re-picked on arrival.
+var _move_target: Vector3 = Vector3.ZERO
+var _move_target_set: bool = false
+## IDLE jitter timer — a small Y-rotation tick every 2-4 s so even
+## standing animals look alive. Mirrors the fairy idle wobble.
+var _idle_jitter_t: float = 0.0
+var _idle_jitter_interval: float = 3.0
+## EATING timer — when the animal arrives at a forage target, it
+## stands in EATING for `_eating_time_left` seconds before re-picking.
+var _eating_time_left: float = 0.0
+## Panic — set by predator/event handlers (challenge-designer). Fleeing
+## source position; locomotion moves away at 1.8× move_speed until cleared.
+var _threat_pos: Vector3 = Vector3.INF
+var _panic_time_left: float = 0.0
+
+## Bond level 0..5. 1/day cap on increment (enforced via _bond_tick_day).
+## Bond 3 → animal walks toward approaching fairies (future tie-in).
+## Bond 5 → procgen nickname stamped + paired "Bonded with Henrietta" feedback.
+var bond_level: int = 0
+var _last_bond_day: int = -1
+## Procgen nickname. Blank until bond 5 or name forced on spawn.
+var nickname: String = ""
+
+## Thriving score 0..100, computed daily after day_tick. Public so UI
+## can read it. Tier names: "thriving" / "content" / "stressed" /
+## "suffering" (gated at 80 / 40 / 20 thresholds). Golden-sparkle emit
+## on THRIVING runs every 30 s via _thriving_emit_t.
+var thriving_score: int = 50
+var thriving_tier: String = "content"
+var _thriving_emit_t: float = 0.0
+
+## Environmental influence day-trace. Last-day summary written per tick
+## so the soil-inspector panel can read a plain-English entry for the
+## tile under this animal. Also emitted to GameLog so replays stay
+## debuggable.
+var last_env_note: String = ""
+var _starve_day_count: int = 0        # consecutive days hunger==100
+var _last_output_mul: float = 1.0     # thriving-scaled output multiplier for today
+
+# ---- Containment (exposed on habitat scripts as containment_radius/strength) ----
+## Clamp radius pulled off the habitat on spawn. 0 = no clamp (free-ranging
+## species like cat/dog). Updated by `register_with_habitat`.
+var containment_radius: float = 0.0
+## Strength 0..1 — 1.0 = hard clamp, <1.0 rolls an escape chance per day.
+## Species fence_strength_bias from data/animals.json shifts this.
+var containment_strength: float = 1.0
+## Set true once the animal escapes its habitat — locomotion then ignores
+## the clamp until a fairy's "Round up" task resets it. The habitat keeps
+## a live weak ref so the round-up action can target us.
+var escaped_flag: bool = false
+
+## Cached click StaticBody3D. Lazy-added by `_ensure_click_area()` on
+## first day_tick so the base class doesn't pay for it in headless sims
+## that never fire the per-frame _process().
+var _click_body: StaticBody3D = null
 
 
 # =============================================================
@@ -233,15 +319,54 @@ func day_tick() -> void:
 		mood = min(100.0, mood + 1.0)
 
 	# ---- Step 6. Outputs (only while healthy + adult + productive) ----
-	if mood + health > 60.0 and age_days > 0 and not _is_elder():
-		_emit_outputs(1.0)
-	elif mood + health > 60.0 and _is_elder():
-		_emit_outputs(0.5)  # elders produce half
+	# Thriving multiplier applied on top of the elder halving — a thriving
+	# hen lays ~1.3× more (AGENT.md §Thriving loop); stressed ~0.7×;
+	# suffering ~0.3×. Multiplier comes from the PREVIOUS day's tier so the
+	# player feels the swing immediately when care is restored. _last_output_mul
+	# is updated at end of day in _compute_thriving_score().
+	var base_mul: float = 1.0 if not _is_elder() else 0.5
+	if mood + health > 60.0 and age_days > 0:
+		_emit_outputs(base_mul * _last_output_mul)
 
 	# ---- Step 7. Elder visuals ----
 	if _is_elder() and not _elder_applied:
 		_elder_applied = true
 		_refresh_tint_target()
+
+	# ---- Step 7.5. Hunger → HUNGRY → STARVING → death spiral.
+	# Gate: if hunger is at 100 for 3 consecutive days, animal enters
+	# STARVING. Recovery: fed within 2 days of STARVING reverts to
+	# HUNGRY. See AGENT.md — no one-missed-refill death cliffs. Setting
+	# state HUNGRY/STARVING overrides FORAGING/EATING unless already dead.
+	if hunger >= 100.0:
+		_starve_day_count += 1
+	elif hunger < 85.0:
+		_starve_day_count = 0
+	if state != STATE_DEAD:
+		if _starve_day_count >= 3:
+			_enter_state(STATE_STARVING)
+		elif hunger > 85.0:
+			_enter_state(STATE_HUNGRY)
+
+	# ---- Step 7.6. Thriving score + tier (post-needs, pre-death). ----
+	_compute_thriving_score()
+
+	# ---- Step 7.7. Environmental influence on the tile under us. ----
+	_apply_env_influence()
+
+	# ---- Step 7.8. Containment roll. Fence_strength < 1.0 rolls a daily
+	# escape chance proportional to (1 - strength). Cats/dogs with zero
+	# containment are exempt. Once escaped, the animal wanders freely
+	# until re-penned by a fairy "Round up" task.
+	if not escaped_flag and containment_radius > 0.1 and containment_strength < 1.0:
+		var esc_prob: float = clamp(1.0 - containment_strength, 0.0, 1.0) * 0.08
+		if _rng.randf() < esc_prob:
+			_trigger_escape()
+
+	# ---- Step 7.9. Bond day reset — enables a fresh +1 pet tomorrow. ----
+	var day_now: int = _current_day()
+	if _last_bond_day > day_now:  # sanity wrap (save/load)
+		_last_bond_day = -1
 
 	# ---- Step 8. Death trigger ----
 	if age_days >= max_age_days or health < 10.0:
@@ -386,9 +511,13 @@ func die() -> void:
 	# Paired feedback — warm-coral pop + gentle thud. Names the animal if
 	# a habitat has given it one.
 	var years: float = float(age_days) / 360.0
-	var nickname: String = "%s %.1f yr" % [species_display_name, years]
+	var label: String
+	if nickname != "":
+		label = "%s (%.1f yr)" % [nickname, years]
+	else:
+		label = "%s %.1f yr" % [species_display_name, years]
 	if get_node_or_null("/root/Juice") != null:
-		Juice.pop(global_position + Vector3(0, 2.2, 0), nickname, Palette.CORAL.lerp(Palette.HONEY, 0.2))
+		Juice.pop(global_position + Vector3(0, 2.2, 0), label, Palette.CORAL.lerp(Palette.HONEY, 0.2))
 	if get_node_or_null("/root/AudioManager") != null:
 		AudioManager.play("hover-tick", -6.0)
 	emit_signal("died", self)
@@ -450,14 +579,34 @@ func _refresh_tint_target() -> void:
 		# happy palette — "elder chicken" reads as wise straw-grey, never
 		# cold grey.
 		t = Color(0.88, 0.84, 0.78, 1.0)
-	if state == STATE_FORAGING:
+	if state == STATE_FORAGING or state == STATE_EATING:
 		t = t * Color(0.94, 0.94, 0.94, 1.0)
-	elif state == STATE_SLEEPING:
+	elif state == STATE_SLEEPING or state == STATE_RESTING:
 		t = t * Color(0.70, 0.68, 0.65, 1.0)
+	elif state == STATE_HUNGRY:
+		# Hungry: -15 % albedo (AGENT.md §Hunger → death).
+		t = t * Color(0.85, 0.85, 0.85, 1.0)
+	elif state == STATE_STARVING:
+		# Starving: warm-brown drain, scale drop also fires in _process.
+		t = t * Color(0.70, 0.66, 0.60, 1.0)
+	elif state == STATE_PANIC:
+		# Panic: fast-twitch hotter tint.
+		t = t.lerp(Color(1.05, 0.92, 0.85, 1.0), 0.4)
 	elif state == STATE_DEAD:
 		t = t * Color(0.55, 0.50, 0.45, 1.0)
+	# Thriving-tier overlay — softer than state tint. Adds a gentle glow
+	# to THRIVING animals, pushes STRESSED toward STRAW_DRY.
+	match thriving_tier:
+		"thriving":
+			t = t.lerp(Color(1.05, 1.02, 0.95, 1.0), 0.18)
+		"stressed":
+			t = t.lerp(Color(0.92, 0.88, 0.80, 1.0), 0.28)
+		"suffering":
+			t = t.lerp(Color(0.82, 0.78, 0.70, 1.0), 0.45)
+		_:
+			pass
 	if health < 50.0:
-		# Sick chickens desaturate toward STRAW_DRY a touch.
+		# Sick animals desaturate toward STRAW_DRY a touch.
 		t = t.lerp(Color(0.88, 0.82, 0.65, 1.0), 0.45)
 	_tint_target = t
 	_apply_tint()
@@ -482,14 +631,33 @@ func _apply_tint() -> void:
 
 
 ## Per-frame micro-animation: hover breathing, sleeping scale, dead tip.
+## Also dispatches locomotion by state — see AGENT.md §Domain. Movement
+## never stops in IDLE (idle jitter always active). EATING freezes for
+## a few seconds. PANIC flees from `_threat_pos` at 1.8× speed. RETURNING
+## / SLEEPING lerp to home. FORAGING / BONDED steer to `_move_target`.
 func _process(delta: float) -> void:
 	match state:
 		STATE_SLEEPING:
 			scale = scale.lerp(Vector3(1, 0.8, 1), 0.1)
 		STATE_DEAD:
 			scale = scale.lerp(Vector3(1, 0.1, 1), 0.1)
+			return  # Dead animals don't walk.
 		_:
 			scale = scale.lerp(Vector3.ONE, 0.1)
+	# Ensure click area exists once we're in the tree — lazily so headless
+	# sims don't pay for a StaticBody3D they never click.
+	if _click_body == null and is_inside_tree():
+		_ensure_click_area()
+	# Locomotion dispatch — additive to the existing scale bob. Movement
+	# speed comes from the species export; state picks the target.
+	_locomotion_tick(delta)
+	# Golden-sparkle emit on THRIVING animals every 30 s. Subtle —
+	# matches the "quiet continuous reward" feeling from AGENT.md.
+	if thriving_tier == "thriving":
+		_thriving_emit_t += delta
+		if _thriving_emit_t >= 30.0:
+			_thriving_emit_t = 0.0
+			_emit_thriving_sparkle()
 
 
 # =============================================================
@@ -502,3 +670,478 @@ func register_with_habitat(h: Node3D) -> void:
 	habitat = h
 	if h != null:
 		home_pos = h.global_position
+		# Pull containment parameters off the habitat if it exposes them.
+		# Habitats that predate the containment system (owl_box, brush_pile)
+		# don't need them — they don't contain animals. Defensive reads.
+		var cr: Variant = h.get("containment_radius")
+		if cr != null:
+			containment_radius = float(cr)
+		var cs: Variant = h.get("containment_strength")
+		if cs != null:
+			containment_strength = clamp(float(cs), 0.0, 1.0)
+
+
+# =============================================================
+# PHASE 3 — Locomotion dispatcher (per-frame).
+# =============================================================
+
+## Per-frame movement by state. Called from `_process(delta)`. Pure
+## pos/rot updates — no resource or needs mutation happens here; the
+## day_tick() still owns all economic side-effects.
+func _locomotion_tick(delta: float) -> void:
+	if state == STATE_DEAD:
+		return
+	var ground_y: float = global_position.y
+	if get_node_or_null("/root/WorldGrid") != null:
+		ground_y = WorldGrid.sample_height(global_position)
+	# IDLE jitter — tiny Y-rotation tick every 2-4 s + bob. Keeps even
+	# static animals visually alive.
+	_idle_jitter_t += delta
+	if _idle_jitter_t >= _idle_jitter_interval:
+		_idle_jitter_t = 0.0
+		_idle_jitter_interval = 2.0 + _rng.randf() * 2.0
+		rotation.y += (_rng.randf() - 0.5) * 0.8
+	match state:
+		STATE_FORAGING, STATE_BONDED:
+			_steer_toward(_move_target, move_speed * delta)
+			_check_arrival_to_target()
+		STATE_EATING:
+			_eating_time_left -= delta
+			if _eating_time_left <= 0.0:
+				_eating_time_left = 0.0
+				_enter_state(STATE_IDLE)
+		STATE_RETURNING, STATE_SLEEPING:
+			_steer_toward(home_pos, move_speed * delta * 1.1)
+		STATE_PANIC:
+			if _threat_pos != Vector3.INF:
+				var away: Vector3 = (global_position - _threat_pos)
+				away.y = 0.0
+				if away.length() > 0.01:
+					away = away.normalized()
+				var tgt: Vector3 = global_position + away * 2.0
+				_steer_toward(tgt, move_speed * 1.8 * delta)
+			_panic_time_left -= delta
+			if _panic_time_left <= 0.0:
+				_threat_pos = Vector3.INF
+				_enter_state(STATE_IDLE)
+		STATE_IDLE, STATE_HUNGRY:
+			# Soft wander: 40% chance per second to pick a short new
+			# target within 2 m of home. HUNGRY animals move at 0.7× speed.
+			if not _move_target_set or global_position.distance_to(_move_target) < 0.4:
+				_pick_idle_target()
+			var speed_mul: float = 0.7 if state == STATE_HUNGRY else 0.6
+			_steer_toward(_move_target, move_speed * speed_mul * delta)
+		STATE_STARVING:
+			# Starving: barely moves, tiny drift toward home.
+			_steer_toward(home_pos, move_speed * 0.3 * delta)
+		_:
+			pass
+	# Clamp to terrain.
+	global_position.y = ground_y
+	# Clamp to containment circle unless escaped.
+	if not escaped_flag and containment_radius > 0.1 and home_pos != Vector3.ZERO:
+		var diff: Vector3 = global_position - home_pos
+		diff.y = 0.0
+		if diff.length() > containment_radius:
+			diff = diff.normalized() * containment_radius
+			global_position = Vector3(home_pos.x + diff.x, ground_y, home_pos.z + diff.z)
+
+
+## Steer (position-lerp style — we're a Node3D without physics). Also
+## aims the Y rotation toward the heading so the silhouette faces its
+## target; subclass meshes are built facing +Z.
+func _steer_toward(target: Vector3, step_m: float) -> void:
+	var to: Vector3 = target - global_position
+	to.y = 0.0
+	var dist: float = to.length()
+	if dist < 0.001:
+		return
+	var dir: Vector3 = to / dist
+	var move_m: float = min(dist, step_m)
+	global_position += dir * move_m
+	# Smooth Y-rotation: atan2 gives heading; lerp so the turn is gentle.
+	var want_yaw: float = atan2(dir.x, dir.z)
+	rotation.y = lerp_angle(rotation.y, want_yaw, 0.12)
+
+
+## Pick a random idle wander target within ~2 m of home_pos, respecting
+## containment if any. Used in STATE_IDLE so animals don't freeze.
+func _pick_idle_target() -> void:
+	var r: float = 0.8 + _rng.randf() * 1.6
+	if containment_radius > 0.1:
+		r = min(r, containment_radius * 0.85)
+	var a: float = _rng.randf() * TAU
+	_move_target = home_pos + Vector3(cos(a) * r, 0, sin(a) * r)
+	_move_target_set = true
+
+
+## Check if we reached our forage target; if yes, enter EATING for 3 s.
+func _check_arrival_to_target() -> void:
+	if not _move_target_set:
+		return
+	if global_position.distance_to(_move_target) < 0.35:
+		_move_target_set = false
+		_eating_time_left = 3.0
+		_enter_state(STATE_EATING)
+
+
+## External trigger — a predator event fires this. Challenge-designer
+## owns the predator framework; we expose the public setter so PANIC
+## can be entered from outside without reaching into private fields.
+func panic_from(threat_pos: Vector3, duration_s: float = 5.0) -> void:
+	if state == STATE_DEAD:
+		return
+	_threat_pos = threat_pos
+	_panic_time_left = duration_s
+	_enter_state(STATE_PANIC)
+
+
+# =============================================================
+# PHASE 3 — Thriving score + tier transition.
+# =============================================================
+
+## Daily thriving compute. See AGENT.md §Thriving loop. Score breakdown:
+##   hunger   (0-25)  : 25 - floor(hunger * 0.25)
+##   thirst   (0-25)  : 25 - floor(thirst * 0.25)
+##   habitat  (0-20)  : preferred-tile match + shade proximity + space
+##   social   (0-15)  : flockmate count within species_social_min..max
+##   bond     (0-15)  : 3 × bond_level
+## Tiers: 80+ THRIVING, 40-79 content, 20-39 stressed, <20 suffering.
+func _compute_thriving_score() -> void:
+	var hunger_pts: int = int(max(0.0, 25.0 - hunger * 0.25))
+	var thirst_pts: int = int(max(0.0, 25.0 - thirst * 0.25))
+	var habitat_pts: int = _score_habitat()
+	var social_pts: int = _score_social()
+	var bond_pts: int = clamp(3 * bond_level, 0, 15)
+	var total: int = clamp(hunger_pts + thirst_pts + habitat_pts + social_pts + bond_pts, 0, 100)
+	thriving_score = total
+	var new_tier: String
+	var mul: float
+	if total >= 80:
+		new_tier = "thriving"; mul = 1.3
+	elif total >= 40:
+		new_tier = "content"; mul = 1.0
+	elif total >= 20:
+		new_tier = "stressed"; mul = 0.7
+	else:
+		new_tier = "suffering"; mul = 0.3
+	_last_output_mul = mul
+	if new_tier != thriving_tier:
+		var old: String = thriving_tier
+		thriving_tier = new_tier
+		emit_signal("thriving_tier_changed", self, new_tier, old)
+		_fire_tier_feedback(new_tier, old)
+		_refresh_tint_target()
+
+
+## Habitat-quality score (0-20). Preferred-tile-under-foot = 10 pts,
+## shade-tree proximity = 5 pts, space-per-animal (flock count under cap)
+## = 5 pts. Headless sim tolerates missing WorldGrid — defaults to 6 pts.
+func _score_habitat() -> int:
+	var pts: int = 6
+	var wg: Node = get_node_or_null("/root/WorldGrid")
+	if wg != null and wg.has_method("tile_material_at"):
+		var mat: String = String(wg.call("tile_material_at", global_position))
+		if forage_tiles.has(mat):
+			pts = max(pts, 10)
+	# Flock-count bonus: if habitat has room for us, +5. FLOCK_CAP /
+	# HERD_CAP are `const` on the habitat script — Node.get() returns
+	# null for constants so we reach into the script constant map.
+	if habitat != null:
+		var cap: int = _habitat_cap(habitat)
+		var count: int = _flockmate_count()
+		if cap > 0 and count + 1 < cap:
+			pts += 5
+	return clamp(pts, 0, 20)
+
+
+## Pull FLOCK_CAP or HERD_CAP off a habitat's script. Returns 0 if
+## neither is declared (defensive — used for the thriving bonus).
+func _habitat_cap(h: Node) -> int:
+	var scr: Script = h.get_script() as Script
+	if scr == null:
+		return 0
+	var consts: Dictionary = scr.get_script_constant_map()
+	if consts.has("FLOCK_CAP"):
+		return int(consts["FLOCK_CAP"])
+	if consts.has("HERD_CAP"):
+		return int(consts["HERD_CAP"])
+	return 0
+
+
+## Social score (0-15). Counts same-species flockmates. 1-3 flockmates = 15.
+## 0 flockmates = 3 (baseline "at least not alone in the world"). For
+## solitary species (cat/dog) we return the midpoint.
+func _score_social() -> int:
+	if species_id == "barn_cat" or species_id == "lgd_dog":
+		return 10
+	var count: int = _flockmate_count()
+	if count <= 0:
+		return 3
+	if count >= 5:
+		return 15
+	return 6 + count * 2
+
+
+## Paired feedback on tier crossing. Scale the SFX + Juice pop by the
+## magnitude of the transition — suffering→thriving is a marquee event;
+## content→stressed is a quiet warning.
+func _fire_tier_feedback(new_tier: String, _old_tier: String) -> void:
+	if get_node_or_null("/root/Juice") == null:
+		return
+	match new_tier:
+		"thriving":
+			Juice.pop(global_position + Vector3(0, 1.8, 0),
+				"%s is thriving" % _display(), Palette.HONEY)
+			Juice.burst(global_position + Vector3(0, 1.0, 0),
+				Palette.HONEY.lerp(Palette.SAGE, 0.35), 12)
+			if get_node_or_null("/root/AudioManager") != null:
+				AudioManager.play("forage-chime", -6.0)
+		"suffering":
+			Juice.pop(global_position + Vector3(0, 1.8, 0),
+				"%s is suffering" % _display(),
+				Palette.CORAL.lerp(Palette.COMPOST, 0.3))
+			if get_node_or_null("/root/AudioManager") != null:
+				AudioManager.play("hover-tick", -8.0)
+		"stressed":
+			Juice.pop(global_position + Vector3(0, 1.6, 0),
+				"%s is stressed" % _display(),
+				Palette.CORAL.lerp(Palette.STRAW_DRY, 0.25))
+		_:
+			pass
+
+
+## Golden-sparkle emit for THRIVING animals — fires every 30 s from
+## _process. Scales with bond so a bonded-5 hen sparkles a little bigger.
+func _emit_thriving_sparkle() -> void:
+	if get_node_or_null("/root/Juice") == null:
+		return
+	var count: int = 6 + clamp(bond_level, 0, 5)
+	Juice.burst(global_position + Vector3(0, 0.8, 0),
+		Palette.HONEY.lerp(Palette.MOON, 0.5), count)
+
+
+# =============================================================
+# PHASE 3 — Environmental influence (soil / vegetation / wildlife).
+# =============================================================
+
+## Apply the per-species environmental effect on the tile under us.
+## Subclasses override `_species_env_influence()` to do the real work
+## (chicken scratch +0.01 OM, pig rootle +0.05, cow grazing, etc).
+## Base class calls subclass + appends to GameLog and last_env_note.
+func _apply_env_influence() -> void:
+	if state == STATE_DEAD:
+		return
+	var note: String = _species_env_influence()
+	if note != "":
+		last_env_note = note
+		if get_node_or_null("/root/GameLog") != null:
+			GameLog.event("animal_env_influence", {
+				"species": species_id,
+				"note": note,
+				"pos": [global_position.x, global_position.z],
+			})
+
+
+## Subclass hook. Returns a short plain-English note the soil-inspector
+## panel reads ("Chicken-scratched (+0.01 OM today)"). Blank = no effect.
+## The base default is a tiny OM bump so every animal leaves SOME trace
+## (AGENT.md §2: shipping an animal that walks over soil and leaves no
+## trace is a bug).
+func _species_env_influence() -> String:
+	var wg: Node = get_node_or_null("/root/WorldGrid")
+	if wg == null or not wg.has_method("add_tile_om"):
+		return ""
+	wg.call("add_tile_om", global_position, 0.005)
+	return "%s deposited trace OM (+0.005)" % species_display_name
+
+
+# =============================================================
+# PHASE 3 — Click interaction (bond + paired feedback).
+# =============================================================
+
+## Lazily build the ClickArea. Called from `_process` once the animal
+## is in the tree. The body is a StaticBody3D child with a 0.6 m capsule
+## so every species reads as pickable under the overseer cursor.
+func _ensure_click_area() -> void:
+	if _click_body != null:
+		return
+	_click_body = StaticBody3D.new()
+	_click_body.name = "ClickArea"
+	_click_body.input_ray_pickable = true
+	var shape: CollisionShape3D = CollisionShape3D.new()
+	var cap: CapsuleShape3D = CapsuleShape3D.new()
+	cap.radius = 0.45
+	cap.height = 1.1
+	shape.shape = cap
+	shape.position = Vector3(0, 0.55, 0)
+	_click_body.add_child(shape)
+	add_child(_click_body)
+	_click_body.input_event.connect(_on_click_input)
+
+
+## Route Godot's raw click into `_on_clicked`. Any left-click on the
+## capsule counts as a pet.
+func _on_click_input(_cam: Node, event: InputEvent, _hit: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mb: InputEventMouseButton = event
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
+		return
+	_on_clicked()
+
+
+## Default click behavior — "pet" + heart pop + bond++ (1/day cap).
+## Subclasses override to add species flavor (duck-quack + water ripple,
+## pig-snort + scratch, cat purr aura, etc). Always call super._on_clicked()
+## so the bond/pop/SFX baseline still fires.
+func _on_clicked() -> void:
+	if state == STATE_DEAD:
+		return
+	emit_signal("clicked", self)
+	# Bond increment — capped at 5, 1/day. _current_day() reads the scheduler
+	# so cross-day the cap resets automatically.
+	var day_now: int = _current_day()
+	if day_now != _last_bond_day and bond_level < 5:
+		bond_level += 1
+		_last_bond_day = day_now
+		emit_signal("bond_changed", self, bond_level)
+		if bond_level == 5 and nickname == "":
+			nickname = _roll_nickname()
+			_fire_bond_milestone_feedback()
+	# Paired feedback: heart pop + sound.
+	if get_node_or_null("/root/Juice") != null:
+		Juice.pop(global_position + Vector3(0, 1.6, 0), "♥", Palette.CORAL)
+		Juice.burst(global_position + Vector3(0, 1.2, 0),
+			Palette.CORAL.lerp(Palette.HONEY, 0.4), 6)
+	if get_node_or_null("/root/AudioManager") != null:
+		AudioManager.play(_click_sfx(), -6.0)
+
+
+## Subclass hook for species-flavored click SFX. Default is a gentle
+## hover-tick so nothing is silent.
+func _click_sfx() -> String:
+	return "hover-tick"
+
+
+## Bond-5 marquee feedback. Big pop + chime + stamped nickname.
+func _fire_bond_milestone_feedback() -> void:
+	if get_node_or_null("/root/Juice") != null:
+		Juice.pop(global_position + Vector3(0, 2.3, 0),
+			"Bonded with %s" % nickname, Palette.HONEY)
+		Juice.burst(global_position + Vector3(0, 1.4, 0),
+			Palette.HONEY.lerp(Palette.CORAL, 0.25), 22)
+	if get_node_or_null("/root/AudioManager") != null:
+		AudioManager.play("compost-finish", -3.0)
+
+
+## Roll a species-appropriate cutesy nickname from a small pool.
+func _roll_nickname() -> String:
+	var pool: Array[String]
+	match species_id:
+		"chicken":
+			pool = ["Henrietta", "Clover", "Biscuit", "Nora", "Pippa", "Marigold"]
+		"duck":
+			pool = ["Puddle", "Mallowen", "Quackers", "Willa", "Juniper"]
+		"goat":
+			pool = ["Nibbles", "Thistle", "Rosemary", "Bramble", "Gwen"]
+		"cow":
+			pool = ["Buttercup", "Daisy", "Opal", "Heather", "Juniper"]
+		"pig":
+			pool = ["Hamlet", "Truffle", "Porcelina", "Snuggy", "Persimmon"]
+		"barn_cat":
+			pool = ["Mittens", "Saffron", "Pumpernickel", "Clover", "Shadow"]
+		"lgd_dog":
+			pool = ["Barley", "Atlas", "Captain", "Juno", "Sable"]
+		_:
+			pool = ["Friend", "Buddy"]
+	return pool[_rng.randi() % pool.size()]
+
+
+# =============================================================
+# PHASE 3 — Containment (escape roll + re-pen).
+# =============================================================
+
+## Fire an escape event. The habitat's `escaped_animals` array is
+## appended so fairies know this animal needs rounding up. Paired
+## banner + SFX live in the challenge-designer listener.
+func _trigger_escape() -> void:
+	escaped_flag = true
+	if habitat != null:
+		var ea: Variant = habitat.get("escaped_animals")
+		if ea is Array:
+			(ea as Array).append(self)
+	emit_signal("escaped", self)
+	# Paired nudge — small banner + thud. Not a marquee; we don't want
+	# escapes to feel punishing, just noticeable.
+	if get_node_or_null("/root/Juice") != null:
+		Juice.pop(global_position + Vector3(0, 2.0, 0),
+			"%s escaped!" % _display(),
+			Palette.CORAL.lerp(Palette.STRAW_DRY, 0.25))
+	if get_node_or_null("/root/AudioManager") != null:
+		AudioManager.play("hover-tick", -4.0)
+	if get_node_or_null("/root/GameLog") != null:
+		GameLog.event("animal_escaped", {
+			"species": species_id,
+			"pos": [global_position.x, global_position.z],
+		})
+
+
+## Public API — called by fairies finishing a "Round up" task. Restores
+## the clamp and teleports the animal home. Idempotent.
+func round_up() -> void:
+	escaped_flag = false
+	global_position = home_pos
+	_move_target_set = false
+	_enter_state(STATE_IDLE)
+
+
+# =============================================================
+# PHASE 3 — Small helpers.
+# =============================================================
+
+func _current_day() -> int:
+	var sched: Node = get_node_or_null("/root/Scheduler")
+	if sched == null:
+		return age_days
+	var d: Variant = sched.get("day")
+	if d == null:
+		return age_days
+	return int(d)
+
+
+func _display() -> String:
+	if nickname != "":
+		return nickname
+	return species_display_name
+
+
+## Capture/restore helpers for SaveSystem. Kept public + small so the
+## SaveSystem additive hooks can round-trip the new fields without
+## reaching into private state. Fields not listed are either already
+## covered by the pre-existing capture (age/hunger/thirst) or are
+## per-frame transients (move_target, idle_jitter_t).
+func serialize_phase3() -> Dictionary:
+	return {
+		"bond_level": bond_level,
+		"nickname": nickname,
+		"last_bond_day": _last_bond_day,
+		"thriving_score": thriving_score,
+		"thriving_tier": thriving_tier,
+		"starve_day_count": _starve_day_count,
+		"escaped_flag": escaped_flag,
+		"containment_radius": containment_radius,
+		"containment_strength": containment_strength,
+	}
+
+
+func hydrate_phase3(d: Dictionary) -> void:
+	bond_level           = int(d.get("bond_level", 0))
+	nickname             = String(d.get("nickname", ""))
+	_last_bond_day       = int(d.get("last_bond_day", -1))
+	thriving_score       = int(d.get("thriving_score", 50))
+	thriving_tier        = String(d.get("thriving_tier", "content"))
+	_starve_day_count    = int(d.get("starve_day_count", 0))
+	escaped_flag         = bool(d.get("escaped_flag", false))
+	containment_radius   = float(d.get("containment_radius", containment_radius))
+	containment_strength = clamp(float(d.get("containment_strength", containment_strength)), 0.0, 1.0)

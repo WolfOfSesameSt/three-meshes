@@ -35,6 +35,15 @@ class Tile:
 	var is_persistent_water: bool = false
 	## Baseline depth for persistent-water tiles (cm).
 	var base_water_depth_cm: float = 0.0
+	## Phase 2 — flower system.
+	## flower_species: which species this tile hosts (empty = none).
+	## flower_density: 0..1, seasonal ramp. In-season ramps toward target
+	##   over ~5 days; out-of-season ramps back toward 0.
+	## flower_target_density: what we're ramping TOWARD (seeded at gen + on
+	##   season change, so density updates read directly from this).
+	var flower_species: String = ""
+	var flower_density: float = 0.0
+	var flower_target_density: float = 0.0
 
 
 signal tiles_updated()
@@ -126,6 +135,10 @@ func attach_to_scene(parent_node: Node) -> void:
 	_terrain_root.add_child(_water_mesh_instance)
 
 	_rebuild_water_mesh()
+	# Phase 2 — build flower multimesh overlay. Uses the current season's
+	# density (seeded at zero; the first day-tick ramps it up to target).
+	_build_flower_multimesh()
+	_rebuild_flower_multimesh()
 	_built = true
 	emit_signal("terrain_built")
 
@@ -336,6 +349,9 @@ func _generate_tiles() -> void:
 		],
 		"world_grid",
 	)
+	# Phase 2 — scatter flower species by tile material. Deterministic via
+	# WorldSeed so saves reproduce the same bloom layout.
+	_scatter_flower_species()
 
 
 func _build_chunk(cx: int, cz: int) -> Dictionary:
@@ -540,6 +556,8 @@ func _on_day_advanced(_day: int, season: String, _year: int) -> void:
 	_infiltrate_and_evaporate()
 	_flow_water()
 	_rebuild_water_mesh()
+	# Phase 2 — flower seasonal ramp + multimesh refresh.
+	_flower_day_tick(season)
 	emit_signal("tiles_updated")
 
 
@@ -780,3 +798,275 @@ func _ensure_water_vertex(
 	uvs.append(Vector2(float(vx) / 4.0, float(vz) / 4.0))
 	vertex_index[key] = idx
 	return idx
+
+
+# =====================================================================
+# Phase 2 — Flower system. Tile-density carpet rendered via MultiMesh.
+# =====================================================================
+
+## How many flower-quad instances a tile can host at density=1.
+const FLOWER_MAX_PER_TILE: int = 4
+## Ramp speed — per day, density approaches target by this fraction.
+const FLOWER_RAMP_RATE: float = 0.25
+## Quad size (m). Kept small so the carpet reads as ground-cover, not trees.
+const FLOWER_QUAD_SIZE: float = 0.28
+## Per-species catalog cache — id -> def dict. Built lazy on first tick.
+var _flower_defs_by_id: Dictionary = {}
+
+var _flower_multimesh_instance: MultiMeshInstance3D
+var _flower_multimesh: MultiMesh
+var _flower_mat: StandardMaterial3D
+var _flower_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+
+## Seed flower species on each tile during worldgen. Deterministic via
+## WorldSeed. Persistent-water tiles are always 0 density.
+func _scatter_flower_species() -> void:
+	var ws: Node = get_node_or_null("/root/WorldSeed")
+	var seed_val: int = ws.get_channel_seed("flowers") if (ws != null and ws.has_method("get_channel_seed")) else 54321
+	_flower_rng.seed = seed_val
+	var ds: Node = get_node_or_null("/root/DataStore")
+	var defs: Array = []
+	if ds != null:
+		var flowers_var: Variant = ds.get("flowers")
+		if flowers_var is Array:
+			defs = flowers_var
+	# Bucket species by tile preference for scatter.
+	var by_pref: Dictionary = { "meadow": [], "forest_edge": [], "bare": [] }
+	for d in defs:
+		if not (d is Dictionary):
+			continue
+		var dd: Dictionary = d
+		var pref: String = String(dd.get("tile_pref", ""))
+		if by_pref.has(pref):
+			(by_pref[pref] as Array).append(dd)
+	# Per-tile scatter. Probability + target density by material.
+	for z in range(GRID_SIZE):
+		var row: Array = tiles[z]
+		for x in range(GRID_SIZE):
+			var tile: Tile = row[x]
+			if tile.is_persistent_water:
+				continue
+			var mat: String = tile.material
+			var species_list: Array = []
+			var place_prob: float = 0.0
+			var target_base: float = 0.0
+			if mat == "meadow":
+				species_list = by_pref["meadow"]
+				place_prob = 0.55
+				target_base = 0.55
+			elif mat == "bank":
+				species_list = by_pref["forest_edge"]
+				place_prob = 0.30
+				target_base = 0.35
+			elif mat == "bare":
+				species_list = by_pref["bare"]
+				place_prob = 0.20
+				target_base = 0.25
+			else:
+				continue
+			if _flower_rng.randf() > place_prob:
+				continue
+			if species_list.is_empty():
+				# No data loaded — stamp an empty species + modest baseline
+				# so the carpet still has something to render.
+				tile.flower_species = ""
+				tile.flower_target_density = target_base * 0.6
+				tile.flower_density = 0.0
+				continue
+			var pick: Dictionary = species_list[_flower_rng.randi() % species_list.size()]
+			tile.flower_species = String(pick.get("id", ""))
+			var wiggle: float = 0.85 + _flower_rng.randf() * 0.30
+			tile.flower_target_density = clamp(target_base * wiggle, 0.0, 1.0)
+			tile.flower_density = 0.0  # ramps up on first in-season day-tick
+
+
+## Daily ramp toward target density, gated by season match. Triggers a
+## multimesh rebuild after the ramp pass so the carpet visibly blooms.
+func _flower_day_tick(season: String) -> void:
+	_ensure_flower_def_cache()
+	for z in range(GRID_SIZE):
+		var row: Array = tiles[z]
+		for x in range(GRID_SIZE):
+			var tile: Tile = row[x]
+			if tile.flower_target_density <= 0.0 and tile.flower_density <= 0.0:
+				continue
+			var target: float = 0.0
+			if _species_blooms_now(tile.flower_species, season):
+				target = tile.flower_target_density
+			tile.flower_density = lerp(tile.flower_density, target, FLOWER_RAMP_RATE)
+			if tile.flower_density < 0.002:
+				tile.flower_density = 0.0
+	_rebuild_flower_multimesh()
+
+
+func _ensure_flower_def_cache() -> void:
+	if not _flower_defs_by_id.is_empty():
+		return
+	var ds: Node = get_node_or_null("/root/DataStore")
+	if ds == null:
+		return
+	var flowers_var: Variant = ds.get("flowers")
+	if not (flowers_var is Array):
+		return
+	for d in (flowers_var as Array):
+		if d is Dictionary and (d as Dictionary).has("id"):
+			_flower_defs_by_id[String((d as Dictionary)["id"])] = d
+
+
+## Species-season gate. Empty species always "blooms" at baseline — used
+## for the no-data fallback during bootstrap.
+func _species_blooms_now(species_id: String, season: String) -> bool:
+	if species_id == "":
+		return season in ["spring", "summer", "autumn"]
+	var def: Variant = _flower_defs_by_id.get(species_id, null)
+	if not (def is Dictionary):
+		return season in ["spring", "summer", "autumn"]
+	var seasons: Variant = (def as Dictionary).get("season", [])
+	if seasons is Array:
+		return (seasons as Array).has(season)
+	return false
+
+
+## Build the MultiMesh once — fixed max instance count sized for the
+## whole grid at FLOWER_MAX_PER_TILE density. Per-frame we only update
+## transforms + colors; no resize.
+func _build_flower_multimesh() -> void:
+	if _flower_multimesh_instance != null:
+		return
+	_flower_mat = StandardMaterial3D.new()
+	_flower_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_flower_mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
+	_flower_mat.vertex_color_use_as_albedo = true
+	_flower_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_flower_mat.emission_enabled = true
+	_flower_mat.emission = Palette.HONEY
+	_flower_mat.emission_energy_multiplier = 0.05
+
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2(FLOWER_QUAD_SIZE, FLOWER_QUAD_SIZE)
+	quad.material = _flower_mat
+
+	_flower_multimesh = MultiMesh.new()
+	_flower_multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	_flower_multimesh.use_colors = true
+	_flower_multimesh.mesh = quad
+	_flower_multimesh.instance_count = 5000
+
+	_flower_multimesh_instance = MultiMeshInstance3D.new()
+	_flower_multimesh_instance.name = "FlowerCarpet"
+	_flower_multimesh_instance.multimesh = _flower_multimesh
+	_flower_multimesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if _terrain_root != null:
+		_terrain_root.add_child(_flower_multimesh_instance)
+
+
+## Repopulate the MultiMesh instance transforms + colors from the current
+## per-tile flower state. Instances beyond the live count get a zero-scale
+## transform so they're invisible (cheaper than resizing).
+func _rebuild_flower_multimesh() -> void:
+	if _flower_multimesh == null:
+		return
+	_ensure_flower_def_cache()
+	var instance_idx: int = 0
+	var max_count: int = _flower_multimesh.instance_count
+	for z in range(GRID_SIZE):
+		if instance_idx >= max_count:
+			break
+		var row: Array = tiles[z]
+		for x in range(GRID_SIZE):
+			if instance_idx >= max_count:
+				break
+			var tile: Tile = row[x]
+			if tile.flower_density < 0.02:
+				continue
+			var per_tile: int = int(round(FLOWER_MAX_PER_TILE * tile.flower_density))
+			if per_tile <= 0:
+				continue
+			var species_color: Color = _flower_color_for(tile.flower_species)
+			var jitter_seed: int = x * 7349 + z * 5237
+			var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+			rng.seed = jitter_seed
+			for k in range(per_tile):
+				if instance_idx >= max_count:
+					break
+				var jx: float = rng.randf() - 0.5
+				var jz: float = rng.randf() - 0.5
+				var wx: float = x * TILE_SIZE_M - WORLD_HALF_M + jx * 0.8
+				var wz: float = z * TILE_SIZE_M - WORLD_HALF_M + jz * 0.8
+				var wy: float = tile.elevation_m + 0.08 + rng.randf() * 0.04
+				var t: Transform3D = Transform3D()
+				# Rotate quad so its normal faces +Y (flat on the ground).
+				t.basis = Basis(Vector3(1, 0, 0), -PI / 2.0)
+				# Gentle yaw jitter for variety (rotate about local Z after flip).
+				var yaw: float = rng.randf() * TAU
+				t.basis = t.basis.rotated(Vector3(0, 0, 1), yaw)
+				var s: float = 0.85 + 0.3 * tile.flower_density
+				t.basis = t.basis.scaled(Vector3(s, s, s))
+				t.origin = Vector3(wx, wy, wz)
+				_flower_multimesh.set_instance_transform(instance_idx, t)
+				_flower_multimesh.set_instance_color(instance_idx, species_color)
+				instance_idx += 1
+	var zero_t: Transform3D = Transform3D()
+	zero_t.basis = Basis().scaled(Vector3(0.0, 0.0, 0.0))
+	for i in range(instance_idx, max_count):
+		_flower_multimesh.set_instance_transform(i, zero_t)
+
+
+## Map a species id to its palette color. Falls back to HONEY for unknown
+## species (keeps the carpet on-palette no matter what).
+func _flower_color_for(species_id: String) -> Color:
+	_ensure_flower_def_cache()
+	var def: Variant = _flower_defs_by_id.get(species_id, null)
+	if not (def is Dictionary):
+		return Palette.HONEY
+	var hue_name: String = String((def as Dictionary).get("palette_hue", "HONEY"))
+	var base: Color
+	match hue_name:
+		"CORAL":  base = Palette.CORAL
+		"BERRY":  base = Palette.BERRY
+		"HONEY":  base = Palette.HONEY
+		"MOON":   base = Palette.MOON
+		"MEADOW": base = Palette.MEADOW
+		_:        base = Palette.HONEY
+	return Palette.clamp_happy(base)
+
+
+## Public accessor — the hive reads this to compute nectar yield.
+func tile_flora_at(world_pos: Vector3, season: String) -> Dictionary:
+	var tile: Tile = _tile_at_world(world_pos)
+	if tile == null:
+		return { "density": 0.0, "nectar_value": 0.0, "species_id": "" }
+	if tile.flower_density <= 0.0:
+		return { "density": 0.0, "nectar_value": 0.0, "species_id": "" }
+	_ensure_flower_def_cache()
+	var def: Variant = _flower_defs_by_id.get(tile.flower_species, null)
+	var nectar_val: float = 0.5
+	var in_season: bool = true
+	if def is Dictionary:
+		var dd: Dictionary = def
+		nectar_val = float(dd.get("nectar_value", 0.5))
+		var seasons: Variant = dd.get("season", [])
+		if seasons is Array:
+			in_season = (seasons as Array).has(season)
+	if not in_season:
+		return { "density": 0.0, "nectar_value": 0.0, "species_id": "" }
+	return {
+		"density": tile.flower_density,
+		"nectar_value": nectar_val,
+		"species_id": tile.flower_species,
+	}
+
+
+## Debug / sim harness — force-bloom a tile immediately without waiting
+## for ramp. Sets density to target, honoring species_id if given.
+func debug_force_bloom_at(world_pos: Vector3, species_id: String = "", density: float = 0.8) -> bool:
+	var tile: Tile = _tile_at_world(world_pos)
+	if tile == null:
+		return false
+	if species_id != "":
+		tile.flower_species = species_id
+	tile.flower_target_density = density
+	tile.flower_density = density
+	_rebuild_flower_multimesh()
+	return true

@@ -11,6 +11,7 @@ var animals: Array = []
 var branches: Array = []
 var events: Array = []
 var guilds: Array = []
+var flowers: Array = []   ## Phase 2 — flower species palette (data/flowers.json)
 var compost: Dictionary = {}
 var fairies: Dictionary = {}
 var balance: Dictionary = {}
@@ -36,6 +37,7 @@ func _ready() -> void:
 	branches = _load_array("res://data/branches.json")
 	events = _load_array("res://data/events.json")
 	guilds = _load_array("res://data/guilds.json")
+	flowers = _load_array("res://data/flowers.json")
 	compost = _load_dict("res://data/compost.json")
 	fairies = _load_dict("res://data/fairies.json")
 	balance = _load_dict("res://data/balance.json")

@@ -42,9 +42,33 @@ func _species_configure() -> void:
 	daily_thirst_rate = 0.4
 	forage_tiles = ["pond", "wetland", "shallows", "meadow"]
 	forage_range = 9.0
+	move_speed = 0.6  # m/s — waddle.
 	# 0.6 eggs/day → whole egg every ~1.67 days. Manure slightly higher
 	# than chicken (ducks eat more bulk greens), routed to OM same way.
 	output_per_day = { "eggs": 0.6, "manure": 0.5 }
+
+
+# Phase-3 env influence: ducks drop damper manure (+0.015 OM) and drain
+# slug pressure. On a water-adjacent tile they leave a puddle ripple.
+func _species_env_influence() -> String:
+	var wg: Node = get_node_or_null("/root/WorldGrid")
+	if wg != null and wg.has_method("add_tile_om"):
+		wg.call("add_tile_om", global_position, 0.015)
+	var wildlife: Node = get_node_or_null("/root/Wildlife")
+	if wildlife != null and wildlife.has_method("bump_pest_pressure"):
+		wildlife.call("bump_pest_pressure", "slug", -0.6)
+	if get_node_or_null("/root/Juice") != null and _rng.randf() < 0.25:
+		Juice.burst(global_position + Vector3(0, 0.05, 0),
+			Palette.MOON.lerp(Palette.SAGE, 0.35), 4)
+	return "Duck-dabbled (+0.015 OM, -slug pressure)"
+
+
+func _on_clicked() -> void:
+	if state == STATE_DEAD: return
+	super._on_clicked()
+	if get_node_or_null("/root/Juice") != null:
+		Juice.burst(global_position + Vector3(0, 0.1, 0),
+			Palette.MOON.lerp(Palette.SAGE, 0.4), 6)
 
 
 func _build_visuals() -> void:

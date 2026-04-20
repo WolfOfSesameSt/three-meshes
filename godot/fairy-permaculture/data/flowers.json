@@ -1,0 +1,12 @@
+[
+  { "id": "salmonberry-bloom", "season": ["spring"], "nectar_value": 0.7, "palette_hue": "CORAL", "min_vitality": 0.0, "tile_pref": "forest_edge" },
+  { "id": "trillium", "season": ["spring"], "nectar_value": 0.4, "palette_hue": "MOON", "min_vitality": 0.2, "tile_pref": "forest_edge" },
+  { "id": "camas", "season": ["spring"], "nectar_value": 0.5, "palette_hue": "BERRY", "min_vitality": 0.0, "tile_pref": "meadow" },
+  { "id": "lupine", "season": ["summer"], "nectar_value": 0.8, "palette_hue": "BERRY", "min_vitality": 0.3, "tile_pref": "meadow" },
+  { "id": "fireweed", "season": ["summer"], "nectar_value": 0.9, "palette_hue": "CORAL", "min_vitality": 0.4, "tile_pref": "bare" },
+  { "id": "ocean-spray", "season": ["summer"], "nectar_value": 0.6, "palette_hue": "MOON", "min_vitality": 0.2, "tile_pref": "forest_edge" },
+  { "id": "wild-carrot", "season": ["summer"], "nectar_value": 0.5, "palette_hue": "MOON", "min_vitality": 0.0, "tile_pref": "meadow" },
+  { "id": "goldenrod", "season": ["autumn"], "nectar_value": 0.7, "palette_hue": "HONEY", "min_vitality": 0.3, "tile_pref": "meadow" },
+  { "id": "aster", "season": ["autumn"], "nectar_value": 0.6, "palette_hue": "BERRY", "min_vitality": 0.3, "tile_pref": "meadow" },
+  { "id": "pearly-everlasting", "season": ["autumn"], "nectar_value": 0.4, "palette_hue": "MOON", "min_vitality": 0.2, "tile_pref": "bare" }
+]

@@ -28,6 +28,15 @@ const STARTER_FLOCK_SIZE: int = 2
 const FEEDER_CAPACITY: float = 12.0
 const EGG_COLLECT_THRESHOLD: int = 1
 
+# Phase-3 containment model. AnimalEntity pulls these via
+# register_with_habitat(). Chickens get a neutral fence — 1.0 = hard clamp
+# baseline, slightly reduced by their fence_strength_bias (data/animals.json).
+@export var containment_radius: float = 5.0
+@export var containment_strength: float = 0.95
+# Fairies walk up to these animals (right-click "Round up ...") when an
+# escape roll lands. Appended by AnimalEntity._trigger_escape.
+var escaped_animals: Array = []
+
 
 # ---- Materials (all colors traced to Palette.*) ----
 var _wall_mat: StandardMaterial3D

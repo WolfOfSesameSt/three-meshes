@@ -78,6 +78,19 @@ src/games/fairy-permaculture/ui/
 - Tooltips only where needed. Discovery > nag.
 - Color carries meaning: honey gold for honey, berry purple for fruit, milk cream for milk, meadow green for biomass.
 
+**Contrast rule (MANDATORY — any text on any panel):**
+
+Godot's default `Label`/`Button` font color is WHITE. Parchment panels are cream (`Palette.PARCHMENT = #F5EBD5`). White on parchment = unreadable. This has already shipped broken once (2026-04-20, compost inspector) — do not repeat it.
+
+- Every `Label` on a parchment / wood / light panel MUST set `theme_override_colors/font_color` (or call `add_theme_color_override("font_color", ...)` in `_ready`).
+- Text color must come from `Palette.*`. Canonical parchment-text ladder:
+  - **Body / primary:** `Palette.INK` or `Palette.COMPOST` (existing scenes use `Color(0.23, 0.16, 0.08, 1)`)
+  - **Section header:** `Palette.EARTH.darkened(...)` or `Color(0.36, 0.27, 0.16, 1)`
+  - **Meta / muted:** `Color(0.55, 0.41, 0.27, 1)`
+- Dynamically-created labels (built in GDScript, not the `.tscn`) are the most common offenders — every `Label.new()` site must `add_theme_color_override("font_color", …)` before `add_child`.
+- Pre-ship every panel: open the scene in the running game, visually verify every label is readable against its background. "Compiles clean" is not "readable."
+- If you are shipping visual UI work, the DESIGN-CHECK block at the bottom of your report MUST include the contrast item (see `AGENT-DESIGN-CHECK-TEMPLATE.md`).
+
 ### 3. Responsive Feedback
 
 - Every click, hover, and state change has immediate visual response (< 1 frame).

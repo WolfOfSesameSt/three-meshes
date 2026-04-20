@@ -41,27 +41,75 @@ var _tube_mat: StandardMaterial3D
 var _arrival_announced: bool = false
 var _t_since_aura: float = 0.0
 var _in_construction: bool = false
+## Phase 3 — Bee-dot visibility flag read by fx/bee_swarm. Updated from
+## process loop based on daytime + non-winter + mason bees arrived.
+var bee_swarm_visible: bool = false
 
 
 func _ready() -> void:
 	add_to_group("mason_bee_tubes")
 	add_to_group("animal_habitats")
+	add_to_group("wildlife_habitats")
 	input_ray_pickable = true
 	_build_visual()
 	_build_click_area()
 	mouse_entered.connect(_on_mouse_enter)
 	mouse_exited.connect(_on_mouse_exit)
 	input_event.connect(_on_click_input)
+	# Honey trickle — after mason bees have arrived, the pollinator
+	# support lets wild floral honey deposit into fairy_food.honey each
+	# game-day. This is a MINIMAL honey producer scaffolded day-1 so the
+	# fairy-food math works at all (the real Warre hive + bee-keeping
+	# loop is future work per `feedback_full_soil_engine.md` scope).
+	# See `feedback_self_balancing_ecology.md` — the mechanic reads as
+	# "wildlife auto-immigrates when habitat exists, ecology runs itself."
+	if has_node("/root/Scheduler"):
+		var sched: Node = get_node("/root/Scheduler")
+		if sched.has_signal("day_advanced") and not sched.is_connected("day_advanced", _on_day_advanced):
+			sched.connect("day_advanced", _on_day_advanced)
+	# Phase 3 — attach a bee_swarm child. Defensive load so mason_bee_tubes
+	# still works if the swarm scene is absent.
+	_attach_bee_swarm()
+
+
+func _attach_bee_swarm() -> void:
+	if not ResourceLoader.exists("res://scenes/fx/bee_swarm.tscn"):
+		return
+	var packed: PackedScene = load("res://scenes/fx/bee_swarm.tscn") as PackedScene
+	if packed == null:
+		return
+	var swarm: Node = packed.instantiate()
+	swarm.name = "BeeSwarm"
+	add_child(swarm)
+	if swarm.has_method("configure_for_tubes"):
+		swarm.call("configure_for_tubes", self)
 
 
 func _process(delta: float) -> void:
 	if _in_construction:
 		return
+	_update_bee_swarm_visibility()
 	_t_since_aura += delta
 	if _t_since_aura < AURA_TICK_INTERVAL_S:
 		return
 	_t_since_aura = 0.0
 	_tick_aura()
+
+
+func _update_bee_swarm_visibility() -> void:
+	# Mason bees only visible once arrived, daytime, and not winter.
+	var season: String = "summer"
+	var sched: Node = get_node_or_null("/root/Scheduler")
+	if sched != null and sched.has_method("current_season"):
+		season = String(sched.call("current_season"))
+	var is_day: bool = true
+	var root: Node = get_tree().current_scene
+	if root != null:
+		var sun: Node = root.find_child("Sun", true, false)
+		if sun is DirectionalLight3D:
+			var light: DirectionalLight3D = sun
+			is_day = light.light_energy > 0.05 and light.global_transform.basis.y.y > 0.0
+	bee_swarm_visible = _arrival_announced and is_day and season != "winter"
 
 
 ## Sweep plants-in-group within POLLINATION_RADIUS. Flag flowering plants
@@ -109,6 +157,42 @@ func _announce_arrival() -> void:
 				"pos_x": global_position.x,
 				"pos_z": global_position.z,
 			})
+
+
+## Per-game-day honey trickle. Only fires once the mason bees have
+## arrived (requires flowering plants in range + the tubes placed).
+## Drips 0.5 honey/day into fairy_food.honey so the fairy-food spawn
+## math sees a honey channel day-1. The value is intentionally small;
+## a full Warre hive / honey-harvest loop is the proper scaling path
+## later — this is the MINIMAL producer that unblocks progression.
+const HONEY_TRICKLE_PER_DAY: float = 0.5
+const HONEY_POP_INTERVAL_DAYS: int = 3   # pop the +honey visual every N days
+
+var _days_since_honey_pop: int = 0
+
+
+func _on_day_advanced(_day: int, _season: String, _year: int) -> void:
+	if not _arrival_announced:
+		return
+	# Winter dormancy — bees don't forage in freezing weather.
+	if _season == "winter":
+		return
+	if not has_node("/root/FarmTotals"):
+		return
+	FarmTotals.add_food("honey", HONEY_TRICKLE_PER_DAY)
+	_days_since_honey_pop += 1
+	# Paired feedback — pop every few days so we're not spamming text
+	# every single game-day but the player still sees the honey arrive.
+	if _days_since_honey_pop >= HONEY_POP_INTERVAL_DAYS:
+		_days_since_honey_pop = 0
+		if has_node("/root/Juice"):
+			var batched: float = HONEY_TRICKLE_PER_DAY * float(HONEY_POP_INTERVAL_DAYS)
+			Juice.pop(global_position + Vector3(0, 1.5, 0),
+				"+ %.1f HONEY" % batched, Palette.HONEY)
+			Juice.burst(global_position + Vector3(0, 1.0, 0),
+				Palette.HONEY.lerp(Palette.CORAL, 0.15), 10)
+		if has_node("/root/AudioManager") and AudioManager.has_method("play"):
+			AudioManager.play("pollinator-hum-loop", -12.0)
 
 
 func _build_visual() -> void:

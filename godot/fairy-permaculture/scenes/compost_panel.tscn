@@ -50,12 +50,14 @@ layout_mode = 2
 [node name="TierIcon" type="Label" parent="Panel/VBox/Header"]
 layout_mode = 2
 text = "♨"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
 theme_override_font_sizes/font_size = 20
 
 [node name="Title" type="Label" parent="Panel/VBox/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Compost Pile — Empty"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
 theme_override_font_sizes/font_size = 16
 
 [node name="Close" type="Button" parent="Panel/VBox/Header"]
@@ -65,6 +67,7 @@ text = "✕"
 [node name="StateLabel" type="Label" parent="Panel/VBox"]
 layout_mode = 2
 text = "Awaiting inputs"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
 theme_override_font_sizes/font_size = 12
 
 [node name="Sep1" type="HSeparator" parent="Panel/VBox"]
@@ -73,6 +76,7 @@ layout_mode = 2
 [node name="MetricsHeader" type="Label" parent="Panel/VBox"]
 layout_mode = 2
 text = "Live metrics"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
 theme_override_font_sizes/font_size = 13
 
 [node name="Metrics" type="VBoxContainer" parent="Panel/VBox"]
@@ -86,6 +90,7 @@ layout_mode = 2
 layout_mode = 2
 custom_minimum_size = Vector2(180, 0)
 text = "Volume 0.00 m³"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/Volume"]
@@ -102,6 +107,7 @@ layout_mode = 2
 layout_mode = 2
 custom_minimum_size = Vector2(180, 0)
 text = "C:N 0:1 — (empty)"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/CN"]
@@ -118,6 +124,7 @@ layout_mode = 2
 layout_mode = 2
 custom_minimum_size = Vector2(180, 0)
 text = "Moisture 0 %"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/Moisture"]
@@ -134,6 +141,7 @@ layout_mode = 2
 layout_mode = 2
 custom_minimum_size = Vector2(180, 0)
 text = "Temp 18 °C"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="Bar" type="ProgressBar" parent="Panel/VBox/Metrics/Temp"]
@@ -146,6 +154,7 @@ show_percentage = false
 [node name="Days" type="Label" parent="Panel/VBox"]
 layout_mode = 2
 text = "Day 0 in Empty · Next: —"
+theme_override_colors/font_color = Color(0.55, 0.41, 0.27, 1)
 theme_override_font_sizes/font_size = 11
 
 [node name="Sep2" type="HSeparator" parent="Panel/VBox"]
@@ -157,6 +166,7 @@ layout_mode = 2
 [node name="Header" type="Label" parent="Panel/VBox/Ingredients"]
 layout_mode = 2
 text = "Ingredient breakdown"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
 theme_override_font_sizes/font_size = 13
 
 [node name="List" type="VBoxContainer" parent="Panel/VBox/Ingredients"]
@@ -172,16 +182,19 @@ layout_mode = 2
 [node name="Header" type="Label" parent="Panel/VBox/Blurb"]
 layout_mode = 2
 text = "What's happening"
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
 theme_override_font_sizes/font_size = 13
 
 [node name="Body" type="Label" parent="Panel/VBox/Blurb"]
 layout_mode = 2
 text = "Start adding greens + browns. Target ~1 m³ to trigger cooking."
+theme_override_colors/font_color = Color(0.23, 0.16, 0.08, 1)
 theme_override_font_sizes/font_size = 11
 autowrap_mode = 2
 
 [node name="Recommendation" type="Label" parent="Panel/VBox"]
 layout_mode = 2
 text = "Next: Right-click the pile: add plant trim (green), twigs or dry leaves (brown)."
+theme_override_colors/font_color = Color(0.36, 0.27, 0.16, 1)
 theme_override_font_sizes/font_size = 11
 autowrap_mode = 2

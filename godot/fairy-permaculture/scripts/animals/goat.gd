@@ -39,10 +39,30 @@ func _species_configure() -> void:
 	daily_thirst_rate = 2.5
 	forage_tiles = ["meadow", "forest_edge", "brush", "shrub"]
 	forage_range = 12.0
+	move_speed = 1.2  # m/s — goats are springy browsers.
 	# Milk routes straight to fairy_food.milk via base class _deliver_output.
 	# Manure bigger than chicken — DESIGN.md Salatin cascade → rotational
 	# pasture gets top-tier OM deposit.
 	output_per_day = { "milk": 1.5, "manure": 0.9 }
+
+
+# Phase-3 env influence: goats trim decor shrubs in 5m — reduced here to
+# a light OM bump + log entry; plant-damage hook lands when the plant
+# registry exposes a neighbor-query. Escape-prone (fence_strength -0.3)
+# is set via data/animals.json.
+func _species_env_influence() -> String:
+	var wg: Node = get_node_or_null("/root/WorldGrid")
+	if wg != null and wg.has_method("add_tile_om"):
+		wg.call("add_tile_om", global_position, 0.008)
+	return "Goat-browsed (+0.008 OM, brush trimmed)"
+
+
+func _on_clicked() -> void:
+	if state == STATE_DEAD: return
+	super._on_clicked()
+	if get_node_or_null("/root/Juice") != null:
+		Juice.burst(global_position + Vector3(0, 0.8, 0),
+			Palette.STRAW_DRY, 5)
 
 
 func _build_visuals() -> void:

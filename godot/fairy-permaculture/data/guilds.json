@@ -2,6 +2,7 @@
   {
     "id": "apple-guild-classic",
     "name": "Classic Apple Guild",
+    "kind": "plant-guild",
     "central_species": "apple",
     "members": [
       { "species": "comfrey-bocking14", "role": "dynamic-accumulator", "placement": "drip-line" },
@@ -9,11 +10,13 @@
       { "species": "clover-white", "role": "n-fixer-matrix", "placement": "matrix" },
       { "species": "strawberry", "role": "ground-cover", "placement": "matrix" }
     ],
-    "biomes": ["bc-coastal"]
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-plants-water.md#apple-guild"
   },
   {
     "id": "berry-patch-bc",
     "name": "BC Berry Patch",
+    "kind": "plant-guild",
     "central_species": "salmonberry",
     "members": [
       { "species": "saskatoon", "role": "co-canopy", "placement": "border" },
@@ -21,5 +24,119 @@
       { "species": "yarrow-common", "role": "insectary", "placement": "border" }
     ],
     "biomes": ["bc-coastal"]
+  },
+
+  {
+    "id": "orchard-wildlife-stack",
+    "name": "Orchard Wildlife Stack",
+    "kind": "habitat-guild",
+    "description": "Stacks the wildlife that keep an orchard productive: bees pollinate, ladybug eats aphids, owl eats voles, sparrow eats codling moths.",
+    "habitats_required": ["mason-bee-tubes", "owl-box", "insectary-strip", "hedgerow"],
+    "expected_arrivals": ["mason-bee", "ladybug", "green-lacewing", "barn-owl", "song-sparrow", "bumblebee"],
+    "predator_prey_loops": [
+      { "predator": "ladybug", "prey": "aphid", "protects_plants_in_radius_m": 8 },
+      { "predator": "barn-owl", "prey": "rodent", "protects_storage_in_radius_m": 18 },
+      { "predator": "song-sparrow", "prey": "codling-moth", "protects_plants_in_radius_m": 10 }
+    ],
+    "synergy_bonus": { "fruit_yield_modifier": 0.20, "aphid_pressure_modifier": -0.60, "rodent_pressure_modifier": -0.70 },
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-animals-systems.md#11"
+  },
+  {
+    "id": "pond-edge-stack",
+    "name": "Pond Edge Wildlife Stack",
+    "kind": "habitat-guild",
+    "description": "Pond + tall-grass + rotten-log brings in the amphibian / dragonfly / bat cascade that controls mosquito + slug populations across the whole homestead.",
+    "habitats_required": ["pond", "brush-pile", "bat-box"],
+    "expected_arrivals": ["pacific-treefrog", "northwestern-salamander", "dragonfly", "little-brown-bat", "great-blue-heron"],
+    "predator_prey_loops": [
+      { "predator": "dragonfly", "prey": "mosquito", "zone": "farm-wide" },
+      { "predator": "little-brown-bat", "prey": "moth", "zone": "farm-wide" },
+      { "predator": "pacific-treefrog", "prey": "mosquito", "zone": "pond-radius-20m" },
+      { "predator": "northwestern-salamander", "prey": "slug", "zone": "moist-tiles" },
+      { "predator": "great-blue-heron", "prey": "rainbow-trout", "warning": "loses-stocked-fish" }
+    ],
+    "synergy_bonus": { "mosquito_pressure_modifier": -0.80, "slug_pressure_modifier": -0.55, "moth_pressure_modifier": -0.65 },
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-animals-systems.md#11"
+  },
+  {
+    "id": "hedgerow-beetle-bank",
+    "name": "Hedgerow + Beetle Bank",
+    "kind": "habitat-guild",
+    "description": "Continuous linear strip of perennial shrubs + tussock grass. Overwinters ground beetles, bumblebee queens, songbirds. The #1 biodiversity multiplier on a farm (Oregon Conservation Evidence).",
+    "habitats_required": ["hedgerow", "brush-pile"],
+    "expected_arrivals": ["ground-beetle", "song-sparrow", "bumblebee", "garter-snake"],
+    "predator_prey_loops": [
+      { "predator": "ground-beetle", "prey": "slug", "zone": "edge-tiles" },
+      { "predator": "garter-snake", "prey": "slug", "zone": "edge-tiles" },
+      { "predator": "garter-snake", "prey": "small-rodent", "zone": "edge-tiles" }
+    ],
+    "synergy_bonus": { "slug_pressure_modifier": -0.45, "rodent_pressure_modifier": -0.25, "pollinator_uptime_modifier": 0.30 },
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-animals-systems.md#11"
+  },
+  {
+    "id": "rock-pile-microclimate",
+    "name": "Rock Pile Microclimate",
+    "kind": "habitat-guild",
+    "description": "Stacked stones in a sun-exposed corner store heat by day, release it by night. Hosts garter snakes (slug + rodent control) and salamanders (slug control). Holzer's thermal-mass trick.",
+    "habitats_required": ["rock-pile"],
+    "expected_arrivals": ["garter-snake", "northwestern-salamander"],
+    "synergy_bonus": { "slug_pressure_modifier": -0.35, "microclimate_temp_modifier": 1.0 },
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-animals-systems.md#12.3"
+  },
+  {
+    "id": "salatin-chicken-cow",
+    "name": "Cow -> Chicken Sanitizer (Salatin)",
+    "kind": "animal-guild",
+    "description": "Cow grazes tile day 1. Wait 3 days for fly larvae to mature in cowpat. Chicken eggmobile moves in day 4 and scratches the pat apart, eats larvae, spreads N. Parasite loop broken; +300% OM vs cow alone.",
+    "sequence": [
+      { "species": "dexter-cow", "tile_time_days": 1 },
+      { "species": "gap", "tile_time_days": 3 },
+      { "species": "chicken-layer", "tile_time_days": 3 }
+    ],
+    "synergy_bonus": { "om_per_day_modifier": 3.0, "parasite_cycle_break": true },
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-animals-systems.md#7.4"
+  },
+  {
+    "id": "pest-pressure-map",
+    "name": "Pest Pressure -> Predator Arrival",
+    "kind": "meta-guild",
+    "description": "Self-balancing ecology: when prey/pest pressure rises, its predator immigrates IF habitat is present. No habitat = persistent pressure.",
+    "rules": [
+      { "prey": "aphid", "predator": "ladybug", "enabling_habitat": "insectary-strip" },
+      { "prey": "aphid", "predator": "green-lacewing", "enabling_habitat": "insectary-strip" },
+      { "prey": "slug", "predator": "duck", "enabling_habitat": "duck-pond-edge" },
+      { "prey": "slug", "predator": "ground-beetle", "enabling_habitat": "brush-pile" },
+      { "prey": "slug", "predator": "garter-snake", "enabling_habitat": "rock-pile" },
+      { "prey": "slug", "predator": "northwestern-salamander", "enabling_habitat": "brush-pile" },
+      { "prey": "rodent", "predator": "barn-owl", "enabling_habitat": "owl-box" },
+      { "prey": "rodent", "predator": "barn_cat", "enabling_habitat": "kennel" },
+      { "prey": "rodent", "predator": "garter-snake", "enabling_habitat": "rock-pile" },
+      { "prey": "moth", "predator": "little-brown-bat", "enabling_habitat": "bat-box" },
+      { "prey": "mosquito", "predator": "dragonfly", "enabling_habitat": "pond" },
+      { "prey": "codling-moth", "predator": "song-sparrow", "enabling_habitat": "hedgerow" },
+      { "prey": "codling-moth", "predator": "little-brown-bat", "enabling_habitat": "bat-box" }
+    ],
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-animals-systems.md#16"
+  },
+  {
+    "id": "predator-pressure-map",
+    "name": "Predator Pressure -> Livestock Risk",
+    "kind": "meta-guild",
+    "description": "Incoming wildlife predators to the farm. Each is gated on a habitat-adjacency condition. Event handlers in random_events + events.json consume this map.",
+    "rules": [
+      { "predator": "red-tailed-hawk", "targets": ["chicken-layer"], "event_id": "hawk-strike", "deterred_by": ["canopy-cover", "goose-embden", "lgd_dog"] },
+      { "predator": "red-fox", "targets": ["chicken-layer", "duck"], "event_id": "fox-at-dawn", "deterred_by": ["lgd_dog", "goose-embden", "fenced-coop"] },
+      { "predator": "raccoon", "targets": ["chicken-layer", "duck", "rainbow-trout"], "event_id": "raccoon-raid", "deterred_by": ["lgd_dog", "closed-coop-at-night", "fenced-coop"] },
+      { "predator": "great-blue-heron", "targets": ["rainbow-trout"], "event_id": "heron-visit", "deterred_by": ["duck-flock", "heron-deterrent"] },
+      { "predator": "black-bear", "targets": ["warre-hive", "apple"], "event_id": "bear-visit", "deterred_by": ["electric-fence", "lgd_dog"] }
+    ],
+    "biomes": ["bc-coastal"],
+    "research_cite": "research-animals-systems.md#17"
   }
 ]

@@ -24,6 +24,12 @@ const HERD_CAP: int = 3
 const STARTER_HERD_SIZE: int = 1
 const FEEDER_CAPACITY: float = 30.0
 
+# Phase-3 containment. Cows are STABLE — +0.2 fence_strength_bias vs
+# chicken baseline. Hard clamp in practice.
+@export var containment_radius: float = 10.0
+@export var containment_strength: float = 1.0
+var escaped_animals: Array = []
+
 
 var _wall_mat: StandardMaterial3D
 var _roof_mat: StandardMaterial3D

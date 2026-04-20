@@ -23,6 +23,13 @@ Source docs (both mandatory reads before choosing any color):
 - [ ] No color was chosen because it felt "realistic" — all choices trace to the happy palette.
 - [ ] I verified the game looks warm/cheerful at the LOWEST vitality state, not cold/grey.
 
+## UI READABILITY-CHECK (mandatory for any agent shipping labels / panels / text)
+Godot's default font color is WHITE. Parchment panels are cream. White-on-cream = unreadable. Shipped broken once (2026-04-20, compost inspector). Never again.
+- [ ] Every `Label` / `Button` / `RichTextLabel` on a light panel sets `theme_override_colors/font_color` — in the `.tscn` *or* via `add_theme_color_override("font_color", …)` in `_ready` before the label becomes visible.
+- [ ] Every dynamically-created label (`Label.new()` in GDScript) gets a font_color override before `add_child`.
+- [ ] Font colors come from `Palette.*` (INK / COMPOST / EARTH / etc.), not raw literals.
+- [ ] I opened the scene in the running game and visually confirmed every label is readable against its background (not just "no parse errors").
+
 **Palette entries I used:** (list them)
 **Deviations from palette:** (any, with justification)
-**Screenshots/visual verification method:** (describe)
+**Screenshots/visual verification method:** (describe — must mention that you eyeballed labels against their panel background)

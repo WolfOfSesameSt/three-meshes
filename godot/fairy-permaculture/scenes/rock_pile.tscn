@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://fp_rock_pile"]
+
+[ext_resource type="Script" path="res://scripts/rock_pile.gd" id="1_rock"]
+
+[node name="RockPile" type="StaticBody3D"]
+input_ray_pickable = true
+script = ExtResource("1_rock")
