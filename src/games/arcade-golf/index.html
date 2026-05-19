@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Arcade Golf</title>
+  <style>
+    * { box-sizing: border-box; }
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #cfe8ff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #21311f;
+    }
+    body {
+      touch-action: none;
+    }
+    #game {
+      position: fixed;
+      inset: 0;
+      min-width: 320px;
+      min-height: 100svh;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .hud {
+      position: fixed;
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      z-index: 3;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      align-items: end;
+      pointer-events: none;
+    }
+    .par-mark {
+      position: fixed;
+      left: max(16px, env(safe-area-inset-left));
+      top: max(12px, env(safe-area-inset-top));
+      z-index: 2;
+      color: #fff;
+      font-size: clamp(2.3rem, 10vw, 5.1rem);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: 0;
+      text-shadow: 0 4px 0 rgba(22, 48, 18, 0.28), 0 12px 28px rgba(22, 48, 18, 0.22);
+      pointer-events: none;
+    }
+    .hud__title,
+    .hud__pill,
+    .hud__control {
+      border: 1px solid rgba(33, 49, 31, 0.18);
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 8px 28px rgba(31, 69, 42, 0.14);
+      backdrop-filter: blur(10px);
+    }
+    .hud__title {
+      min-width: 0;
+      max-width: 17rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+    .hud__title strong {
+      display: block;
+      font-size: 0.88rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .hud__title span {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.74rem;
+      line-height: 1.2;
+      color: rgba(33, 49, 31, 0.72);
+    }
+    .hud__stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(54px, auto));
+      gap: 6px;
+      justify-content: start;
+    }
+    .hud__pill {
+      min-width: 54px;
+      padding: 8px 9px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.72rem;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+    .hud__pill strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.92rem;
+    }
+    .hud__button {
+      min-width: 42px;
+      min-height: 42px;
+      border: 1px solid rgba(33, 49, 31, 0.18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 8px 28px rgba(31, 69, 42, 0.14);
+      color: #21311f;
+      font: inherit;
+      font-size: 1.05rem;
+      font-weight: 800;
+      line-height: 1;
+      pointer-events: auto;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+    .hud__button:active {
+      transform: translateY(1px);
+    }
+    .hud__control {
+      min-width: 84px;
+      padding: 6px 7px;
+      border-radius: 8px;
+      font-size: 0.66rem;
+      line-height: 1.05;
+      pointer-events: auto;
+    }
+    .hud__control label {
+      display: block;
+      margin-bottom: 4px;
+      color: rgba(33, 49, 31, 0.72);
+    }
+    .hud__control input,
+    .hud__control select {
+      width: 100%;
+      min-height: 26px;
+      border: 0;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #21311f;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 800;
+      outline: 1px solid rgba(33, 49, 31, 0.12);
+    }
+    .hud__meta {
+      display: block;
+      margin-top: 3px;
+      max-width: 20rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (min-width: 760px) {
+      .hud {
+        left: 20px;
+        right: 20px;
+        bottom: 18px;
+        grid-template-columns: minmax(16rem, 22rem) 1fr;
+      }
+      .hud__title {
+        max-width: 22rem;
+      }
+      .hud__stats {
+        grid-template-columns: repeat(6, minmax(54px, auto));
+        justify-content: end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="game" aria-label="Arcade Golf prototype">
+    <div class="par-mark">PAR <span id="par">--</span></div>
+    <section class="hud" aria-label="Hole status">
+      <div class="hud__title">
+        <strong>Arcade Golf</strong>
+        <span>Generated hole</span>
+        <span class="hud__meta" id="hole-meta">--</span>
+      </div>
+      <div class="hud__stats">
+        <div class="hud__pill">Seed<strong id="seed">--</strong></div>
+        <div class="hud__control">
+          <label for="seed-input">Seed</label>
+          <input id="seed-input" type="text" value="AG-001" autocomplete="off" />
+        </div>
+        <div class="hud__control">
+          <label for="par-select">Par</label>
+          <select id="par-select">
+            <option value="">Any</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+        <div class="hud__control">
+          <label for="archetype-select">Type</label>
+          <select id="archetype-select"></select>
+        </div>
+        <div class="hud__control">
+          <label for="tee-select">Tee</label>
+          <select id="tee-select"></select>
+        </div>
+        <button class="hud__button" id="apply-hole" type="button" aria-label="Apply hole controls">Go</button>
+        <button class="hud__button" id="next-hole" type="button" aria-label="Generate next hole">R</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

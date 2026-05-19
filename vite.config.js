@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [debugLogPlugin(), musicLabPlugin(), hardpointPlugin()],
   test: {
     include: [
+      "src/games/arcade-golf/**/*.test.js",
       "src/games/void-raiders/**/*.test.js",
       "src/games/fairy-permaculture/**/*.test.js",
     ],
