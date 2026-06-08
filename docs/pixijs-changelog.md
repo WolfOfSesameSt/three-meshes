@@ -3,11 +3,31 @@
 Tracks Pixi.js releases relevant to this project. Auto-updated weekly by scheduled agent.
 
 **Installed version:** v8.17.1
-**Latest known version:** v8.18.1 (as of 2026-04-20)
+**Latest known version:** v8.19.0 (as of 2026-06-08)
 
 ---
 
 <!-- New entries are prepended below this line by the scheduled agent -->
+
+## v8.19.0 (2026-06-04)
+### New Features
+- **HTML-in-Canvas rendering** — `pixi.js/html-source` subpath exposes `HTMLSource` and `ElementImageSource` for rendering live DOM elements as interactive PixiJS textures
+- **WebGPU MSAA optimization** — transient attachment support allows WebGPU to discard MSAA resolve buffers, reducing memory bandwidth on mobile GPUs
+- **`FillPattern` `textureSpace` option** — controls whether pattern tiling is relative to local object space or world space
+
+### Bug Fixes
+- Fixed BitmapText trailing glyph rendering
+- Fixed `SplitText` crash on whitespace-only strings
+- Fixed `TilingSprite` rotation shearing
+- Fixed canvas renderer anchor rounding
+- Fixed shader context loss recovery
+
+### Breaking Changes
+- `Container.updateTransform({ scaleX: 0, scaleY: 0 })` now applies zero scale literally — previously coerced to full scale; any code relying on zero-scale no-op behavior must be updated
+- `ParticleContainer` now inherits ancestor blend modes — visual output may change for particles nested inside blended containers
+- `FillPattern` gains a `textureSpace` option that may alter existing pattern tiling output
+
+---
 
 ## v8.18.1 (2026-04-14)
 ### Bug Fixes
