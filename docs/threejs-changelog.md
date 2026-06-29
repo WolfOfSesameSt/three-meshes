@@ -3,11 +3,39 @@
 Tracks Three.js releases relevant to this project. Auto-updated weekly by scheduled agent.
 
 **Installed version:** r170
-**Latest known version:** r184 (as of 2026-04-20)
+**Latest known version:** r185 (as of 2026-06-29)
 
 ---
 
 <!-- New entries are prepended below this line by the scheduled agent -->
+
+## r185 (2026-06-25)
+### New Features
+- MaterialLoader: Add `registerMaterial()` and `Material.fromJSON()` for custom material (de)serialization
+- HTMLTexture: Support new WICG HTML-in-Canvas API signatures
+- ColorAdjustment: Add `max()` for outputs
+- BufferGeometry: Support transformed geometry when serializing; fix attribute count mismatch in `computeVertexNormals()`/`computeTangents()`
+- SphereGeometry: Make pole vertices more robust
+- WebGPURenderer: Add ClusteredLighting (Forward+ clustered) shading; WebXR fallback support
+- common.glsl (WebGLRenderer shaders): Introduce `transformNormalByInverseViewMatrix()`
+- TSL: textureGather/textureGatherCompare support, `storageTexture3D`, override context, various fixes
+### Deprecations
+- Matrix3: `.scale()`, `.rotate()`, `.translate()` deprecated
+- DRACOLoader: `setDecoderConfig()` deprecated
+- LWOLoader: Deprecated
+### Breaking Changes
+- Global: Removed deprecated code (cleanup pass)
+- Matrix4: `determinant3x3()` renamed to `determinantAffine()`
+- Addons: Removed `TiledLighting`
+- DRACOExporter: Removed bundled encoders in favor of CDN
+- LottieLoader / TTFLoader: Removed bundled libs in favor of CDN
+- WebGLRenderer: Disabled bump mapping for wireframe rendering; normal map fixes for `DoubleSide`+flat shading and `BackSide`+vertex tangents (visual differences possible)
+### Migration Notes
+- Replace `Matrix4.determinant3x3()` calls with `determinantAffine()`
+- If relying on `Matrix3.scale()`/`.rotate()`/`.translate()`, migrate to equivalent matrix construction (these are deprecated, not yet removed)
+- If using `TiledLighting` from addons, find an alternative lighting approach — it has been removed
+- If using DRACOLoader/LottieLoader/TTFLoader bundled libs, switch to CDN-hosted decoder/library URLs
+- No changes required for this project's documented `ShaderMaterial`/`RawShaderMaterial`/`MeshStandardMaterial`/`GLTFExporter` patterns — none of the breaking changes touch those APIs
 
 ## r184 (2026-04-16)
 ### New Features
