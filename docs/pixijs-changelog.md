@@ -3,11 +3,44 @@
 Tracks Pixi.js releases relevant to this project. Auto-updated weekly by scheduled agent.
 
 **Installed version:** v8.17.1
-**Latest known version:** v8.19.0 (as of 2026-06-08)
+**Latest known version:** v8.20.0 (as of 2026-08-24)
 
 ---
 
 <!-- New entries are prepended below this line by the scheduled agent -->
+
+## v8.20.0 (2026-08-20)
+### New Features
+- **WGSL shader overrides** — WebGPU-specific depth-stencil format support, partial buffer updates, and view caching optimization
+- **WebGPU render bundles** — new `vertexCount` property on `Geometry`; depth-only render targets and depth texture copying (`copyDepthTexture`) for both WebGPU and WebGL2
+- **`RenderOptions.flipY` toggle** — inverts Y projection and corrects winding/cull behavior, enabling screen-orientation texture captures suitable for 3D geometry UVs
+- **Advanced shader bind state** — exported GPU shader layout helpers; object-form bind/push with capturable bind state
+- **RenderTarget architecture overhaul** — WebGPU-first attachment architecture; `TextureView` depth sampling
+
+### Bug Fixes
+- Fixed `Geometry.destroy()` double-freeing the index buffer
+- Fixed sibling sprite masks using incorrect mask matrices
+- Fixed graphics texture fills to account for frame origin and rotation
+- Fixed `Triangle.strokeContains` vertex edge calculation
+- Fixed `RoundedRectangle.copyFrom` not copying radius
+- Fixed rebuilt cached bind groups when GC unloads uniform buffers
+- Fixed duplicate `onRender` registrations from same-parent reorders
+- Fixed mask texture replaced with `Texture.EMPTY` when destroyed while still in use
+- Chrome 150+ HTML-in-Canvas upload compatibility
+
+### Breaking Changes
+- **`StructsAndGroups.isUniform` replaced by `accessMode`** — migrate `if (group.isUniform)` to `if (group.accessMode === 'uniform')`; old property returns `undefined` rather than throwing
+- **`ParticleContainer` now inherits ancestor tint and alpha** — scenes with faded/tinted `ParticleContainer`s will render differently; remove any manual compensation workarounds
+- **WebGPU front face orientation corrected** — `State.clockwiseFrontFace` now correctly controls winding in WebGPU pipelines; WGSL `@builtin(front_facing)` now matches GLSL `gl_FrontFacing`; revert any inverted workarounds in WGSL shaders
+- **`Polygon.strokeContains` hit area aligned with drawn stroke** — previously ~41% wider than the drawn line at default `alignment: 0.5`; interactive hit areas will now be tighter
+- **`Rectangle.containsRect` now uses inclusive edge testing** — identical rectangles and rects flush against container edges now return `true` (was `false`)
+
+### Migration Notes
+- `StructsAndGroups`: change `group.isUniform` checks to `group.accessMode === 'uniform'`
+- `ParticleContainer`: if you were manually compensating for missing tint/alpha inheritance from parent containers, remove that compensation
+- WGSL shaders using `@builtin(front_facing)` with `clockwiseFrontFace: true` — invert your branch logic
+
+---
 
 ## v8.19.0 (2026-06-04)
 ### New Features
