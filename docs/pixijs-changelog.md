@@ -3,11 +3,20 @@
 Tracks Pixi.js releases relevant to this project. Auto-updated weekly by scheduled agent.
 
 **Installed version:** v8.17.1
-**Latest known version:** v8.20.0 (as of 2026-08-24)
+**Latest known version:** v8.20.1 (as of 2026-08-31)
 
 ---
 
 <!-- New entries are prepended below this line by the scheduled agent -->
+
+## v8.20.1 (2026-08-26)
+### Bug Fixes
+- Fixed UBO offset preservation in unsafe-eval polyfill
+- Fixed SVG radial gradients incorrectly rendering as linear gradients
+- Fixed `TextStyle` detachment on destroy
+- Bumped `@xmldom/xmldom` dependency
+
+---
 
 ## v8.20.0 (2026-08-20)
 ### New Features
